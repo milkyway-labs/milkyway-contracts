@@ -1,2 +1,3 @@
-# milkyway-contracts
-🌀 CosmWasm contracts for Milkway
+# MilkyWay Contracts
+
+🌀 CosmWasm contracts for MilkyWay
