@@ -1,0 +1,38 @@
+[workspace]
+members = ["contracts/*"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Decento Labs"]
+edition = "2021"
+rust-version = "1.68.0"
+license = "TBD"
+homepage = "https://milkyway.zone/"
+repository = "https://github.com/decento-labs/milkyway-contracts"
+documentation = "https://docs.milkyway.zone/"
+keywords = ["cosmwasm", "milkyway", "cosmos"]
+
+[workspace.dependencies]
+cosmwasm-schema = "1.3.1"
+cosmwasm-std = "1.2.2"
+cosmwasm-storage = "1.2.2"
+cw2 = "1.0.1"
+cw-storage-plus = "1"
+cw-utils = "1.0.1"
+osmosis-std = "0.16.0"
+osmosis-test-tube = "16.0.0"
+schemars = "0.8.12"
+serde = { version = "1.0.155", default-features = false, features = ["derive"] }
+serde_json = "1.0.94"
+thiserror = "1.0.39"
+
+[profile.release]
+codegen-units = 1
+opt-level = 3
+rpath = false
+debug = false
+lto = true
+debug-assertions = false
+panic = 'abort'
+incremental = false
+overflow-checks = true
