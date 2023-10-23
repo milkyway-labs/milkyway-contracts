@@ -5,7 +5,7 @@ use crate::{
         execute_accept_ownership, execute_add_validator, execute_claim, execute_liquid_stake,
         execute_liquid_unstake, execute_remove_validator, execute_transfer_ownership,
     },
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -67,5 +67,12 @@ pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()
 }
 
-#[cfg(test)]
-mod tests {}
+///////////////
+/// MIGRATE ///
+///////////////
+
+#[entry_point]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    // TODO: note implement yet
+    Ok(Response::new())
+}

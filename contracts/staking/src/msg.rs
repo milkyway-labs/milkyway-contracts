@@ -1,8 +1,35 @@
+use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Uint128};
+use cw20::Denom;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    /// Denomination of underlying token (IBC denom of TIA)
+    pub native_token_denom: Denom,
+    /// Denomination of the liquid staking token (stTIA)
+    pub liquid_stake_token_denom: Denom,
+    /// Treasury contract address
+    pub treasury_address: String,
+    /// Set of node operators who will operate the protocol
+    pub node_operators: Vec<String>,
+    /// Set of validators who will receive the delegations
+    pub validators: Vec<String>,
+    /// How often the unbonding queue is to be executed in seconds
+    pub epoch_period: u64,
+    /// The staking module's unbonding period for Celestia in seconds
+    pub unbonding_period: u64,
+    /// Protocol fee configuration
+    pub protocol_fee_config: ProtocolFeeConfig,
+    /// Multisig address configuration
+    pub multisig_address_config: MultisigAddressConfig,
+    /// Minimum amount to liquid stake
+    pub minimum_liquid_stake_amount: Uint128,
+    /// Minimum staking rewards to collect on Celestia
+    pub minimum_rewards_to_collect: Uint128,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -18,3 +45,6 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct MigrateMsg {}
