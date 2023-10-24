@@ -137,3 +137,45 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
     // TODO: note implement yet
     Ok(Response::new())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
+    use cosmwasm_std::testing::{
+        mock_dependencies, mock_env, mock_info, MockApi, MockStorage, MOCK_CONTRACT_ADDR,
+    };
+    use cosmwasm_std::{
+        coins, from_binary, Addr, Attribute, ContractResult, CosmosMsg, OwnedDeps, Querier,
+        StdError, SystemError, SystemResult,
+    };
+
+    #[test]
+    fn proper_initialization() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            native_token_denom: "utia".to_string(),
+            liquid_stake_token_denom: "stTIA".to_string(),
+            treasury_address: "treasury".to_string(),
+            node_operators: vec!["node1".to_string(), "node2".to_string()],
+            validators: vec!["val1".to_string(), "val2".to_string()],
+            batch_period: 86400,
+            unbonding_period: 1209600,
+            protocol_fee_config: ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(10u128),
+            },
+            multisig_address_config: MultisigAddressConfig {
+                controller_address: Addr::unchecked("staker"),
+                staker_address: Addr::unchecked("staker"),
+                reward_collector_address: Addr::unchecked("reward_collector"),
+            },
+            minimum_liquid_stake_amount: Uint128::from(100u128),
+            minimum_rewards_to_collect: Uint128::from(10u128),
+        };
+        let info = mock_info("creator", &coins(1000, "uosmo"));
+
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
+    }
+}
