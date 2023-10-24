@@ -607,6 +607,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "osmo-bindings"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "577e323bcb744c74efb396caa96a245262a19fe0c8aaa504d89a93abe9a122e8"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "osmosis-std"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -962,6 +973,7 @@ dependencies = [
  "cw-storage-plus",
  "cw2",
  "cw20",
+ "osmo-bindings",
  "osmosis-std",
  "schemars",
  "serde",

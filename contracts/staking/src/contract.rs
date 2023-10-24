@@ -1,3 +1,4 @@
+use crate::state::{Config, State, CONFIG};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
@@ -7,9 +8,13 @@ use crate::{
     },
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
-use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::CosmosMsg;
+use cosmwasm_std::{
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, Uint128,
+};
 use cw2::set_contract_version;
-
+use osmo_bindings::OsmosisMsg;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,17 +22,73 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 ///////////////////
 /// INSTANTIATE ///
 ///////////////////
-
+//TODO: Add validations
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: InstantiateMsg,
+    env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    unimplemented!()
+    // TODO: Dedup
+    let node_operators = msg
+        .node_operators
+        .iter()
+        .map(|addr| deps.api.addr_validate(addr))
+        .collect::<Result<Vec<_>, _>>()?;
+    // TODO: Dedup
+    let validators = msg
+        .validators
+        .iter()
+        .map(|addr| deps.api.addr_validate(addr))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Init Config
+    let config = Config {
+        native_token_denom: msg.native_token_denom,
+        liquid_stake_token_denom: format!(
+            "factory/{0}/{1}",
+            env.contract.address, msg.liquid_stake_token_denom
+        ), //TODO determine the format to save in
+        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
+        node_operators,
+        validators,
+        batch_period: msg.batch_period,
+        unbonding_period: msg.unbonding_period,
+        protocol_fee_config: msg.protocol_fee_config,
+        multisig_address_config: msg.multisig_address_config,
+        minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
+        minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
+    };
+
+    CONFIG.save(deps.storage, &config)?;
+
+    // Init State with default values
+    // There is a better way to init this
+    let state = State::new();
+    state
+        .native_token_to_stake
+        .save(deps.storage, &Uint128::zero())?;
+    state
+        .total_native_token
+        .save(deps.storage, &Uint128::zero())?;
+    state
+        .total_liquid_stake_token
+        .save(deps.storage, &Uint128::zero())?;
+
+    let tokenfactory_msg = MsgCreateDenom {
+        sender: env.contract.address.to_string(),
+        subdenom: config.liquid_stake_token_denom,
+    };
+    let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
+
+    //TODO Update attributes
+    Ok(Response::new()
+        .add_attribute("action", "instantiate")
+        .add_attribute("owner", info.sender)
+        .add_message(cosmos_tokenfactory_msg))
 }
 
 ///////////////
