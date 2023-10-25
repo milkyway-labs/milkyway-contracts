@@ -1,19 +1,20 @@
-use crate::state::{Config, State, CONFIG};
+use crate::helpers::validate_addresses;
+use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
     execute::{
         execute_accept_ownership, execute_add_validator, execute_claim, execute_liquid_stake,
-        execute_liquid_unstake, execute_remove_validator, execute_transfer_ownership,
+        execute_liquid_unstake, execute_remove_validator, execute_revoke_ownership_transfer,
+        execute_transfer_ownership,
     },
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, Uint128,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use osmo_bindings::OsmosisMsg;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:staking";
@@ -25,25 +26,18 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 //TODO: Add validations
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let api = deps.api;
+    let node_operators = validate_addresses(api, msg.node_operators)?;
+    let validators = validate_addresses(api, msg.validators)?;
 
-    // TODO: Dedup
-    let node_operators = msg
-        .node_operators
-        .iter()
-        .map(|addr| deps.api.addr_validate(addr))
-        .collect::<Result<Vec<_>, _>>()?;
-    // TODO: Dedup
-    let validators = msg
-        .validators
-        .iter()
-        .map(|addr| deps.api.addr_validate(addr))
-        .collect::<Result<Vec<_>, _>>()?;
+    // TODO: determine if info.sender is the admin or if we want to pass in with msg
+    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
 
     // Init Config
     let config = Config {
@@ -65,23 +59,21 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
 
-    // Init State with default values
-    // There is a better way to init this
-    let state = State::new();
-    state
-        .native_token_to_stake
-        .save(deps.storage, &Uint128::zero())?;
-    state
-        .total_native_token
-        .save(deps.storage, &Uint128::zero())?;
-    state
-        .total_liquid_stake_token
-        .save(deps.storage, &Uint128::zero())?;
+    // Init State
+    let state = State {
+        total_native_token: Uint128::zero(),
+        total_liquid_stake_token: Uint128::zero(),
+        native_token_to_stake: Uint128::zero(),
+        pending_owner: None,
+    };
+    STATE.save(deps.storage, &state)?;
 
+    // Create liquid stake token denom
     let tokenfactory_msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
         subdenom: config.liquid_stake_token_denom,
     };
+
     let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
 
     //TODO Update attributes
@@ -115,6 +107,9 @@ pub fn execute(
         }
         ExecuteMsg::RemoveValidator { validator } => {
             execute_remove_validator(deps, env, info, validator)
+        }
+        ExecuteMsg::RevokeOwnershipTransfer {} => {
+            execute_revoke_ownership_transfer(deps, env, info)
         }
     }
 }
@@ -151,11 +146,11 @@ mod tests {
     };
 
     #[test]
-    fn proper_initialization() {
+    fn proper_instantiation() {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
-            native_token_denom: "utia".to_string(),
+            native_token_denom: "osmoTIA".to_string(),
             liquid_stake_token_denom: "stTIA".to_string(),
             treasury_address: "treasury".to_string(),
             node_operators: vec!["node1".to_string(), "node2".to_string()],

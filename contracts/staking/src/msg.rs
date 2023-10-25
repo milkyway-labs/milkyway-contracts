@@ -39,6 +39,7 @@ pub enum ExecuteMsg {
     RemoveValidator { validator: String },
     TransferOwnership { new_owner: String },
     AcceptOwnership {},
+    RevokeOwnershipTransfer {},
 }
 
 #[cw_serde]
