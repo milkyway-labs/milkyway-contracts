@@ -5,7 +5,7 @@ use crate::helpers::compute_mint_amount;
 use crate::state::{ADMIN, CONFIG, STATE};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
-
+// PENDING
 // Payment validation handled by caller
 // Denom validation handled by caller
 pub fn execute_liquid_stake(
@@ -61,14 +61,41 @@ pub fn execute_liquid_stake(
         .add_attribute("sender", info.sender)
         .add_attribute("amount", amount))
 }
-
+// PENDING
 pub fn execute_liquid_unstake(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> ContractResult<Response> {
-    unimplemented!()
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
+    
+    // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
+    // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
+    ensure!(
+        amount > config.minimum_liquid_stake_amount,
+        ContractError::MinimumLiquidStakeAmount { 
+            minimum_stake_amount: (config.minimum_liquid_stake_amount),
+            sent_amount: (amount)
+        }
+    );
+
+    // TODO: Check if user has batch record (merge them if so)
+
+    // Create batch record
+
+    // Update batch state
+
+    // Check if batch is ready to submit, if so submit batch
+        // When batch is submitted, burn pending batch amount
+
+
+
+    Ok(Response::new()
+        .add_attribute("action", "liquid_unstake")
+        .add_attribute("sender", info.sender)
+        .add_attribute("amount", amount))
 }
 
 pub fn execute_claim(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {

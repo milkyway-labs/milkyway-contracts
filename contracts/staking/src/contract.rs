@@ -95,14 +95,15 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let pay_denom = CONFIG.load(deps.storage)?.native_token_denom;
+    
+    let config = CONFIG.load(deps.storage)?;
     match msg {
-        ExecuteMsg::LiquidStake { amount } => {
-            let payment = must_pay(&info, &pay_denom)?;
+        ExecuteMsg::LiquidStake {  } => {
+            let payment = must_pay(&info, &config.native_token_denom)?;
             execute_liquid_stake(deps, env, info, payment)
         }
-        ExecuteMsg::LiquidUnstake { amount } => {
-            let payment = must_pay(&info, &pay_denom)?;
+        ExecuteMsg::LiquidUnstake {  } => {
+            let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
