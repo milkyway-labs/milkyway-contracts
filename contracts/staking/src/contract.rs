@@ -1,5 +1,5 @@
 use crate::helpers::validate_addresses;
-use crate::state::{Config, State, ADMIN, CONFIG, STATE};
+use crate::state::{self, Config, State, ADMIN, CONFIG, STATE};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
@@ -15,6 +15,7 @@ use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
+use cw_utils::must_pay;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:staking";
@@ -94,9 +95,16 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let pay_denom = CONFIG.load(deps.storage)?.native_token_denom;
     match msg {
-        ExecuteMsg::LiquidStake { coin } => execute_liquid_stake(deps, env, info, coin),
-        ExecuteMsg::LiquidUnstake { coin } => execute_liquid_unstake(deps, env, info, coin),
+        ExecuteMsg::LiquidStake { amount } => {
+            let payment = must_pay(&info, &pay_denom)?;
+            execute_liquid_stake(deps, env, info, payment)
+        }
+        ExecuteMsg::LiquidUnstake { amount } => {
+            let payment = must_pay(&info, &pay_denom)?;
+            execute_liquid_unstake(deps, env, info, payment)
+        }
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
         ExecuteMsg::TransferOwnership { new_owner } => {
             execute_transfer_ownership(deps, env, info, new_owner)

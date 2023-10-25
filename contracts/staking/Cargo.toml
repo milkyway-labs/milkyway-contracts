@@ -32,6 +32,7 @@ osmosis-std = { workspace = true }
 osmo-bindings = "0.6.0"
 osmo-bindings-test = "0.6.0"
 cw-controllers = "1.1.1"
+cw-utils.workspace = true
 
 [dev-dependencies]
 cw-multi-test = "0.16.5"

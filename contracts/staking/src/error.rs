@@ -1,5 +1,6 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_controllers::AdminError;
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 pub type ContractResult<T> = core::result::Result<T, ContractError>;
@@ -18,4 +19,16 @@ pub enum ContractError {
 
     #[error("No pending owner")]
     NoPendingOwner {},
+
+    #[error("Payment error: {0}")]
+    Payment(#[from] PaymentError),
+
+    #[error("Minimum liquid stake amount not met")]
+    MinimumLiquidStakeAmount {
+        minimum_stake_amount: Uint128,
+        sent_amount: Uint128,
+    },
+
+    #[error("Unable to mint liquid staking token")]
+    MintError {},
 }

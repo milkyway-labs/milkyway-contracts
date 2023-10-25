@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Api, Deps, DepsMut, StdError, StdResult};
+use cosmwasm_std::{Addr, Api, Deps, DepsMut, StdError, StdResult, Uint128};
 use std::collections::HashSet;
 
 // Validates addresses are valid and unique and returns a vector of validated addresses
@@ -18,6 +18,26 @@ pub fn validate_addresses(api: &dyn Api, addresses: Vec<String>) -> StdResult<Ve
     }
 
     Ok(validated)
+}
+
+pub fn compute_mint_amount(
+    total_native_token: Uint128,
+    total_liquid_stake_token: Uint128,
+    native_to_stake: Uint128,
+) -> Uint128 {
+    //TODO: Review integer math
+    // Possible truncation issues when quantities are small
+    // Initial very large total_native_token would cause round to 0 and block minting
+    let mint_amount;
+    // Mint at a 1:1 ratio if there is no total native token or total liquid stake token
+    // Amount = Total stTIA * (Amount of native token / Total native token)
+    if total_native_token.is_zero() {
+        mint_amount = native_to_stake
+    } else {
+        mint_amount = total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
+    }
+
+    return mint_amount;
 }
 
 mod tests {

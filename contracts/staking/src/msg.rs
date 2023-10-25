@@ -32,8 +32,8 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    LiquidStake { coin: Coin },
-    LiquidUnstake { coin: Coin },
+    LiquidStake { amount: Uint128 },
+    LiquidUnstake { amount: Uint128 },
     Claim {},
     AddValidator { new_validator: String },
     RemoveValidator { validator: String },

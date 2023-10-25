@@ -1,23 +1,72 @@
 use crate::error::{ContractError, ContractResult};
-use cosmwasm_std::{Addr, Coin, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response, Uint128};
 
-use crate::state::{ADMIN, STATE};
-use cw_controllers::Admin;
+use crate::helpers::compute_mint_amount;
+use crate::state::{ADMIN, CONFIG, STATE};
+use osmosis_std::types::cosmos::base::v1beta1::Coin;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
 
+// Payment validation handled by caller
+// Denom validation handled by caller
 pub fn execute_liquid_stake(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    coin: Coin,
+    amount: Uint128,
 ) -> ContractResult<Response> {
-    unimplemented!()
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
+    ensure!(
+        amount > config.minimum_liquid_stake_amount,
+        ContractError::MinimumLiquidStakeAmount {
+            minimum_stake_amount: (config.minimum_liquid_stake_amount),
+            sent_amount: (amount)
+        }
+    );
+
+    //Compute mint amount
+    let mint_amount = compute_mint_amount(
+        state.total_native_token,
+        state.total_liquid_stake_token,
+        amount,
+    );
+
+    if mint_amount.is_zero() {
+        return Err(ContractError::MintError {});
+    }
+    // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
+    // TODO: Needs testing and validation - also need to check mint_to_address
+    // Mint liquid staking token
+    let mint_msg = MsgMint {
+        sender: env.contract.address.to_string(),
+        amount: Some(Coin {
+            denom: config.liquid_stake_token_denom,
+            amount: mint_amount.to_string(),
+        }),
+        mint_to_address: info.sender.to_string(),
+    };
+
+    // TODO: Add IBC logic
+    //Transfer native token to multisig address
+    // <<INSERT IBC LOGIC HERE>>
+
+    state.total_native_token += amount;
+    state.total_liquid_stake_token += mint_amount;
+
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_message(mint_msg)
+        .add_attribute("action", "liquid_stake")
+        .add_attribute("sender", info.sender)
+        .add_attribute("amount", amount))
 }
 
 pub fn execute_liquid_unstake(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    coin: Coin,
+    amount: Uint128,
 ) -> ContractResult<Response> {
     unimplemented!()
 }
