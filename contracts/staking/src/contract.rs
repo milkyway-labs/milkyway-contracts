@@ -1,5 +1,5 @@
 use crate::helpers::validate_addresses;
-use crate::state::{self, Config, State, ADMIN, CONFIG, STATE};
+use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
@@ -95,14 +95,13 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    
     let config = CONFIG.load(deps.storage)?;
     match msg {
-        ExecuteMsg::LiquidStake {  } => {
+        ExecuteMsg::LiquidStake {} => {
             let payment = must_pay(&info, &config.native_token_denom)?;
             execute_liquid_stake(deps, env, info, payment)
         }
-        ExecuteMsg::LiquidUnstake {  } => {
+        ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
             execute_liquid_unstake(deps, env, info, payment)
         }
@@ -111,14 +110,14 @@ pub fn execute(
             execute_transfer_ownership(deps, env, info, new_owner)
         }
         ExecuteMsg::AcceptOwnership {} => execute_accept_ownership(deps, env, info),
+        ExecuteMsg::RevokeOwnershipTransfer {} => {
+            execute_revoke_ownership_transfer(deps, env, info)
+        }
         ExecuteMsg::AddValidator { new_validator } => {
             execute_add_validator(deps, env, info, new_validator)
         }
         ExecuteMsg::RemoveValidator { validator } => {
             execute_remove_validator(deps, env, info, validator)
-        }
-        ExecuteMsg::RevokeOwnershipTransfer {} => {
-            execute_revoke_ownership_transfer(deps, env, info)
         }
     }
 }

@@ -31,4 +31,10 @@ pub enum ContractError {
 
     #[error("Unable to mint liquid staking token")]
     MintError {},
+
+    #[error("Validator already exists")]
+    DuplicateValidator { validator: String },
+
+    #[error("Validator not found")]
+    ValidatorNotFound { validator: String },
 }

@@ -2,7 +2,7 @@ use crate::error::{ContractError, ContractResult};
 use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::helpers::compute_mint_amount;
-use crate::state::{ADMIN, CONFIG, STATE};
+use crate::state::{Config, ADMIN, CONFIG, STATE};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
 // PENDING
@@ -70,12 +70,12 @@ pub fn execute_liquid_unstake(
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
-    
+
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
     ensure!(
         amount > config.minimum_liquid_stake_amount,
-        ContractError::MinimumLiquidStakeAmount { 
+        ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)
         }
@@ -88,9 +88,7 @@ pub fn execute_liquid_unstake(
     // Update batch state
 
     // Check if batch is ready to submit, if so submit batch
-        // When batch is submitted, burn pending batch amount
-
-
+    // When batch is submitted, burn pending batch amount
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
@@ -165,21 +163,74 @@ pub fn execute_accept_ownership(
         None => Err(ContractError::NoPendingOwner {}),
     }
 }
-
+// Add a validator to the list of validators; callable by the owner
 pub fn execute_add_validator(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     new_validator: String,
 ) -> ContractResult<Response> {
-    unimplemented!()
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config = CONFIG.load(deps.storage)?;
+    let new_validator_addr = deps.api.addr_validate(&new_validator)?;
+
+    // Check if the new_validator is already in the list.
+    if config
+        .validators
+        .iter()
+        .any(|validator| *validator == new_validator_addr)
+    {
+        return Err(ContractError::DuplicateValidator {
+            validator: new_validator,
+        }
+        .into());
+    }
+
+    // Add the new validator to the list.
+    config.validators.push(new_validator_addr.clone());
+
+    // Save the updated config.
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "add_validator")
+        .add_attribute("new_validator", new_validator_addr)
+        .add_attribute("sender", info.sender))
 }
 
 pub fn execute_remove_validator(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    validator: String,
+    validator_to_remove: String,
 ) -> ContractResult<Response> {
-    unimplemented!()
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config = CONFIG.load(deps.storage)?;
+    let validator_addr_to_remove = deps.api.addr_validate(&validator_to_remove)?;
+
+    // Find the position of the validator to be removed.
+    if let Some(pos) = config
+        .validators
+        .iter()
+        .position(|validator| *validator == validator_addr_to_remove)
+    {
+        // Remove the validator if found.
+        config.validators.remove(pos);
+    } else {
+        // If the validator is not found, return an error.
+        return Err(ContractError::ValidatorNotFound {
+            validator: validator_to_remove,
+        }
+        .into());
+    }
+
+    // Save the updated config.
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_validator")
+        .add_attribute("removed_validator", validator_addr_to_remove)
+        .add_attribute("sender", info.sender))
 }
