@@ -103,13 +103,6 @@ pub fn execute_liquid_unstake(
     // Add amount to batch total
     pending_batch.batch_total += amount;
 
-    // Native token 
-    // // Decrease total native token
-    // // TODO: Probably handle this better but it should never be possible unless there is a bug
-    // state.total_native_token = state
-    //     .total_native_token
-    //     .checked_sub(amount)
-    //     .unwrap_or_else(|_| Uint128::zero());
 
     
     let mut msgs: Vec<CosmosMsg> = vec![];
