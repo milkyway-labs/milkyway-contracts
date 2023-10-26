@@ -1,6 +1,6 @@
 use crate::execute::execute_submit_batch;
 use crate::helpers::validate_addresses;
-use crate::state::{Config, State, ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE};
+use crate::state::{Config, State, ADMIN, CONFIG, PENDING_BATCH, STATE};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
@@ -17,7 +17,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::must_pay;
-use milky_way::staking::{Batch, BatchStatus};
+use milky_way::staking::{Batch};
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:staking";
@@ -157,12 +157,12 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 mod tests {
     use super::*;
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
-    use crate::{contract, msg, state};
+    
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
-    use milky_way::staking::LiquidUnstakeRequest;
+    
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn proper_submit_batch() {
         let mut deps = init();
-        let mut env = mock_env();
+        let env = mock_env();
 
         let mut state = STATE.load(&deps.storage).unwrap();
 

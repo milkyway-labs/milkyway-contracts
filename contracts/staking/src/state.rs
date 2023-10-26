@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
-use milky_way::staking::{Batch, BatchStatus};
+use milky_way::staking::{Batch};
 
 #[cw_serde]
 pub struct Config {
