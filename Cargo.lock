@@ -860,6 +860,7 @@ dependencies = [
  "cw-utils",
  "cw2",
  "cw20",
+ "milky_way",
  "osmo-bindings",
  "osmosis-std",
  "schemars",

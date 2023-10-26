@@ -1,8 +1,12 @@
 use crate::error::{ContractError, ContractResult};
-use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+    ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg,
+};
 
 use crate::helpers::compute_mint_amount;
-use crate::state::{ADMIN, CONFIG, STATE};
+use crate::msg::ExecuteMsg;
+use crate::state::{ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE};
+use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
 // PENDING
@@ -61,15 +65,15 @@ pub fn execute_liquid_stake(
         .add_attribute("sender", info.sender)
         .add_attribute("amount", amount))
 }
-// PENDING
+
 pub fn execute_liquid_unstake(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-    let mut _state = STATE.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
@@ -80,21 +84,56 @@ pub fn execute_liquid_unstake(
             sent_amount: (amount)
         }
     );
+    // Load current pending batch
+    let mut pending_batch = PENDING_BATCH.load(deps.storage)?;
 
-    // TODO: Check if user has batch record (merge them if so)
+    // Add unstake request to pending batch
+    match pending_batch.liquid_unstake_requests.get_mut(&info.sender) {
+        Some(request) => {
+            request.shares += amount;
+        }
+        None => {
+            pending_batch.liquid_unstake_requests.insert(
+                info.sender.clone(),
+                LiquidUnstakeRequest::new(info.sender.clone(), amount),
+            );
+        }
+    }
 
-    // Create batch record
+    // Add amount to batch total
+    pending_batch.batch_total += amount;
 
-    // Update batch state
+    // Decrease total native token
+    // TODO: Probably handle this better but it should never be possible unless there is a bug
+    state.total_native_token = state
+        .total_native_token
+        .checked_sub(amount)
+        .unwrap_or_else(|_| Uint128::zero());
+    let mut msgs: Vec<CosmosMsg> = vec![];
+    // if batch period has elapsed, submit batch
+    if let Some(est_next_batch_action) = pending_batch.est_next_batch_action {
+        if est_next_batch_action >= env.block.time.seconds() {
+            // Unbonding
+            // Burn pending batch amount
 
-    // Check if batch is ready to submit, if so submit batch
-    // unbonding logic
-    // When batch is submitted, burn pending batch amount
+            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: env.contract.address.to_string(),
+                msg: to_binary(&ExecuteMsg::SubmitBatch {
+                    batch_id: pending_batch.id,
+                })?,
+                funds: vec![],
+            }))
+        }
+
+        // Save updated pending batch
+        PENDING_BATCH.save(deps.storage, &pending_batch)?;
+    }
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
         .add_attribute("sender", info.sender)
-        .add_attribute("amount", amount))
+        .add_attribute("amount", amount)
+        .add_messages(msgs))
 }
 
 pub fn execute_claim(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
@@ -232,4 +271,51 @@ pub fn execute_remove_validator(
         .add_attribute("action", "remove_validator")
         .add_attribute("removed_validator", validator_addr_to_remove)
         .add_attribute("sender", info.sender))
+}
+
+// Submit batch and transition pending batch to submitted
+// Batch should alwasy have entries since this is only triggered from LiquidUnstake
+pub fn execute_submit_batch(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: u64,
+) -> ContractResult<Response> {
+    // Only the contract can submit a batch
+    ensure_eq!(
+        info.sender,
+        env.contract.address,
+        ContractError::Unauthorized {}
+    );
+
+    let config = CONFIG.load(deps.storage)?;
+
+    //load pending batch
+    let mut batch = PENDING_BATCH.load(deps.storage)?;
+
+    // Update batch status
+    batch.update_status(
+        BatchStatus::Submitted,
+        Some(env.block.time.seconds() + config.unbonding_period),
+    );
+
+    // Move pending batch to batches
+    BATCHES.save(deps.storage, batch.id, &batch)?;
+
+    // Create new pending batch
+    let new_pending_batch = Batch::new(
+        batch.id + 1,
+        Uint128::zero(),
+        env.block.time.seconds() + config.batch_period,
+    );
+
+    // Save new pending batch
+    PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
+
+    // Dispatch IBC transfer to multisig address
+
+    Ok(Response::new()
+        .add_attribute("action", "submit_batch")
+        .add_attribute("batch_id", id.to_string())
+        .add_attribute("batch_total", batch.batch_total))
 }
