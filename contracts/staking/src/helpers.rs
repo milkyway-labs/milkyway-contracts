@@ -39,7 +39,7 @@ pub fn compute_mint_amount(
 
     return mint_amount;
 }
-
+#[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::mock_dependencies;
