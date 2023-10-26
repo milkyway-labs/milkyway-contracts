@@ -146,14 +146,13 @@ mod tests {
     use super::*;
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_info, MockApi, MockStorage, MOCK_CONTRACT_ADDR,
+        mock_dependencies, mock_env, mock_info,
     };
     use cosmwasm_std::{
-        coins, from_binary, Addr, Attribute, ContractResult, CosmosMsg, OwnedDeps, Querier,
-        StdError, SystemError, SystemResult,
+        coins, Addr,
     };
 
-    fn init(mut deps: DepsMut) {
+    fn init(deps: DepsMut) {
         let msg = InstantiateMsg {
             native_token_denom: "osmoTIA".to_string(),
             liquid_stake_token_denom: "stTIA".to_string(),
@@ -175,7 +174,7 @@ mod tests {
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
-        let res = instantiate(deps, mock_env(), info, msg);
+        let _res = instantiate(deps, mock_env(), info, msg);
     }
     #[test]
     fn proper_instantiation() {
@@ -210,7 +209,7 @@ mod tests {
     #[test]
     fn proper_add_validator() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
             new_validator: "val3".to_string(),
@@ -227,7 +226,7 @@ mod tests {
     #[test]
     fn duplicate_add_validator() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
             new_validator: "val1".to_string(),
@@ -239,7 +238,7 @@ mod tests {
     #[test]
     fn proper_remove_validator() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
             validator: "val1".to_string(),
@@ -256,7 +255,7 @@ mod tests {
     #[test]
     fn invalid_remove_validator() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
             validator: "val3".to_string(),
@@ -268,7 +267,7 @@ mod tests {
     #[test]
     fn non_admin_remove_validator() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
             validator: "val1".to_string(),
@@ -280,7 +279,7 @@ mod tests {
     #[test]
     fn non_admin_add_validator() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
             new_validator: "val3".to_string(),
@@ -292,7 +291,7 @@ mod tests {
     #[test]
     fn proper_transfer_ownership() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
@@ -308,7 +307,7 @@ mod tests {
     #[test]
     fn non_admin_transfer_ownership() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
@@ -320,7 +319,7 @@ mod tests {
     #[test]
     fn proper_claim_ownership() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
@@ -341,7 +340,7 @@ mod tests {
     #[test]
     fn unauthorized_claim_ownership() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
@@ -360,7 +359,7 @@ mod tests {
     #[test]
     fn proper_revoke_ownership_transfer() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
@@ -380,7 +379,7 @@ mod tests {
     #[test]
     fn non_admin_revoke_ownership_transfer() {
         let mut deps = mock_dependencies();
-        let res = init(deps.as_mut());
+        init(deps.as_mut());
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 

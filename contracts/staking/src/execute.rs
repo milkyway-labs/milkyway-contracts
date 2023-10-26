@@ -2,7 +2,7 @@ use crate::error::{ContractError, ContractResult};
 use cosmwasm_std::{ensure, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::helpers::compute_mint_amount;
-use crate::state::{Config, ADMIN, CONFIG, STATE};
+use crate::state::{ADMIN, CONFIG, STATE};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
 // PENDING
@@ -97,7 +97,7 @@ pub fn execute_liquid_unstake(
         .add_attribute("amount", amount))
 }
 
-pub fn execute_claim(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn execute_claim(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
     unimplemented!()
 }
 // Transfer ownership to another account; callable by the owner
@@ -184,8 +184,7 @@ pub fn execute_add_validator(
     {
         return Err(ContractError::DuplicateValidator {
             validator: new_validator,
-        }
-        .into());
+        });
     }
 
     // Add the new validator to the list.
@@ -223,8 +222,7 @@ pub fn execute_remove_validator(
         // If the validator is not found, return an error.
         return Err(ContractError::ValidatorNotFound {
             validator: validator_to_remove,
-        }
-        .into());
+        });
     }
 
     // Save the updated config.

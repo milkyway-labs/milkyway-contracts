@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Api, Deps, DepsMut, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Api, StdError, StdResult, Uint128};
 use std::collections::HashSet;
 
 // Validates addresses are valid and unique and returns a vector of validated addresses
@@ -37,7 +37,7 @@ pub fn compute_mint_amount(
         mint_amount = total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
     }
 
-    return mint_amount;
+    mint_amount
 }
 #[cfg(test)]
 mod tests {
