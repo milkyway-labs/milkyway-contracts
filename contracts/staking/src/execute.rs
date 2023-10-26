@@ -30,7 +30,7 @@ pub fn execute_liquid_stake(
         state.total_liquid_stake_token,
         amount,
     );
-
+    // If mint amount is zero it is likely there was a an issue with rounding, return error and do not mint
     if mint_amount.is_zero() {
         return Err(ContractError::MintError {});
     }
@@ -48,7 +48,7 @@ pub fn execute_liquid_stake(
 
     // TODO: Add IBC logic
     //Transfer native token to multisig address
-    // <<INSERT IBC LOGIC HERE>>
+    // <<INSERT IBC LOGIC HERE>> 
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
