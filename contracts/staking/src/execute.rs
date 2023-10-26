@@ -48,7 +48,7 @@ pub fn execute_liquid_stake(
 
     // TODO: Add IBC logic
     //Transfer native token to multisig address
-    // <<INSERT IBC LOGIC HERE>> 
+    // <<INSERT IBC LOGIC HERE>>
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
@@ -69,7 +69,7 @@ pub fn execute_liquid_unstake(
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-    let mut state = STATE.load(deps.storage)?;
+    let mut _state = STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge

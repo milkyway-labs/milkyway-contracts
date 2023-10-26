@@ -153,9 +153,7 @@ mod tests {
         StdError, SystemError, SystemResult,
     };
 
-    fn init(mut deps: DepsMut)  {
-        
-
+    fn init(mut deps: DepsMut) {
         let msg = InstantiateMsg {
             native_token_denom: "osmoTIA".to_string(),
             liquid_stake_token_denom: "stTIA".to_string(),
@@ -178,7 +176,6 @@ mod tests {
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
         let res = instantiate(deps, mock_env(), info, msg);
-        
     }
     #[test]
     fn proper_instantiation() {
@@ -209,7 +206,6 @@ mod tests {
         assert_eq!(1, res.messages.len());
         let attrs = res.attributes;
         assert_eq!(attrs[0].value, "instantiate");
-
     }
     #[test]
     fn proper_add_validator() {
@@ -226,8 +222,6 @@ mod tests {
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "add_validator");
         assert_eq!(attrs[1].value, "val3");
-       
-            
     }
 
     #[test]
@@ -241,10 +235,6 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
-
-        
-       
-            
     }
     #[test]
     fn proper_remove_validator() {
@@ -261,8 +251,6 @@ mod tests {
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "remove_validator");
         assert_eq!(attrs[1].value, "val1");
-       
-            
     }
 
     #[test]
@@ -276,9 +264,6 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
-
-        
-            
     }
     #[test]
     fn non_admin_remove_validator() {
@@ -291,9 +276,6 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
-
-        
-            
     }
     #[test]
     fn non_admin_add_validator() {
@@ -306,9 +288,6 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
-
-        
-            
     }
     #[test]
     fn proper_transfer_ownership() {
@@ -325,8 +304,6 @@ mod tests {
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "transfer_ownership");
         assert_eq!(attrs[1].value, "new_owner");
-       
-            
     }
     #[test]
     fn non_admin_transfer_ownership() {
@@ -339,9 +316,6 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
-
-       
-            
     }
     #[test]
     fn proper_claim_ownership() {
@@ -363,8 +337,6 @@ mod tests {
         let attrs = res2.unwrap().attributes;
         assert_eq!(attrs[0].value, "accept_ownership");
         assert_eq!(attrs[1].value, "new_owner");
-       
-            
     }
     #[test]
     fn unauthorized_claim_ownership() {
@@ -384,8 +356,6 @@ mod tests {
         let res2 = execute(deps.as_mut(), mock_env(), info, msg);
 
         assert!(res2.is_err());
-       
-            
     }
     #[test]
     fn proper_revoke_ownership_transfer() {
@@ -406,8 +376,6 @@ mod tests {
 
         let attrs = res2.unwrap().attributes;
         assert_eq!(attrs[0].value, "revoke_ownership_transfer");
-       
-            
     }
     #[test]
     fn non_admin_revoke_ownership_transfer() {
@@ -419,8 +387,5 @@ mod tests {
         let res2 = execute(deps.as_mut(), mock_env(), info, msg);
 
         assert!(res2.is_err());
-       
-            
     }
-
 }
