@@ -8,7 +8,7 @@ use crate::msg::ExecuteMsg;
 use crate::state::{ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE};
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgMint, MsgBurn};
 // PENDING
 // Payment validation handled by caller
 // Denom validation handled by caller
@@ -103,12 +103,15 @@ pub fn execute_liquid_unstake(
     // Add amount to batch total
     pending_batch.batch_total += amount;
 
-    // Decrease total native token
-    // TODO: Probably handle this better but it should never be possible unless there is a bug
-    state.total_native_token = state
-        .total_native_token
-        .checked_sub(amount)
-        .unwrap_or_else(|_| Uint128::zero());
+    // Native token 
+    // // Decrease total native token
+    // // TODO: Probably handle this better but it should never be possible unless there is a bug
+    // state.total_native_token = state
+    //     .total_native_token
+    //     .checked_sub(amount)
+    //     .unwrap_or_else(|_| Uint128::zero());
+
+    
     let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
     if let Some(est_next_batch_action) = pending_batch.est_next_batch_action {
@@ -289,6 +292,7 @@ pub fn execute_submit_batch(
     );
 
     let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
 
     //load pending batch
     let mut batch = PENDING_BATCH.load(deps.storage)?;
@@ -313,9 +317,31 @@ pub fn execute_submit_batch(
     PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
 
     // Dispatch IBC transfer to multisig address
+    //TODO I dont think this or MSGMint are actually valid as is
+    // Issue tokenfactory burn message
+    // Waiting until batch submission to burn tokens
+    let tokenfactory_burn_msg = MsgBurn {
+        sender: env.contract.address.to_string(),
+        amount: Some(Coin {
+            denom: config.liquid_stake_token_denom,
+            amount: batch.batch_total.to_string(),
+        }),
+        burn_from_address: env.contract.address.to_string(),
+    };
+
+
+    // @fabo - Can we actually just query the tokenfactory denom balance
+    // I dont think we actually have to maintain this in state
+    state.total_liquid_stake_token = state
+        .total_liquid_stake_token
+        .checked_sub(batch.batch_total)
+        .unwrap_or_else(|_| Uint128::zero());
+
 
     Ok(Response::new()
+        .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", id.to_string())
         .add_attribute("batch_total", batch.batch_total))
+
 }
