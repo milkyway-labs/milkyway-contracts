@@ -145,12 +145,8 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 mod tests {
     use super::*;
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
-    use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_info,
-    };
-    use cosmwasm_std::{
-        coins, Addr,
-    };
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{coins, Addr};
 
     fn init(deps: DepsMut) {
         let msg = InstantiateMsg {
