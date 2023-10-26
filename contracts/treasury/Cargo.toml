@@ -53,4 +53,4 @@ serde = { version = "1.0.145", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
 
 [dev-dependencies]
-cw-multi-test = "0.16.5"
+cw-multi-test = "0.17.0"

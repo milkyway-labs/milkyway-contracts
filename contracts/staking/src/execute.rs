@@ -88,6 +88,7 @@ pub fn execute_liquid_unstake(
     // Update batch state
 
     // Check if batch is ready to submit, if so submit batch
+    // unbonding logic
     // When batch is submitted, burn pending batch amount
 
     Ok(Response::new()
