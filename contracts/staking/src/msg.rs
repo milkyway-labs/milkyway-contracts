@@ -1,16 +1,15 @@
 use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Coin, Uint128};
-use cw20::Denom;
+use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     /// Denomination of underlying token (IBC denom of TIA)
-    pub native_token_denom: Denom,
+    pub native_token_denom: String,
     /// Denomination of the liquid staking token (stTIA)
-    pub liquid_stake_token_denom: Denom,
+    pub liquid_stake_token_denom: String,
     /// Treasury contract address
     pub treasury_address: String,
     /// Set of node operators who will operate the protocol
@@ -18,7 +17,7 @@ pub struct InstantiateMsg {
     /// Set of validators who will receive the delegations
     pub validators: Vec<String>,
     /// How often the unbonding queue is to be executed in seconds
-    pub epoch_period: u64,
+    pub batch_period: u64,
     /// The staking module's unbonding period for Celestia in seconds
     pub unbonding_period: u64,
     /// Protocol fee configuration
@@ -33,13 +32,14 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    LiquidStake { coin: Coin },
-    LiquidUnstake { coin: Coin },
+    LiquidStake {},
+    LiquidUnstake {},
     Claim {},
     AddValidator { new_validator: String },
     RemoveValidator { validator: String },
     TransferOwnership { new_owner: String },
     AcceptOwnership {},
+    RevokeOwnershipTransfer {},
 }
 
 #[cw_serde]
