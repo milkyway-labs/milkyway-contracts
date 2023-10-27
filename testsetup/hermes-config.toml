@@ -26,7 +26,7 @@ host = '127.0.0.1'
 port = 3001
 
 [[chains]]
-id = 'private'
+id = 'celestia-dev-1'
 rpc_addr = 'http://localhost:26661'
 grpc_addr = 'http://localhost:9190'
 event_source = { mode = 'push', url = 'ws://localhost:26661/websocket', batch_delay = '200ms' }

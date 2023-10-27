@@ -61,27 +61,27 @@ cp ./hermes-config.toml ~/.hermes/config.toml
 Import the keys into Hermes
 
 ```
-hermes keys add --chain testing --key-file './osmosis-relayer-key.json'
-hermes keys add --chain private --key-file './celestia-relayer-key.json'
+hermes keys add --chain osmosis-dev-1 --key-file './osmosis-relayer-key.json'
+hermes keys add --chain celestia-dev-1 --key-file './celestia-relayer-key.json'
 ```
 
 Fund the accounts, replace the addresses with the addresses from the key files
 // osmosis local testnet uses stake for fees
 
 ```
-osmosisd tx bank send validator1 OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id testing
+osmosisd tx bank send validator1 OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1
 celestia-appd tx bank send validator CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia
 ```
 
 Create the connection between the local chains
 
 ```
-- hermes keys add --chain testing --key-file 'osmosis-validator-key.json'
-- hermes keys add --chain private --key-file 'celestia-validator-key.json'
-- hermes create client --host-chain private --reference-chain testing
-- hermes create client --host-chain testing --reference-chain private
-- hermes create connection --a-chain private --b-chain testing
-- hermes create channel --a-chain private --a-connection connection-0 --a-port transfer --b-port transfer
+- hermes keys add --chain osmosis-dev-1 --key-file 'osmosis-validator-key.json'
+- hermes keys add --chain celestia-dev-1 --key-file 'celestia-validator-key.json'
+- hermes create client --host-chain celestia-dev-1 --reference-chain osmosis-dev-1
+- hermes create client --host-chain osmosis-dev-1 --reference-chain celestia-dev-1
+- hermes create connection --a-chain celestia-dev-1 --b-chain osmosis-dev-1
+- hermes create channel --a-chain celestia-dev-1 --a-connection connection-0 --a-port transfer --b-port transfer
 ```
 
 Start Hermes (subsequently you only need to run this command)
