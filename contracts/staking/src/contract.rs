@@ -17,7 +17,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::must_pay;
-use milky_way::staking::{Batch};
+use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:staking";
@@ -157,12 +157,11 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 mod tests {
     use super::*;
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
-    
+
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
-    
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();

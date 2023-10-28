@@ -8,7 +8,7 @@ use crate::msg::ExecuteMsg;
 use crate::state::{ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE};
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgMint, MsgBurn};
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 // PENDING
 // Payment validation handled by caller
 // Denom validation handled by caller
@@ -103,13 +103,10 @@ pub fn execute_liquid_unstake(
     // Add amount to batch total (stTIA)
     pending_batch.batch_total_liquid_stake += amount;
 
-
-    
     let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
     if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
         if est_next_batch_action >= env.block.time.seconds() {
-
             msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
                 msg: to_binary(&ExecuteMsg::SubmitBatch {
@@ -307,7 +304,7 @@ pub fn execute_submit_batch(
     // Save new pending batch
     PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
 
-    // TODO Dispatch IBC transfer to multisig address 
+    // TODO Dispatch IBC transfer to multisig address
 
     //TODO I dont think this or MSGMint are actually valid as is
     // Issue tokenfactory burn message
@@ -321,13 +318,17 @@ pub fn execute_submit_batch(
         burn_from_address: env.contract.address.to_string(),
     };
 
-    let unbond_amount = compute_unbond_amount(state.total_native_token , state.total_liquid_stake_token, batch.batch_total_liquid_stake);
+    let unbond_amount = compute_unbond_amount(
+        state.total_native_token,
+        state.total_liquid_stake_token,
+        batch.batch_total_liquid_stake,
+    );
 
     // Reduce underlying TIA balance by unbonded amount
-    state.total_native_token =  state
-    .total_native_token
-    .checked_sub(unbond_amount)
-    .unwrap_or_else(|_| Uint128::zero());
+    state.total_native_token = state
+        .total_native_token
+        .checked_sub(unbond_amount)
+        .unwrap_or_else(|_| Uint128::zero());
 
     // Reduce underlying stTIA balance by batch total
     state.total_liquid_stake_token = state
@@ -337,12 +338,9 @@ pub fn execute_submit_batch(
 
     STATE.save(deps.storage, &state)?;
 
-
-
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", id.to_string())
         .add_attribute("batch_total", batch.batch_total_liquid_stake))
-
 }
