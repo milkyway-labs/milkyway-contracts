@@ -1,7 +1,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Admin;
-use cw_storage_plus::Item;
+use cw_storage_plus::{Item, Map};
+use milky_way::staking::Batch;
 
 #[cw_serde]
 pub struct Config {
@@ -42,3 +43,7 @@ pub struct MultisigAddressConfig {
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
+// TODO: Finalize and discuss batch structure
+pub const BATCHES: Map<u64, Batch> = Map::new("batches");
+// Only one batch can be pending at a time in the current design
+pub const PENDING_BATCH: Item<Batch> = Item::new("pending_batch");

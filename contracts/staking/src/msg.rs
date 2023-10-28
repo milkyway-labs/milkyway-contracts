@@ -34,6 +34,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {},
     LiquidUnstake {},
+    SubmitBatch { batch_id: u64 },
     Claim {},
     AddValidator { new_validator: String },
     RemoveValidator { validator: String },
