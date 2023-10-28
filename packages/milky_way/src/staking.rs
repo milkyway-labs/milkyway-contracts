@@ -16,26 +16,28 @@ pub struct Batch {
     /// ID of this batch
     pub id: u64,
     /// Total amount of `stTIA` to be burned in this batch
-    pub batch_total_native: Uint128,
+    pub batch_total_liquid_stake: Uint128,
+    // The amount of native tokens that should be received after unbonding
+    pub expected_native_unstaked: Option<Uint128>,
 
     pub liquid_unstake_requests: BTreeMap<Addr, LiquidUnstakeRequest>,
 
     /// Estimated time when next batch action occurs
-    pub est_next_batch_action: Option<u64>,
+    pub next_batch_action_time: Option<u64>,
 
     pub status: BatchStatus,
 }
-// TODO: Discuss: Should we separate pending batch / batch
 // Batch should always be constructed with a pending status
 // Contract: Caller determines batch data
 impl Batch {
     pub fn new(id: u64, batch_total: Uint128, est_next_batch_action: u64) -> Self {
         Self {
             id,
-            batch_total_native: batch_total,
+            batch_total_liquid_stake: batch_total,
             liquid_unstake_requests: BTreeMap::new(),
-            est_next_batch_action: Some(est_next_batch_action),
+            next_batch_action_time: Some(est_next_batch_action),
             status: BatchStatus::Pending,
+            expected_native_unstaked: None,
         }
     }
     pub fn update_status(&mut self, new_status: BatchStatus, next_action: Option<u64>) {
@@ -43,20 +45,20 @@ impl Batch {
         match new_status {
             BatchStatus::Pending => {
                 self.status = new_status;
-                self.est_next_batch_action = next_action;
+                self.next_batch_action_time = next_action;
             }
             // Defined by caller - env.block.time + unbonding period
             BatchStatus::Submitted => {
                 self.status = new_status;
-                self.est_next_batch_action = next_action;
+                self.next_batch_action_time = next_action;
             }
             BatchStatus::Closed => {
                 self.status = new_status;
-                self.est_next_batch_action = None;
+                self.next_batch_action_time = None;
             }
             BatchStatus::Failed => {
                 self.status = new_status;
-                self.est_next_batch_action = None;
+                self.next_batch_action_time = None;
             }
         }
     }

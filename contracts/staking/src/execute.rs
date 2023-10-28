@@ -101,13 +101,13 @@ pub fn execute_liquid_unstake(
     }
 
     // Add amount to batch total (stTIA)
-    pending_batch.batch_total_native += amount;
+    pending_batch.batch_total_liquid_stake += amount;
 
 
     
     let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
-    if let Some(est_next_batch_action) = pending_batch.est_next_batch_action {
+    if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
         if est_next_batch_action >= env.block.time.seconds() {
 
             msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -316,12 +316,12 @@ pub fn execute_submit_batch(
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
             denom: config.liquid_stake_token_denom,
-            amount: batch.batch_total_native.to_string(),
+            amount: batch.batch_total_liquid_stake.to_string(),
         }),
         burn_from_address: env.contract.address.to_string(),
     };
 
-    let unbond_amount = compute_unbond_amount(state.total_native_token , state.total_liquid_stake_token, batch.batch_total_native);
+    let unbond_amount = compute_unbond_amount(state.total_native_token , state.total_liquid_stake_token, batch.batch_total_liquid_stake);
 
     // Reduce underlying TIA balance by unbonded amount
     state.total_native_token =  state
@@ -332,7 +332,7 @@ pub fn execute_submit_batch(
     // Reduce underlying stTIA balance by batch total
     state.total_liquid_stake_token = state
         .total_liquid_stake_token
-        .checked_sub(batch.batch_total_native)
+        .checked_sub(batch.batch_total_liquid_stake)
         .unwrap_or_else(|_| Uint128::zero());
 
     STATE.save(deps.storage, &state)?;
@@ -343,6 +343,6 @@ pub fn execute_submit_batch(
         .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", id.to_string())
-        .add_attribute("batch_total", batch.batch_total_native))
+        .add_attribute("batch_total", batch.batch_total_liquid_stake))
 
 }
