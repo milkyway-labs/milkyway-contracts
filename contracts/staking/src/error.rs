@@ -37,4 +37,11 @@ pub enum ContractError {
 
     #[error("Validator not found")]
     ValidatorNotFound { validator: String },
+
+    #[error("MilkyWay only supports unordered channels")]
+    OrderedChannel {  },
+
+    #[error("Invalid IBC version")]
+    InvalidVersion { actual: String , expected: String },
+
 }
