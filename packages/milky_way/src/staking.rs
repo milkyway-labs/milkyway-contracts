@@ -16,7 +16,7 @@ pub struct Batch {
     /// ID of this batch
     pub id: u64,
     /// Total amount of `stTIA` to be burned in this batch
-    pub batch_total: Uint128,
+    pub batch_total_native: Uint128,
 
     pub liquid_unstake_requests: BTreeMap<Addr, LiquidUnstakeRequest>,
 
@@ -32,7 +32,7 @@ impl Batch {
     pub fn new(id: u64, batch_total: Uint128, est_next_batch_action: u64) -> Self {
         Self {
             id,
-            batch_total,
+            batch_total_native: batch_total,
             liquid_unstake_requests: BTreeMap::new(),
             est_next_batch_action: Some(est_next_batch_action),
             status: BatchStatus::Pending,

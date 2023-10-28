@@ -39,6 +39,27 @@ pub fn compute_mint_amount(
 
     mint_amount
 }
+
+pub fn compute_unbond_amount(
+    total_native_token: Uint128,
+    total_liquid_stake_token: Uint128,
+    batch_liquid_stake_token: Uint128,
+) -> Uint128 {
+    let unbond_amount: Uint128;
+
+    if batch_liquid_stake_token.is_zero() {
+        unbond_amount = Uint128::zero()
+    } else {
+        // unbond amount is calculated at the batch level
+        // total_native_token - total TIA delegated by MilkyWay
+        // batch_liquid_stake_token - total stTIA in submitted batch
+        // total_liquid_stake_token - total stTIA minted by MilkyWay
+        unbond_amount = total_native_token.multiply_ratio(batch_liquid_stake_token, total_liquid_stake_token)
+    }
+
+    unbond_amount
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

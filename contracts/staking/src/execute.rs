@@ -3,7 +3,7 @@ use cosmwasm_std::{
     ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg,
 };
 
-use crate::helpers::compute_mint_amount;
+use crate::helpers::{compute_mint_amount, compute_unbond_amount};
 use crate::msg::ExecuteMsg;
 use crate::state::{ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE};
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -100,8 +100,8 @@ pub fn execute_liquid_unstake(
         }
     }
 
-    // Add amount to batch total
-    pending_batch.batch_total += amount;
+    // Add amount to batch total (stTIA)
+    pending_batch.batch_total_native += amount;
 
 
     
@@ -109,8 +109,6 @@ pub fn execute_liquid_unstake(
     // if batch period has elapsed, submit batch
     if let Some(est_next_batch_action) = pending_batch.est_next_batch_action {
         if est_next_batch_action >= env.block.time.seconds() {
-            // Unbonding
-            // Burn pending batch amount
 
             msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
@@ -309,7 +307,8 @@ pub fn execute_submit_batch(
     // Save new pending batch
     PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
 
-    // Dispatch IBC transfer to multisig address
+    // TODO Dispatch IBC transfer to multisig address 
+
     //TODO I dont think this or MSGMint are actually valid as is
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
@@ -317,24 +316,33 @@ pub fn execute_submit_batch(
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
             denom: config.liquid_stake_token_denom,
-            amount: batch.batch_total.to_string(),
+            amount: batch.batch_total_native.to_string(),
         }),
         burn_from_address: env.contract.address.to_string(),
     };
 
+    let unbond_amount = compute_unbond_amount(state.total_native_token , state.total_liquid_stake_token, batch.batch_total_native);
 
-    // @fabo - Can we actually just query the tokenfactory denom balance
-    // I dont think we actually have to maintain this in state
+    // Reduce underlying TIA balance by unbonded amount
+    state.total_native_token =  state
+    .total_native_token
+    .checked_sub(unbond_amount)
+    .unwrap_or_else(|_| Uint128::zero());
+
+    // Reduce underlying stTIA balance by batch total
     state.total_liquid_stake_token = state
         .total_liquid_stake_token
-        .checked_sub(batch.batch_total)
+        .checked_sub(batch.batch_total_native)
         .unwrap_or_else(|_| Uint128::zero());
+
+    STATE.save(deps.storage, &state)?;
+
 
 
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", id.to_string())
-        .add_attribute("batch_total", batch.batch_total))
+        .add_attribute("batch_total", batch.batch_total_native))
 
 }
