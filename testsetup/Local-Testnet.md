@@ -87,7 +87,7 @@ Create the connection between the local chains
 Start Hermes (subsequently you only need to run this command)
 
 ```
-tmux -s hermes -d hermes start
+tmux new -s hermes -d hermes start
 ```
 
 ### Check Validator output
@@ -101,3 +101,5 @@ tmux a -t osmosisvalidator2
 tmux a -t osmosisvalidator3
 tmux a -t hermes
 ```
+
+To leave Tmux `Ctrl+B, D`
