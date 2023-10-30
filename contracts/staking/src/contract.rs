@@ -74,7 +74,7 @@ pub fn instantiate(
     // Create liquid stake token denom
     let tokenfactory_msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
-        subdenom: config.liquid_stake_token_denom,
+        subdenom: msg.liquid_stake_token_denom,
     };
 
     let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
