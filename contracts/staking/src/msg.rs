@@ -28,6 +28,7 @@ pub struct InstantiateMsg {
     pub minimum_liquid_stake_amount: Uint128,
     /// Minimum staking rewards to collect on Celestia
     pub minimum_rewards_to_collect: Uint128,
+    
 }
 
 #[cw_serde]

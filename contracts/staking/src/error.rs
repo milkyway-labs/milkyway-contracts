@@ -44,4 +44,7 @@ pub enum ContractError {
     #[error("Invalid IBC version")]
     InvalidVersion { actual: String , expected: String },
 
+    #[error("No IBC channel found")]
+    IbcChannelNotFound { },
+
 }

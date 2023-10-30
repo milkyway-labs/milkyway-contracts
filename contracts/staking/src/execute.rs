@@ -1,11 +1,12 @@
 use crate::error::{ContractError, ContractResult};
+use crate::ibc;
 use cosmwasm_std::{
-    ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg,
+    ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg, IbcMsg, IbcTimeout, Timestamp
 };
 
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
 use crate::msg::ExecuteMsg;
-use crate::state::{ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE};
+use crate::state::{ADMIN, BATCHES, CONFIG, PENDING_BATCH, STATE, IBC_CONFIG, IbcConfig};
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
@@ -20,6 +21,7 @@ pub fn execute_liquid_stake(
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
+    let ibc_config = IBC_CONFIG.load(deps.storage)?;
     ensure!(
         amount > config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
@@ -49,18 +51,34 @@ pub fn execute_liquid_stake(
         }),
         mint_to_address: info.sender.to_string(),
     };
+    let ibc_coin = cosmwasm_std::Coin {
+        denom: config.native_token_denom,
+        amount: amount,
+    };
+    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(env.block.time.nanos() + ibc_config.default_timeout.nanos() as u64));
+    
+   
+   // I can probably do better than unwrapping
+   let ibc_channel = ibc_config.channel.ok_or(ContractError::IbcChannelNotFound {  })?;
 
-    // TODO: Add IBC logic
     //Transfer native token to multisig address
-    // <<INSERT IBC LOGIC HERE>>
+    let ibc_msg = IbcMsg::Transfer{
+        channel_id: ibc_channel.connection_id,
+        to_address: config.multisig_address_config.staker_address.to_string(),
+        amount: ibc_coin,
+        timeout: timeout,
+
+    };
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
 
     STATE.save(deps.storage, &state)?;
+    
 
     Ok(Response::new()
         .add_message(mint_msg)
+        .add_message(ibc_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender)
         .add_attribute("amount", amount))
@@ -304,9 +322,7 @@ pub fn execute_submit_batch(
     // Save new pending batch
     PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
 
-    // TODO Dispatch IBC transfer to multisig address
 
-    //TODO I dont think this or MSGMint are actually valid as is
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
     let tokenfactory_burn_msg = MsgBurn {

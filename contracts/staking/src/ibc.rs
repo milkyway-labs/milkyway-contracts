@@ -5,12 +5,14 @@ use cosmwasm_std::{
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, StdResult,
 };
+use osmosis_std::types::ibc;
+use crate::state::{IBC_CONFIG};
 use crate::error::{ContractError, ContractResult};
 use crate::{
     ack::{make_ack_fail, make_ack_success},
 };
 // TODO: implement
-pub const IBC_VERSION: &str = "counter-1";
+pub const IBC_VERSION: &str = "mw-1";
 
 /// Handles the `OpenInit` and `OpenTry` parts of the IBC handshake.
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -31,14 +33,15 @@ pub fn ibc_channel_connect(
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     validate_order_and_version(msg.channel(), msg.counterparty_version())?;
+    let mut ibc_config = IBC_CONFIG.load(deps.storage)?;
 
-    // Initialize the count for this channel to zero.
-    let channel = msg.channel().endpoint.channel_id.clone();
+    ibc_config.channel = Some(msg.channel().clone());
+    IBC_CONFIG.save(deps.storage, &ibc_config)?;
 
 
     Ok(IbcBasicResponse::new()
         .add_attribute("method", "ibc_channel_connect")
-        .add_attribute("channel_id", channel))
+        .add_attribute("channel_id", msg.channel().connection_id.clone()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -48,7 +51,11 @@ pub fn ibc_channel_close(
     msg: IbcChannelCloseMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     let channel = msg.channel().endpoint.channel_id.clone();
-    // TODO: Implement this.
+    // TODO: Discuss if we need to do anything here.
+    // Currently unsetting the channel in the config
+    let mut ibc_config = IBC_CONFIG.load(deps.storage)?;
+    ibc_config.channel = None;
+    IBC_CONFIG.save(deps.storage, &ibc_config)?;
     Ok(IbcBasicResponse::new()
         .add_attribute("method", "ibc_channel_close")
         .add_attribute("channel", channel))
@@ -81,11 +88,13 @@ pub fn do_ibc_packet_receive(
 ) -> Result<IbcReceiveResponse, ContractError> {
     // The channel this packet is being relayed along on this chain.
     let channel = msg.packet.dest.channel_id;
-    // let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
+    
+    // TODO:
+        // validate sender is OP
+        // validate batch number is provided
+        // pass to "handle_batch" function
 
-    // match msg {
-    //     IbcExecuteMsg::Increment {} => execute_increment(deps, channel),
-    // }
+    
     Ok(IbcReceiveResponse::new())
 }
 
@@ -116,6 +125,9 @@ pub fn validate_order_and_version(
     channel: &IbcChannel,
     counterparty_version: Option<&str>,
 ) -> Result<(), ContractError> {
+
+    // TODO: any reason to considere ordered channels?
+
     // We expect an unordered channel here. Ordered channels have the
     // property that if a message is lost the entire channel will stop
     // working until you start it again.

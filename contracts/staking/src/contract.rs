@@ -1,6 +1,6 @@
 use crate::execute::execute_submit_batch;
 use crate::helpers::validate_addresses;
-use crate::state::{Config, State, ADMIN, CONFIG, PENDING_BATCH, STATE};
+use crate::state::{Config, State, ADMIN, CONFIG, PENDING_BATCH, STATE, IbcConfig, IBC_CONFIG};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
@@ -11,7 +11,7 @@ use crate::{
     },
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
-use cosmwasm_std::CosmosMsg;
+use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
 use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
@@ -22,6 +22,8 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:staking";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+// TODO: Placeholder value for IBC timeout
+const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000);
 
 ///////////////////
 /// INSTANTIATE ///
@@ -84,9 +86,15 @@ pub fn instantiate(
         Uint128::zero(),
         env.block.time.seconds() + config.batch_period,
     );
-
     // Set pending batch and batches
     PENDING_BATCH.save(deps.storage, &pending_batch)?;
+
+    let ibc_config = IbcConfig {
+        channel: None,
+        default_timeout: IBC_TIMEOUT,
+    };
+    IBC_CONFIG.save(deps.storage, &ibc_config)?;
+
 
     //TODO Update attributes
     Ok(Response::new()
@@ -156,10 +164,10 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
+    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,mock_ibc_channel
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
 
@@ -187,6 +195,18 @@ mod tests {
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg);
+
+        let channel = cosmwasm_std::testing::mock_ibc_channel(
+            "channel-123",
+            cosmwasm_std::IbcOrder::Unordered,
+            "mw-1",
+        );
+        let ibc_config = IbcConfig {
+            channel: Some(channel),
+            default_timeout: IBC_TIMEOUT,
+        };
+        IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
+
         deps
     }
     #[test]
@@ -396,15 +416,22 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "osmoTIA"));
         let msg = ExecuteMsg::LiquidStake {};
-
+    
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+    
         assert!(res.is_ok());
-
-        let attrs = res.unwrap().attributes;
+    
+        // Unwrap once and store in a variable
+        let unwrapped_res = res.unwrap();
+    
+        let attrs = &unwrapped_res.attributes;
         assert_eq!(attrs[0].value, "liquid_stake");
-
+    
         let batch = PENDING_BATCH.load(&deps.storage).unwrap();
         assert!(batch.id == 1);
+    
+        // Use the previously unwrapped value
+        assert_eq!(unwrapped_res.messages.len(), 2);
     }
     // // Create initial stake for bob
     //     fn prep_liquid_stake() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
