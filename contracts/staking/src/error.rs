@@ -46,4 +46,7 @@ pub enum ContractError {
 
     #[error("No IBC channel found")]
     IbcChannelNotFound {},
+
+    #[error("Batch is not ready to be submitted")] 
+    BatchNotReady {actual: u64, expected: u64},
 }

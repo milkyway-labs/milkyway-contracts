@@ -292,18 +292,24 @@ pub fn execute_submit_batch(
     info: MessageInfo,
     id: u64,
 ) -> ContractResult<Response> {
-    // Only the contract can submit a batch
-    ensure_eq!(
-        info.sender,
-        env.contract.address,
-        ContractError::Unauthorized {}
-    );
+    
+    let mut batch = PENDING_BATCH.load(deps.storage)?;
+
+    if let Some(est_next_batch_time) = batch.next_batch_action_time {
+        // Check if the batch has been submitted
+        if env.block.time.seconds() < est_next_batch_time {
+            return Err(ContractError::BatchNotReady { actual: env.block.time.seconds(), expected: est_next_batch_time}
+                );
+        }
+    } else {
+        // Should not enter as pending batch should have a next batch action time
+        return Err(ContractError::BatchNotReady {actual: env.block.time.seconds(), expected: 0u64});
+    }
+
+
 
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
-
-    //load pending batch
-    let mut batch = PENDING_BATCH.load(deps.storage)?;
 
     // Update batch status
     batch.update_status(

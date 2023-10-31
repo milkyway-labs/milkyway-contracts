@@ -520,24 +520,49 @@ mod tests {
     #[test]
     fn proper_submit_batch() {
         let mut deps = init();
-        let env = mock_env();
+        let mut env = mock_env();
 
         let mut state = STATE.load(&deps.storage).unwrap();
+        let config = CONFIG.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         // print!("{:?}", msgs);
-
+        env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
         let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
 
         let contract = env.contract.address.clone().to_string();
 
         let info = mock_info(&contract, &[]);
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-
+        let res = execute(deps.as_mut(), env, info, msg);
+        print!("{:?}", res);
         assert!(res.is_ok());
 
-        print!("{:?}", res);
+
+    }
+    #[test]
+    fn not_ready_submit_batch() {
+        let mut deps = init();
+        let mut env = mock_env();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+        let config = CONFIG.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        // batch isnt ready
+        env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+
+        let contract = env.contract.address.clone().to_string();
+
+        let info = mock_info(&contract, &[]);
+        let res = execute(deps.as_mut(), env, info, msg);
+        
+        assert!(res.is_err());
+
+
     }
 }
