@@ -55,15 +55,17 @@ pub enum ContractError {
     BatchEmpty {},
 
     #[error("From wrong channel")]
-    FromOtherChannel {channel: String},
+    FromOtherChannel { channel: String },
 
     #[error("Foreign token found")]
     NoForeignTokens {},
 
     #[error("From wrong port")]
-    FromOtherPort {port: String},
+    FromOtherPort { port: String },
 
     #[error("unexpected batch status")]
-    UnexpecedBatchStatus {actual: BatchStatus, expected: BatchStatus},
-
+    UnexpecedBatchStatus {
+        actual: BatchStatus,
+        expected: BatchStatus,
+    },
 }

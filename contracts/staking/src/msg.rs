@@ -45,10 +45,14 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum IbcExecuteMsg {
-    ReceiveBatch { batch_id: u64, batch_amount: Uint128 },
-    ReceiveRewards {reward_amount: Uint128},
+    ReceiveBatch {
+        batch_id: u64,
+        batch_amount: Uint128,
+    },
+    ReceiveRewards {
+        reward_amount: Uint128,
+    },
 }
-
 
 #[cw_serde]
 #[derive(QueryResponses)]

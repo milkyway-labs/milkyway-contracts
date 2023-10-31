@@ -527,8 +527,6 @@ mod tests {
         let mut state = STATE.load(&deps.storage).unwrap();
         let config = CONFIG.load(&deps.storage).unwrap();
 
-        
-
         STATE.save(&mut deps.storage, &state).unwrap();
 
         // print!("{:?}", msgs);

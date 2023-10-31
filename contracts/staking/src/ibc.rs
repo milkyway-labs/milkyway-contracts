@@ -1,15 +1,15 @@
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::error::{ContractError, ContractResult};
 use crate::msg::IbcExecuteMsg;
-use crate::state::{IBC_CONFIG, STATE, BATCHES};
+use crate::state::{BATCHES, IBC_CONFIG, STATE};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, StdResult, Uint128
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, StdResult, Uint128,
 };
-use milky_way::staking::{BatchStatus};
+use milky_way::staking::BatchStatus;
 use osmosis_std::types::ibc;
 // TODO: implement
 pub const IBC_VERSION: &str = "mw-1";
@@ -93,8 +93,13 @@ pub fn do_ibc_packet_receive(
     let msg: IbcExecuteMsg = from_binary(&msg.packet.data)?;
 
     match msg {
-        IbcExecuteMsg::ReceiveBatch { batch_id , batch_amount} => execute_receive_batch(deps, batch_id, batch_amount),
-        IbcExecuteMsg::ReceiveRewards {reward_amount} => execute_receive_batch_rewards(deps, reward_amount),
+        IbcExecuteMsg::ReceiveBatch {
+            batch_id,
+            batch_amount,
+        } => execute_receive_batch(deps, batch_id, batch_amount),
+        IbcExecuteMsg::ReceiveRewards { reward_amount } => {
+            execute_receive_batch_rewards(deps, reward_amount)
+        }
     }
 }
 
@@ -161,18 +166,21 @@ pub fn validate_order_and_version(
 fn execute_receive_batch(
     deps: DepsMut,
     batch_id: u64,
-    batch_amount: Uint128
+    batch_amount: Uint128,
 ) -> Result<IbcReceiveResponse, ContractError> {
     // TODO:
     // check if batch exists -X
     // check if batch is already executed - X
     // execute batch
     // update batch status -X
-    
+
     // Batch must be submitted
     if let Ok(mut batch) = BATCHES.load(deps.storage, batch_id) {
         if batch.status != BatchStatus::Submitted {
-            return Err(ContractError::UnexpecedBatchStatus {actual: batch.status, expected: BatchStatus::Submitted});
+            return Err(ContractError::UnexpecedBatchStatus {
+                actual: batch.status,
+                expected: BatchStatus::Submitted,
+            });
         }
         batch.update_status(BatchStatus::Closed, None)
     }
@@ -183,29 +191,26 @@ fn execute_receive_batch(
     STATE.save(deps.storage, &state)?;
 
     // TODO: Process Batch and distribute withdrawals
-    
 
     Ok(IbcReceiveResponse::new()
-    .add_attribute("method", "execute_receive_batch")
-    .add_attribute("reward_amount", batch_amount.to_string())
-    .add_attribute("batch_id", batch_id.to_string())
-    .set_ack(make_ack_success())
-
-    )
+        .add_attribute("method", "execute_receive_batch")
+        .add_attribute("reward_amount", batch_amount.to_string())
+        .add_attribute("batch_id", batch_id.to_string())
+        .set_ack(make_ack_success()))
 }
 // TODO: implement this.
-fn execute_receive_batch_rewards(deps: DepsMut, reward_amount: Uint128) -> Result<IbcReceiveResponse, ContractError> {
+fn execute_receive_batch_rewards(
+    deps: DepsMut,
+    reward_amount: Uint128,
+) -> Result<IbcReceiveResponse, ContractError> {
     let mut state = STATE.load(deps.storage)?;
 
     // Rewards are now in SC balance
     state.total_reward_amount += reward_amount;
     STATE.save(deps.storage, &state)?;
 
-    
     Ok(IbcReceiveResponse::new()
-    .add_attribute("method", "execute_receive_batch_rewards")
-    .add_attribute("reward_amount", reward_amount.to_string())
-    .set_ack(make_ack_success())
-
-    )
+        .add_attribute("method", "execute_receive_batch_rewards")
+        .add_attribute("reward_amount", reward_amount.to_string())
+        .set_ack(make_ack_success()))
 }
