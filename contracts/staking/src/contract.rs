@@ -538,8 +538,6 @@ mod tests {
         let res = execute(deps.as_mut(), env, info, msg);
         print!("{:?}", res);
         assert!(res.is_ok());
-
-
     }
     #[test]
     fn not_ready_submit_batch() {
@@ -560,9 +558,7 @@ mod tests {
 
         let info = mock_info(&contract, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
-        
+
         assert!(res.is_err());
-
-
     }
 }
