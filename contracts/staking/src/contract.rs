@@ -70,6 +70,7 @@ pub fn instantiate(
         total_liquid_stake_token: Uint128::zero(),
         native_token_to_stake: Uint128::zero(),
         pending_owner: None,
+        total_reward_amount: Uint128::zero(),
     };
     STATE.save(deps.storage, &state)?;
 
@@ -169,6 +170,7 @@ mod tests {
         mock_dependencies, mock_env, mock_ibc_channel, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
+    use milky_way::staking::LiquidUnstakeRequest;
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -518,14 +520,15 @@ mod tests {
         assert!(res.is_err());
     }
     #[test]
-    fn proper_submit_batch() {
+    fn empty_submit_batch() {
         let mut deps = init();
         let mut env = mock_env();
 
         let mut state = STATE.load(&deps.storage).unwrap();
         let config = CONFIG.load(&deps.storage).unwrap();
 
-        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        
+
         STATE.save(&mut deps.storage, &state).unwrap();
 
         // print!("{:?}", msgs);
@@ -537,7 +540,7 @@ mod tests {
         let info = mock_info(&contract, &[]);
         let res = execute(deps.as_mut(), env, info, msg);
         print!("{:?}", res);
-        assert!(res.is_ok());
+        assert!(res.is_err());
     }
     #[test]
     fn not_ready_submit_batch() {

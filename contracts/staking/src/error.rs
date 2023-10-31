@@ -1,6 +1,7 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
+use milky_way::staking::{Batch, BatchStatus};
 use thiserror::Error;
 
 pub type ContractResult<T> = core::result::Result<T, ContractError>;
@@ -52,4 +53,17 @@ pub enum ContractError {
 
     #[error("No liquid unstake requests in batch")]
     BatchEmpty {},
+
+    #[error("From wrong channel")]
+    FromOtherChannel {channel: String},
+
+    #[error("Foreign token found")]
+    NoForeignTokens {},
+
+    #[error("From wrong port")]
+    FromOtherPort {port: String},
+
+    #[error("unexpected batch status")]
+    UnexpecedBatchStatus {actual: BatchStatus, expected: BatchStatus},
+
 }

@@ -26,6 +26,7 @@ pub struct State {
     pub total_liquid_stake_token: Uint128,
     pub native_token_to_stake: Uint128,
     pub pending_owner: Option<Addr>,
+    pub total_reward_amount: Uint128,
 }
 
 #[cw_serde]
