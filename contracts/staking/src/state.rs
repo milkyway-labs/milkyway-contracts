@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128, IbcChannel, IbcOrder, IbcEndpoint, Timestamp};
+use cosmwasm_std::{Addr, IbcChannel, IbcEndpoint, IbcOrder, Timestamp, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 use milky_way::staking::Batch;
@@ -41,8 +41,8 @@ pub struct MultisigAddressConfig {
 }
 #[cw_serde]
 pub struct IbcConfig {
-    pub channel: Option<IbcChannel>,  
-    pub default_timeout: Timestamp
+    pub channel: Option<IbcChannel>,
+    pub default_timeout: Timestamp,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

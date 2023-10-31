@@ -1,6 +1,6 @@
 use crate::execute::execute_submit_batch;
 use crate::helpers::validate_addresses;
-use crate::state::{Config, State, ADMIN, CONFIG, PENDING_BATCH, STATE, IbcConfig, IBC_CONFIG};
+use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
@@ -11,10 +11,10 @@ use crate::{
     },
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
-use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
 use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
+use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
@@ -95,7 +95,6 @@ pub fn instantiate(
     };
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
 
-
     //TODO Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -167,7 +166,7 @@ mod tests {
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,mock_ibc_channel
+        mock_dependencies, mock_env, mock_ibc_channel, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
 
@@ -416,20 +415,20 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "osmoTIA"));
         let msg = ExecuteMsg::LiquidStake {};
-    
+
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-    
+
         assert!(res.is_ok());
-    
+
         // Unwrap once and store in a variable
         let unwrapped_res = res.unwrap();
-    
+
         let attrs = &unwrapped_res.attributes;
         assert_eq!(attrs[0].value, "liquid_stake");
-    
+
         let batch = PENDING_BATCH.load(&deps.storage).unwrap();
         assert!(batch.id == 1);
-    
+
         // Use the previously unwrapped value
         assert_eq!(unwrapped_res.messages.len(), 2);
     }

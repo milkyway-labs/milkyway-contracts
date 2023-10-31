@@ -1,3 +1,6 @@
+use crate::ack::{make_ack_fail, make_ack_success};
+use crate::error::{ContractError, ContractResult};
+use crate::state::IBC_CONFIG;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -6,11 +9,6 @@ use cosmwasm_std::{
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, StdResult,
 };
 use osmosis_std::types::ibc;
-use crate::state::{IBC_CONFIG};
-use crate::error::{ContractError, ContractResult};
-use crate::{
-    ack::{make_ack_fail, make_ack_success},
-};
 // TODO: implement
 pub const IBC_VERSION: &str = "mw-1";
 
@@ -23,7 +21,6 @@ pub fn ibc_channel_open(
 ) -> Result<IbcChannelOpenResponse, ContractError> {
     validate_order_and_version(msg.channel(), msg.counterparty_version())?;
     Ok(())
-
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -37,7 +34,6 @@ pub fn ibc_channel_connect(
 
     ibc_config.channel = Some(msg.channel().clone());
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
-
 
     Ok(IbcBasicResponse::new()
         .add_attribute("method", "ibc_channel_connect")
@@ -88,17 +84,14 @@ pub fn do_ibc_packet_receive(
 ) -> Result<IbcReceiveResponse, ContractError> {
     // The channel this packet is being relayed along on this chain.
     let channel = msg.packet.dest.channel_id;
-    
-    // TODO:
-        // validate sender is OP
-        // validate batch number is provided
-        // pass to "handle_batch" function
 
-    
+    // TODO:
+    // validate sender is OP
+    // validate batch number is provided
+    // pass to "handle_batch" function
+
     Ok(IbcReceiveResponse::new())
 }
-
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_ack(
@@ -106,7 +99,7 @@ pub fn ibc_packet_ack(
     _env: Env,
     _ack: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-   // is there a way we can pass back any interesting info here?
+    // is there a way we can pass back any interesting info here?
     Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_ack"))
 }
 
@@ -116,7 +109,6 @@ pub fn ibc_packet_timeout(
     _env: Env,
     msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-   
     // TODO: Implement this.
     Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_timeout"))
 }
@@ -125,7 +117,6 @@ pub fn validate_order_and_version(
     channel: &IbcChannel,
     counterparty_version: Option<&str>,
 ) -> Result<(), ContractError> {
-
     // TODO: any reason to considere ordered channels?
 
     // We expect an unordered channel here. Ordered channels have the
