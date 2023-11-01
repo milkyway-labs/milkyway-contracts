@@ -182,7 +182,7 @@ fn execute_receive_batch(
                 expected: BatchStatus::Submitted,
             });
         }
-        batch.update_status(BatchStatus::Closed, None)
+        batch.update_status(BatchStatus::Received, None)
     }
     // palceholder logic
     let mut state = STATE.load(deps.storage)?;

@@ -2,7 +2,7 @@ use crate::error::{ContractError, ContractResult};
 use crate::ibc;
 use cosmwasm_std::{
     ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
-    Response, Timestamp, Uint128, WasmMsg,
+    Response, StdResult, Timestamp, Uint128, WasmMsg,
 };
 
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
@@ -149,8 +149,9 @@ pub fn execute_liquid_unstake(
 // doing a "push over pool" pattern for now
 // eventually we can move this to auto-withdraw all funds upon batch completion
 // Reasoning - any one issue in the batch will cause the entire batch to fail
-pub fn execute_withdraw(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
-    unimplemented!()
+// TODO: I know this is not ideal, I need to make BATCH an indexed map i think
+pub fn execute_withdraw(_deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+    Ok(Response::new().add_attribute("action", "execute_withdraw"))
 }
 // Transfer ownership to another account; callable by the owner
 // This will require the new owner to accept to take effect.
