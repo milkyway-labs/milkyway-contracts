@@ -1,18 +1,19 @@
 use crate::execute::execute_submit_batch;
 use crate::helpers::validate_addresses;
+use crate::query::{query_batch, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 #[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
     execute::{
-        execute_accept_ownership, execute_add_validator, execute_claim, execute_liquid_stake,
+        execute_accept_ownership, execute_add_validator, execute_liquid_stake,
         execute_liquid_unstake, execute_remove_validator, execute_revoke_ownership_transfer,
-        execute_transfer_ownership,
+        execute_transfer_ownership, execute_withdraw,
     },
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
 use cw2::set_contract_version;
@@ -68,7 +69,6 @@ pub fn instantiate(
     let state = State {
         total_native_token: Uint128::zero(),
         total_liquid_stake_token: Uint128::zero(),
-        native_token_to_stake: Uint128::zero(),
         pending_owner: None,
         total_reward_amount: Uint128::zero(),
     };
@@ -125,7 +125,7 @@ pub fn execute(
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
-        ExecuteMsg::Claim {} => execute_claim(deps, env, info),
+        ExecuteMsg::Withdraw {} => execute_withdraw(deps, env, info),
         ExecuteMsg::TransferOwnership { new_owner } => {
             execute_transfer_ownership(deps, env, info, new_owner)
         }
@@ -147,8 +147,12 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::State {} => to_binary(&query_state(deps)?),
+        QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
+    }
 }
 
 ///////////////

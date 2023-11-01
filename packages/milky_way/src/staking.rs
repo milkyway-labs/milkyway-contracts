@@ -10,6 +10,16 @@ pub enum BatchStatus {
     Closed,
     Failed,
 }
+impl BatchStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BatchStatus::Pending => "pending",
+            BatchStatus::Submitted => "submitted",
+            BatchStatus::Closed => "closed",
+            BatchStatus::Failed => "failed",
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub struct Batch {

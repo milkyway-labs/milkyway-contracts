@@ -53,16 +53,16 @@ list = [
 ]
 
 [[chains]]
-id = 'testing'
+id = 'osmosis-dev-1'
 rpc_addr = 'http://localhost:26657'
 grpc_addr = 'http://localhost:9090'
 event_source = { mode = 'push', url = 'ws://localhost:26657/websocket', batch_delay = '200ms' }
 rpc_timeout = '15s'
 trusted_node = true
-account_prefix = 'osmosis'
+account_prefix = 'osmo'
 key_name = 'wallet'
 store_prefix = 'ibc'
-gas_price = { price = 0.001, denom = 'stake' }
+gas_price = { price = 0.01, denom = 'stake' }
 gas_multiplier = 1.1
 default_gas = 1000000
 max_gas = 10000000

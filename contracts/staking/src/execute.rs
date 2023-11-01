@@ -146,8 +146,10 @@ pub fn execute_liquid_unstake(
         .add_attribute("amount", amount)
         .add_messages(msgs))
 }
-
-pub fn execute_claim(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
+// doing a "push over pool" pattern for now
+// eventually we can move this to auto-withdraw all funds upon batch completion
+// Reasoning - any one issue in the batch will cause the entire batch to fail
+pub fn execute_withdraw(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
     unimplemented!()
 }
 // Transfer ownership to another account; callable by the owner
