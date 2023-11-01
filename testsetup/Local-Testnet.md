@@ -14,6 +14,14 @@ Now you can always boot into the clean config
 docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp docker.io/library/mw-testnet
 ```
 
+Fund you account:
+
+```
+OSMOSIS_ADDR=osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms && docker exec mw-testnet osmosisd tx bank send validator1 $OSMOSIS_ADDR 500uosmo --keyring-backend=test --home=~/.osmosisd/validator1 --chain-id=osmosis-dev-1 --broadcast-mode block --yes --fees 875stake
+
+CELESTIA_ADDR=celestia12snm6dnzlt70lln6vtfj7vjhnrncc7ccs42wss && docker exec mw-testnet celestia-appd tx bank send validator $CELESTIA_ADDR 500utia --keyring-backend=test --home=~/.celestia-app --chain-id=celestia-dev-1 --node http://localhost:26661 --broadcast-mode block --yes --fees 21000utia
+```
+
 ## Install deps
 
 ```
