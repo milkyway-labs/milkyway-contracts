@@ -1,6 +1,7 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
+use milky_way::staking::{Batch, BatchStatus};
 use thiserror::Error;
 
 pub type ContractResult<T> = core::result::Result<T, ContractError>;
@@ -37,4 +38,34 @@ pub enum ContractError {
 
     #[error("Validator not found")]
     ValidatorNotFound { validator: String },
+
+    #[error("MilkyWay only supports unordered channels")]
+    OrderedChannel {},
+
+    #[error("Invalid IBC version")]
+    InvalidVersion { actual: String, expected: String },
+
+    #[error("No IBC channel found")]
+    IbcChannelNotFound {},
+
+    #[error("Batch is not ready to be submitted")]
+    BatchNotReady { actual: u64, expected: u64 },
+
+    #[error("No liquid unstake requests in batch")]
+    BatchEmpty {},
+
+    #[error("From wrong channel")]
+    FromOtherChannel { channel: String },
+
+    #[error("Foreign token found")]
+    NoForeignTokens {},
+
+    #[error("From wrong port")]
+    FromOtherPort { port: String },
+
+    #[error("unexpected batch status")]
+    UnexpecedBatchStatus {
+        actual: BatchStatus,
+        expected: BatchStatus,
+    },
 }

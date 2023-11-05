@@ -1,32 +1,34 @@
 use crate::execute::execute_submit_batch;
 use crate::helpers::validate_addresses;
-use crate::state::{Config, State, ADMIN, CONFIG, PENDING_BATCH, STATE};
-#[cfg(not(feature = "library"))]
+use crate::query::{query_batch, query_config, query_state};
+use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use crate::{
     error::ContractError,
     execute::{
-        execute_accept_ownership, execute_add_validator, execute_claim, execute_liquid_stake,
+        execute_accept_ownership, execute_add_validator, execute_liquid_stake,
         execute_liquid_unstake, execute_remove_validator, execute_revoke_ownership_transfer,
-        execute_transfer_ownership,
+        execute_transfer_ownership, execute_withdraw,
     },
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
-use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
+use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
-// version info for migration info
-const CONTRACT_NAME: &str = "crates.io:staking";
+
+// Version information for migration
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
 ///////////////////
 /// INSTANTIATE ///
 ///////////////////
-//TODO: Add validations
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
@@ -60,14 +62,16 @@ pub fn instantiate(
         minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
     };
 
+    // TODO: Add validations
+
     CONFIG.save(deps.storage, &config)?;
 
     // Init State
     let state = State {
         total_native_token: Uint128::zero(),
         total_liquid_stake_token: Uint128::zero(),
-        native_token_to_stake: Uint128::zero(),
         pending_owner: None,
+        total_reward_amount: Uint128::zero(),
     };
     STATE.save(deps.storage, &state)?;
 
@@ -88,7 +92,13 @@ pub fn instantiate(
     // Set pending batch and batches
     PENDING_BATCH.save(deps.storage, &pending_batch)?;
 
-    //TODO Update attributes
+    let ibc_config = IbcConfig {
+        channel: None,
+        default_timeout: IBC_TIMEOUT,
+    };
+    IBC_CONFIG.save(deps.storage, &ibc_config)?;
+
+    // TODO: Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender)
@@ -117,19 +127,19 @@ pub fn execute(
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
-        ExecuteMsg::Claim {} => execute_claim(deps, env, info),
+        ExecuteMsg::Withdraw {} => execute_withdraw(deps, env, info),
+        ExecuteMsg::AddValidator { new_validator } => {
+            execute_add_validator(deps, env, info, new_validator)
+        }
+        ExecuteMsg::RemoveValidator { validator } => {
+            execute_remove_validator(deps, env, info, validator)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             execute_transfer_ownership(deps, env, info, new_owner)
         }
         ExecuteMsg::AcceptOwnership {} => execute_accept_ownership(deps, env, info),
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
-        }
-        ExecuteMsg::AddValidator { new_validator } => {
-            execute_add_validator(deps, env, info, new_validator)
-        }
-        ExecuteMsg::RemoveValidator { validator } => {
-            execute_remove_validator(deps, env, info, validator)
         }
     }
 }
@@ -139,8 +149,12 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::State {} => to_binary(&query_state(deps)?),
+        QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
+    }
 }
 
 ///////////////
@@ -156,12 +170,13 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
+    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+        mock_dependencies, mock_env, mock_ibc_channel, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
+    use milky_way::staking::LiquidUnstakeRequest;
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -187,6 +202,18 @@ mod tests {
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg);
+
+        let channel = cosmwasm_std::testing::mock_ibc_channel(
+            "channel-123",
+            cosmwasm_std::IbcOrder::Unordered,
+            "mw-1",
+        );
+        let ibc_config = IbcConfig {
+            channel: Some(channel),
+            default_timeout: IBC_TIMEOUT,
+        };
+        IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
+
         deps
     }
     #[test]
@@ -398,13 +425,20 @@ mod tests {
         let msg = ExecuteMsg::LiquidStake {};
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
         assert!(res.is_ok());
 
-        let attrs = res.unwrap().attributes;
+        // Unwrap once and store in a variable
+        let unwrapped_res = res.unwrap();
+
+        let attrs = &unwrapped_res.attributes;
         assert_eq!(attrs[0].value, "liquid_stake");
 
         let batch = PENDING_BATCH.load(&deps.storage).unwrap();
         assert!(batch.id == 1);
+
+        // Use the previously unwrapped value
+        assert_eq!(unwrapped_res.messages.len(), 2);
     }
     // // Create initial stake for bob
     //     fn prep_liquid_stake() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
@@ -492,26 +526,46 @@ mod tests {
         assert!(res.is_err());
     }
     #[test]
-    fn proper_submit_batch() {
+    fn empty_submit_batch() {
         let mut deps = init();
-        let env = mock_env();
+        let mut env = mock_env();
 
         let mut state = STATE.load(&deps.storage).unwrap();
+        let config = CONFIG.load(&deps.storage).unwrap();
 
-        state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         // print!("{:?}", msgs);
-
+        env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
         let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
 
         let contract = env.contract.address.clone().to_string();
 
         let info = mock_info(&contract, &[]);
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-
-        assert!(res.is_ok());
-
+        let res = execute(deps.as_mut(), env, info, msg);
         print!("{:?}", res);
+        assert!(res.is_err());
+    }
+    #[test]
+    fn not_ready_submit_batch() {
+        let mut deps = init();
+        let mut env = mock_env();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+        let config = CONFIG.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        // batch isnt ready
+        env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+
+        let contract = env.contract.address.clone().to_string();
+
+        let info = mock_info(&contract, &[]);
+        let res = execute(deps.as_mut(), env, info, msg);
+
+        assert!(res.is_err());
     }
 }

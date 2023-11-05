@@ -7,8 +7,18 @@ use std::collections::BTreeMap;
 pub enum BatchStatus {
     Pending,
     Submitted,
-    Closed,
+    Received,
     Failed,
+}
+impl BatchStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BatchStatus::Pending => "pending",
+            BatchStatus::Submitted => "submitted",
+            BatchStatus::Received => "received",
+            BatchStatus::Failed => "failed",
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
@@ -52,7 +62,7 @@ impl Batch {
                 self.status = new_status;
                 self.next_batch_action_time = next_action;
             }
-            BatchStatus::Closed => {
+            BatchStatus::Received => {
                 self.status = new_status;
                 self.next_batch_action_time = None;
             }
