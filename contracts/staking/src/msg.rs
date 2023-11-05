@@ -34,13 +34,29 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {},
     LiquidUnstake {},
-    SubmitBatch { batch_id: u64 },
+    SubmitBatch {
+        batch_id: u64,
+    },
     Withdraw {},
-    AddValidator { new_validator: String },
-    RemoveValidator { validator: String },
-    TransferOwnership { new_owner: String },
+    AddValidator {
+        new_validator: String,
+    },
+    RemoveValidator {
+        validator: String,
+    },
+    TransferOwnership {
+        new_owner: String,
+    },
     AcceptOwnership {},
     RevokeOwnershipTransfer {},
+    UpdateConfig {
+        batch_period: Option<u64>,
+        unbonding_period: Option<u64>,
+        minimum_liquid_stake_amount: Option<Uint128>,
+        minimum_rewards_to_collect: Option<Uint128>,
+        multisig_address_config: Option<MultisigAddressConfig>,
+        protocol_fee_config: Option<ProtocolFeeConfig>,
+    },
 }
 
 #[cw_serde]
