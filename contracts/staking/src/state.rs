@@ -39,6 +39,9 @@ pub struct MultisigAddressConfig {
     pub staker_address: Addr,
     pub reward_collector_address: Addr,
 }
+
+// TODO: consider having this as just channel id
+// since we are not interacting with the channel as far as I know
 #[cw_serde]
 pub struct IbcConfig {
     pub channel: Option<IbcChannel>,
