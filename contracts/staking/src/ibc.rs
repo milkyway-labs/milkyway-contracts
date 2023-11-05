@@ -11,53 +11,9 @@ use cosmwasm_std::{
 };
 use milky_way::staking::BatchStatus;
 use osmosis_std::types::ibc;
+
 // TODO: implement
 pub const IBC_VERSION: &str = "mw-1";
-
-/// Handles the `OpenInit` and `OpenTry` parts of the IBC handshake.
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_channel_open(
-    _deps: DepsMut,
-    _env: Env,
-    msg: IbcChannelOpenMsg,
-) -> Result<IbcChannelOpenResponse, ContractError> {
-    validate_order_and_version(msg.channel(), msg.counterparty_version())?;
-    Ok(())
-}
-/// Handles the OpenAck and OpenConfirm handshake steps.
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_channel_connect(
-    deps: DepsMut,
-    _env: Env,
-    msg: IbcChannelConnectMsg,
-) -> Result<IbcBasicResponse, ContractError> {
-    validate_order_and_version(msg.channel(), msg.counterparty_version())?;
-    let mut ibc_config = IBC_CONFIG.load(deps.storage)?;
-
-    ibc_config.channel = Some(msg.channel().clone());
-    IBC_CONFIG.save(deps.storage, &ibc_config)?;
-
-    Ok(IbcBasicResponse::new()
-        .add_attribute("method", "ibc_channel_connect")
-        .add_attribute("channel_id", msg.channel().connection_id.clone()))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_channel_close(
-    deps: DepsMut,
-    _env: Env,
-    msg: IbcChannelCloseMsg,
-) -> Result<IbcBasicResponse, ContractError> {
-    let channel = msg.channel().endpoint.channel_id.clone();
-    // TODO: Discuss if we need to do anything here.
-    // Currently unsetting the channel in the config
-    let mut ibc_config = IBC_CONFIG.load(deps.storage)?;
-    ibc_config.channel = None;
-    IBC_CONFIG.save(deps.storage, &ibc_config)?;
-    Ok(IbcBasicResponse::new()
-        .add_attribute("method", "ibc_channel_close")
-        .add_attribute("channel", channel))
-}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_receive(
@@ -162,6 +118,7 @@ pub fn validate_order_and_version(
 
     Ok(())
 }
+
 // TODO: implement this.
 fn execute_receive_batch(
     deps: DepsMut,
@@ -198,7 +155,8 @@ fn execute_receive_batch(
         .add_attribute("batch_id", batch_id.to_string())
         .set_ack(make_ack_success()))
 }
-// TODO: implement this.
+
+// TODO: implement this
 fn execute_receive_batch_rewards(
     deps: DepsMut,
     reward_amount: Uint128,

@@ -1,16 +1,16 @@
 use crate::error::{ContractError, ContractResult};
+use crate::helpers::{compute_mint_amount, compute_unbond_amount};
 use crate::ibc;
+use crate::msg::ExecuteMsg;
+use crate::state::{IbcConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use cosmwasm_std::{
     ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
     Response, StdResult, Timestamp, Uint128, WasmMsg,
 };
-
-use crate::helpers::{compute_mint_amount, compute_unbond_amount};
-use crate::msg::ExecuteMsg;
-use crate::state::{IbcConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
+
 // PENDING
 // Payment validation handled by caller
 // Denom validation handled by caller
@@ -31,7 +31,7 @@ pub fn execute_liquid_stake(
         }
     );
 
-    //Compute mint amount
+    // Compute mint amount
     let mint_amount = compute_mint_amount(
         state.total_native_token,
         state.total_liquid_stake_token,
@@ -41,8 +41,10 @@ pub fn execute_liquid_stake(
     if mint_amount.is_zero() {
         return Err(ContractError::MintError {});
     }
+
     // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
-    // TODO: Needs testing and validation - also need to check mint_to_address
+    //       Needs testing and validation - also need to check mint_to_address
+    //
     // Mint liquid staking token
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
@@ -65,7 +67,7 @@ pub fn execute_liquid_stake(
         .channel
         .ok_or(ContractError::IbcChannelNotFound {})?;
 
-    //Transfer native token to multisig address
+    // Transfer native token to multisig address
     let ibc_msg = IbcMsg::Transfer {
         channel_id: ibc_channel.connection_id,
         to_address: config.multisig_address_config.staker_address.to_string(),
@@ -145,146 +147,6 @@ pub fn execute_liquid_unstake(
         .add_attribute("sender", info.sender)
         .add_attribute("amount", amount)
         .add_messages(msgs))
-}
-// doing a "push over pool" pattern for now
-// eventually we can move this to auto-withdraw all funds upon batch completion
-// Reasoning - any one issue in the batch will cause the entire batch to fail
-// TODO: I know this is not ideal, I need to make BATCH an indexed map i think
-pub fn execute_withdraw(_deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
-    Ok(Response::new().add_attribute("action", "execute_withdraw"))
-}
-// Transfer ownership to another account; callable by the owner
-// This will require the new owner to accept to take effect.
-// No need to handle case of overwriting the pending owner
-pub fn execute_transfer_ownership(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    new_owner: String,
-) -> ContractResult<Response> {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-
-    let mut state = STATE.load(deps.storage)?;
-    state.pending_owner = Some(deps.api.addr_validate(&new_owner)?);
-
-    STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "transfer_ownership")
-        .add_attribute("new_owner", new_owner)
-        .add_attribute("previous_owner", info.sender))
-}
-// Revoke transfer ownership, callable by the owner
-pub fn execute_revoke_ownership_transfer(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> ContractResult<Response> {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-
-    let mut state = STATE.load(deps.storage)?;
-    state.pending_owner = None;
-
-    STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new().add_attribute("action", "revoke_ownership_transfer"))
-}
-
-pub fn execute_accept_ownership(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> ContractResult<Response> {
-    let new_owner = {
-        let mut state = STATE.load(deps.storage)?;
-        match state.pending_owner {
-            Some(pending_owner) if pending_owner == info.sender => {
-                state.pending_owner = None;
-                STATE.save(deps.storage, &state)?;
-                Some(pending_owner)
-            }
-            _ => None,
-        }
-    };
-
-    match new_owner {
-        Some(pending_owner) => {
-            ADMIN.set(deps, Some(pending_owner))?;
-            Ok(Response::new()
-                .add_attribute("action", "accept_ownership")
-                .add_attribute("new_owner", info.sender))
-        }
-        None => Err(ContractError::NoPendingOwner {}),
-    }
-}
-// Add a validator to the list of validators; callable by the owner
-pub fn execute_add_validator(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    new_validator: String,
-) -> ContractResult<Response> {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-
-    let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = deps.api.addr_validate(&new_validator)?;
-
-    // Check if the new_validator is already in the list.
-    if config
-        .validators
-        .iter()
-        .any(|validator| *validator == new_validator_addr)
-    {
-        return Err(ContractError::DuplicateValidator {
-            validator: new_validator,
-        });
-    }
-
-    // Add the new validator to the list.
-    config.validators.push(new_validator_addr.clone());
-
-    // Save the updated config.
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "add_validator")
-        .add_attribute("new_validator", new_validator_addr)
-        .add_attribute("sender", info.sender))
-}
-
-pub fn execute_remove_validator(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    validator_to_remove: String,
-) -> ContractResult<Response> {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-
-    let mut config = CONFIG.load(deps.storage)?;
-    let validator_addr_to_remove = deps.api.addr_validate(&validator_to_remove)?;
-
-    // Find the position of the validator to be removed.
-    if let Some(pos) = config
-        .validators
-        .iter()
-        .position(|validator| *validator == validator_addr_to_remove)
-    {
-        // Remove the validator if found.
-        config.validators.remove(pos);
-    } else {
-        // If the validator is not found, return an error.
-        return Err(ContractError::ValidatorNotFound {
-            validator: validator_to_remove,
-        });
-    }
-
-    // Save the updated config.
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "remove_validator")
-        .add_attribute("removed_validator", validator_addr_to_remove)
-        .add_attribute("sender", info.sender))
 }
 
 // Submit batch and transition pending batch to submitted
@@ -374,4 +236,149 @@ pub fn execute_submit_batch(
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", id.to_string())
         .add_attribute("batch_total", batch.batch_total_liquid_stake))
+}
+
+// doing a "push over pool" pattern for now
+// eventually we can move this to auto-withdraw all funds upon batch completion
+// Reasoning - any one issue in the batch will cause the entire batch to fail
+pub fn execute_withdraw(_deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+    // TODO: not implemented yet
+    // TODO: I know this is not ideal, I need to make BATCH an indexed map i think
+    Ok(Response::new().add_attribute("action", "execute_withdraw"))
+}
+
+// Add a validator to the list of validators; callable by the owner
+pub fn execute_add_validator(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_validator: String,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config = CONFIG.load(deps.storage)?;
+    let new_validator_addr = deps.api.addr_validate(&new_validator)?;
+
+    // Check if the new_validator is already in the list.
+    if config
+        .validators
+        .iter()
+        .any(|validator| *validator == new_validator_addr)
+    {
+        return Err(ContractError::DuplicateValidator {
+            validator: new_validator,
+        });
+    }
+
+    // Add the new validator to the list.
+    config.validators.push(new_validator_addr.clone());
+
+    // Save the updated config.
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "add_validator")
+        .add_attribute("new_validator", new_validator_addr)
+        .add_attribute("sender", info.sender))
+}
+
+pub fn execute_remove_validator(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    validator_to_remove: String,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config = CONFIG.load(deps.storage)?;
+    let validator_addr_to_remove = deps.api.addr_validate(&validator_to_remove)?;
+
+    // Find the position of the validator to be removed.
+    if let Some(pos) = config
+        .validators
+        .iter()
+        .position(|validator| *validator == validator_addr_to_remove)
+    {
+        // Remove the validator if found.
+        config.validators.remove(pos);
+    } else {
+        // If the validator is not found, return an error.
+        return Err(ContractError::ValidatorNotFound {
+            validator: validator_to_remove,
+        });
+    }
+
+    // Save the updated config.
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_validator")
+        .add_attribute("removed_validator", validator_addr_to_remove)
+        .add_attribute("sender", info.sender))
+}
+
+// Transfer ownership to another account; callable by the owner
+// This will require the new owner to accept to take effect.
+// No need to handle case of overwriting the pending owner
+pub fn execute_transfer_ownership(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_owner: String,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    state.pending_owner = Some(deps.api.addr_validate(&new_owner)?);
+
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "transfer_ownership")
+        .add_attribute("new_owner", new_owner)
+        .add_attribute("previous_owner", info.sender))
+}
+
+// Revoke transfer ownership, callable by the owner
+pub fn execute_revoke_ownership_transfer(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    state.pending_owner = None;
+
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new().add_attribute("action", "revoke_ownership_transfer"))
+}
+
+pub fn execute_accept_ownership(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> ContractResult<Response> {
+    let new_owner = {
+        let mut state = STATE.load(deps.storage)?;
+        match state.pending_owner {
+            Some(pending_owner) if pending_owner == info.sender => {
+                state.pending_owner = None;
+                STATE.save(deps.storage, &state)?;
+                Some(pending_owner)
+            }
+            _ => None,
+        }
+    };
+
+    match new_owner {
+        Some(pending_owner) => {
+            ADMIN.set(deps, Some(pending_owner))?;
+            Ok(Response::new()
+                .add_attribute("action", "accept_ownership")
+                .add_attribute("new_owner", info.sender))
+        }
+        None => Err(ContractError::NoPendingOwner {}),
+    }
 }

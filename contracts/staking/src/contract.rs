@@ -2,7 +2,6 @@ use crate::execute::execute_submit_batch;
 use crate::helpers::validate_addresses;
 use crate::query::{query_batch, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
-#[cfg(not(feature = "library"))]
 use crate::{
     error::ContractError,
     execute::{
@@ -20,16 +19,16 @@ use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
-// version info for migration info
-const CONTRACT_NAME: &str = "crates.io:staking";
+
+// Version information for migration
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-// TODO: Placeholder value for IBC timeout
-const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000);
+const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
 ///////////////////
 /// INSTANTIATE ///
 ///////////////////
-//TODO: Add validations
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
@@ -63,6 +62,8 @@ pub fn instantiate(
         minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
     };
 
+    // TODO: Add validations
+
     CONFIG.save(deps.storage, &config)?;
 
     // Init State
@@ -87,6 +88,7 @@ pub fn instantiate(
         Uint128::zero(),
         env.block.time.seconds() + config.batch_period,
     );
+
     // Set pending batch and batches
     PENDING_BATCH.save(deps.storage, &pending_batch)?;
 
@@ -96,7 +98,7 @@ pub fn instantiate(
     };
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
 
-    //TODO Update attributes
+    // TODO: Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender)
@@ -125,19 +127,19 @@ pub fn execute(
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
-        ExecuteMsg::Withdraw {} => execute_withdraw(deps, env, info), // PENDING
+        ExecuteMsg::Withdraw {} => execute_withdraw(deps, env, info),
+        ExecuteMsg::AddValidator { new_validator } => {
+            execute_add_validator(deps, env, info, new_validator)
+        }
+        ExecuteMsg::RemoveValidator { validator } => {
+            execute_remove_validator(deps, env, info, validator)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             execute_transfer_ownership(deps, env, info, new_owner)
         }
         ExecuteMsg::AcceptOwnership {} => execute_accept_ownership(deps, env, info),
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
-        }
-        ExecuteMsg::AddValidator { new_validator } => {
-            execute_add_validator(deps, env, info, new_validator)
-        }
-        ExecuteMsg::RemoveValidator { validator } => {
-            execute_remove_validator(deps, env, info, validator)
         }
     }
 }
