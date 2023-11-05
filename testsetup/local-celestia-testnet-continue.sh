@@ -19,8 +19,8 @@ tmux new -s celestiavalidator1 -d celestia-appd start \
   --api.enable \
   --grpc.enable \
   --grpc-web.enable \
-  --p2p.laddr tcp://127.0.0.1:26660 \
-   --rpc.laddr tcp://127.0.0.1:26661 \
+  --p2p.laddr tcp://0.0.0.0:26660 \
+   --rpc.laddr tcp://0.0.0.0:26661 \
    --api.address tcp://0.0.0.0:1340 \
    --grpc.address 0.0.0.0:9190 \
    --grpc-web.address 0.0.0.0:9191

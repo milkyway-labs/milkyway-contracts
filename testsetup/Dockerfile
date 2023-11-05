@@ -28,8 +28,10 @@ RUN apt-get install -y jq
 RUN celestia-appd keys add relayer --output=json --keyring-backend test 2> ./celestia-relayer-key.json
 RUN osmosisd keys add relayer --output=json --keyring-backend test 2> ./osmosis-relayer-key.json
 
-COPY . .
-
+COPY ./local-osmosis-testnet-new.sh ./local-osmosis-testnet-new.sh
+COPY ./local-osmosis-testnet-continue.sh ./local-osmosis-testnet-continue.sh
+COPY ./local-celestia-testnet-new.sh ./local-celestia-testnet-new.sh
+COPY ./local-celestia-testnet-continue.sh ./local-celestia-testnet-continue.sh
 COPY ./hermes-config.toml /root/.hermes/config.toml
 
 RUN hermes keys add --chain osmosis-dev-1 --key-file './osmosis-relayer-key.json'
