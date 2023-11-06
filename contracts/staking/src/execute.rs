@@ -12,8 +12,8 @@ use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 
 // PENDING
-// Payment validation handled by caller
-// Denom validation handled by caller
+// Payment validation handled by caller (not sure what this means)
+// Denom validation handled by caller (done in contract.rs)
 pub fn execute_liquid_stake(
     deps: DepsMut,
     env: Env,
