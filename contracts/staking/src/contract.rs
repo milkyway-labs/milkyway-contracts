@@ -149,6 +149,7 @@ pub fn execute(
             minimum_rewards_to_collect,
             multisig_address_config,
             protocol_fee_config,
+            ibc_channel_id,
         } => update_config(
             deps,
             env,
@@ -159,6 +160,7 @@ pub fn execute(
             minimum_rewards_to_collect,
             multisig_address_config,
             protocol_fee_config,
+            ibc_channel_id,
         ),
     }
 }
@@ -604,6 +606,7 @@ mod tests {
             protocol_fee_config: Some(ProtocolFeeConfig {
                 dao_treasury_fee: Uint128::from(1000u128),
             }),
+            ibc_channel_id: Some("channel-124".to_string()),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -628,5 +631,6 @@ mod tests {
                 dao_treasury_fee: Uint128::from(1000u128),
             }
         );
+        assert_eq!(config.ibc_channel_id, "channel-124".to_string());
     }
 }

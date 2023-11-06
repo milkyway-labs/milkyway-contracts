@@ -58,6 +58,7 @@ pub enum ExecuteMsg {
         minimum_rewards_to_collect: Option<Uint128>,
         multisig_address_config: Option<MultisigAddressConfig>,
         protocol_fee_config: Option<ProtocolFeeConfig>,
+        ibc_channel_id: Option<String>,
     },
 }
 

@@ -1,5 +1,6 @@
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
+use crate::ibc;
 use crate::state::{
     MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH,
     STATE,
@@ -400,6 +401,7 @@ pub fn update_config(
     minimum_rewards_to_collect: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
+    ibc_channel_id: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -422,6 +424,9 @@ pub fn update_config(
     }
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
+    }
+    if let Some(ibc_channel_id) = ibc_channel_id {
+        config.ibc_channel_id = ibc_channel_id;
     }
 
     CONFIG.save(deps.storage, &config)?;
