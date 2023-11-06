@@ -1,6 +1,6 @@
 use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +28,8 @@ pub struct InstantiateMsg {
     pub minimum_liquid_stake_amount: Uint128,
     /// Minimum staking rewards to collect on Celestia
     pub minimum_rewards_to_collect: Uint128,
+    // IBC channel id on Osmosis to Celestia
+    pub ibc_channel_id: String,
 }
 
 #[cw_serde]
