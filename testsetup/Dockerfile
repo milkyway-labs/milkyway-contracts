@@ -25,52 +25,24 @@ RUN chmod +x /usr/local/bin/hermes
 RUN apt-get install -y psmisc
 RUN apt-get install -y jq
 
-RUN celestia-appd keys add relayer --output=json --keyring-backend test 2> ./celestia-relayer-key.json
-RUN osmosisd keys add relayer --output=json --keyring-backend test 2> ./osmosis-relayer-key.json
-
 COPY ./local-osmosis-testnet-new.sh ./local-osmosis-testnet-new.sh
 COPY ./local-osmosis-testnet-continue.sh ./local-osmosis-testnet-continue.sh
 COPY ./local-celestia-testnet-new.sh ./local-celestia-testnet-new.sh
 COPY ./local-celestia-testnet-continue.sh ./local-celestia-testnet-continue.sh
+COPY ./local-hermes-continue.sh ./local-hermes-continue.sh
+COPY ./local-hermes-new.sh ./local-hermes-new.sh
+COPY ./local-account.sh ./local-account.sh
 COPY ./hermes-config.toml /root/.hermes/config.toml
 
-RUN hermes keys add --chain osmosis-dev-1 --key-file './osmosis-relayer-key.json'
-RUN hermes keys add --chain celestia-dev-1 --key-file './celestia-relayer-key.json'
-
-RUN sh ./local-osmosis-testnet-new.sh && sleep 15s && \
-    OSMOSIS_ADDR=$(jq -r '.address' ./osmosis-relayer-key.json) && \
-    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y && \
-    sleep 10s
-RUN sh ./local-celestia-testnet-new.sh && sleep 15 && \
-    CELESTIA_ADDR=$(jq -r '.address' ./celestia-relayer-key.json) && \
-    celestia-appd tx bank send validator $CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia -y  --chain-id celestia-dev-1 && \
-    sleep 10s
-
-# test mnemonic, so in tests you have a funded account
-# boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require
-# addresses
-# celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx
-# osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge
-
-RUN sh ./local-osmosis-testnet-continue.sh && sleep 15s && \
-    OSMOSIS_ADDR=osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge && \
-    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y --broadcast-mode block && \
-    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000uosmo --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y --broadcast-mode block
-RUN sh ./local-celestia-testnet-continue.sh && sleep 15 && \
-    CELESTIA_ADDR=celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx && \
-    celestia-appd tx bank send validator $CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia -y  --chain-id celestia-dev-1 --broadcast-mode block
+RUN sh ./local-osmosis-testnet-new.sh && \
+    sh ./local-celestia-testnet-new.sh && \
+    sleep 15s && \
+    sh ./local-hermes-new.sh && \
+    sh ./local-account.sh
 
 EXPOSE 26661
 EXPOSE 26657
 
-RUN sh ./local-celestia-testnet-continue.sh && \
-    sh ./local-osmosis-testnet-continue.sh && sleep 15s && \
-    hermes create client --host-chain celestia-dev-1 --reference-chain osmosis-dev-1 && \
-    hermes create client --host-chain osmosis-dev-1 --reference-chain celestia-dev-1 && \
-    hermes create connection --a-chain celestia-dev-1 --b-chain osmosis-dev-1 && \
-    hermes create channel --a-chain celestia-dev-1 --a-connection connection-0 --a-port transfer --b-port transfer
-
 CMD sh ./local-celestia-testnet-continue.sh && \
     sh ./local-osmosis-testnet-continue.sh && \
-    sleep 15s && \
-    hermes start 
+    sh ./local-hermes-continue.sh
