@@ -32,7 +32,7 @@ COPY ./local-celestia-testnet-continue.sh ./local-celestia-testnet-continue.sh
 COPY ./local-hermes-continue.sh ./local-hermes-continue.sh
 COPY ./local-hermes-new.sh ./local-hermes-new.sh
 COPY ./local-account.sh ./local-account.sh
-COPY ./hermes-config.toml /root/.hermes/config.toml
+COPY ./hermes-config.toml ./hermes-config.toml
 
 RUN sh ./local-osmosis-testnet-new.sh && \
     sh ./local-celestia-testnet-new.sh && \
@@ -45,4 +45,5 @@ EXPOSE 26657
 
 CMD sh ./local-celestia-testnet-continue.sh && \
     sh ./local-osmosis-testnet-continue.sh && \
-    sh ./local-hermes-continue.sh
+    sleep 15s && \
+    hermes start

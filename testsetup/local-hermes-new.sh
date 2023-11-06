@@ -1,3 +1,13 @@
+#!/bin/sh
+
+# Stop script execution if an error is encountered
+set -o errexit
+# Stop script execution if an undefined variable is used
+set -o nounset
+
+killall hermes || true
+
+mkdir -p ~/.hermes
 cp ./hermes-config.toml ~/.hermes/config.toml
 
 celestia-appd keys add relayer --output=json --keyring-backend test 2> ./celestia-relayer-key.json
@@ -14,5 +24,7 @@ hermes create client --host-chain celestia-dev-1 --reference-chain osmosis-dev-1
 hermes create client --host-chain osmosis-dev-1 --reference-chain celestia-dev-1
 hermes create connection --a-chain celestia-dev-1 --b-chain osmosis-dev-1
 hermes create channel --a-chain celestia-dev-1 --a-connection connection-0 --a-port transfer --b-port transfer
+
+# in case update the config here with the new channels
 
 tmux new -s hermes -d hermes start
