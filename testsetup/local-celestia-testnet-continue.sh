@@ -9,7 +9,7 @@ killall celestia-appd || true
 
 CELESTIA_APP_HOME="${HOME}/.celestia-app"
 
-echo "celestia-app home: ${CELESTIA_APP_HOME}"CELESTIA_ADDR=$(jq -r '.address' ./celestia-relayer-key.json)
+echo "celestia-app home: ${CELESTIA_APP_HOME}"
 echo ""
 
 # Start celestia-app
@@ -24,3 +24,5 @@ tmux new -s celestiavalidator1 -d celestia-appd start \
    --api.address tcp://0.0.0.0:1340 \
    --grpc.address 0.0.0.0:9190 \
    --grpc-web.address 0.0.0.0:9191
+
+tmux capture-pane -p -t celestiavalidator1 > ${HOME}/celestia1-tmux-buffer.txt

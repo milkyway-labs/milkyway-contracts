@@ -51,29 +51,6 @@ celestia-appd collect-gentxs \
 sed -i'.bak' 's#"tcp://127.0.0.1:26657"#"tcp://0.0.0.0:26657"#g' "${CELESTIA_APP_HOME}"/config/config.toml
 sed -i'.bak' 's#"null"#"kv"#g' "${CELESTIA_APP_HOME}"/config/config.toml
 
-# Register the validator EVM address
-{
-  # Wait for block 1
-  sleep 20
-
-  VALIDATOR_ADDRESS=$(celestia-appd keys show ${KEY_NAME} --home "${CELESTIA_APP_HOME}" --bech val --address)
-  EVM_ADDRESS=0x966e6f22781EF6a6A82BBB4DB3df8E225DfD9488 # private key: da6ed55cb2894ac2c9c10209c09de8e8b9d109b910338d5bf3d747a7e1fc9eb9
-  echo "Registering an EVM address for validator..."
-  celestia-appd tx qgb register \
-    ${VALIDATOR_ADDRESS} \
-    ${EVM_ADDRESS} \
-    --from ${KEY_NAME} \
-    --node http://localhost:26661 \
-    --chain-id "celestia-dev-1" \
-    --home "${CELESTIA_APP_HOME}" \
-    --fees 30000utia \
-    --broadcast-mode block \
-    --yes \
-    &> /dev/null # Hide output to reduce terminal noise
-
-  echo "Registered EVM address."
-} &
-
 # Start celestia-app
 echo "Starting celestia-app..."
 tmux new -s celestiavalidator1 -d celestia-appd start \
@@ -86,3 +63,5 @@ tmux new -s celestiavalidator1 -d celestia-appd start \
    --api.address tcp://0.0.0.0:1340 \
    --grpc.address 0.0.0.0:9190 \
    --grpc-web.address 0.0.0.0:9191
+
+tmux capture-pane -p -t celestiavalidator1 > ${HOME}/celestia1-tmux-buffer.txt

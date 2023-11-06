@@ -54,13 +54,11 @@ RUN sh ./local-celestia-testnet-new.sh && sleep 15 && \
 
 RUN sh ./local-osmosis-testnet-continue.sh && sleep 15s && \
     OSMOSIS_ADDR=osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge && \
-    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y && \
-    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000uosmo --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y && \
-    sleep 10s
+    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y --broadcast-mode block && \
+    osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000uosmo --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1 --fees 875stake -y --broadcast-mode block
 RUN sh ./local-celestia-testnet-continue.sh && sleep 15 && \
     CELESTIA_ADDR=celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx && \
-    celestia-appd tx bank send validator $CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia -y  --chain-id celestia-dev-1 && \
-    sleep 10s
+    celestia-appd tx bank send validator $CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia -y  --chain-id celestia-dev-1 --broadcast-mode block
 
 EXPOSE 26661
 EXPOSE 26657
