@@ -242,7 +242,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
-            new_validator: "val3".to_string(),
+            new_validator: "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -250,7 +250,10 @@ mod tests {
 
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "add_validator");
-        assert_eq!(attrs[1].value, "val3");
+        assert_eq!(
+            attrs[1].value,
+            "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0"
+        );
     }
 
     #[test]
@@ -288,7 +291,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
-            validator: "val3".to_string(),
+            validator: "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -299,7 +302,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
-            validator: "val1".to_string(),
+            validator: "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -310,7 +313,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
-            new_validator: "val3".to_string(),
+            new_validator: "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -339,7 +342,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -350,20 +353,26 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_ok());
 
-        let info = mock_info("new_owner", &coins(1000, "uosmo"));
+        let info = mock_info(
+            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms",
+            &coins(1000, "uosmo"),
+        );
         let msg = ExecuteMsg::AcceptOwnership {};
 
         let res2 = execute(deps.as_mut(), mock_env(), info, msg);
 
         let attrs = res2.unwrap().attributes;
         assert_eq!(attrs[0].value, "accept_ownership");
-        assert_eq!(attrs[1].value, "new_owner");
+        assert_eq!(
+            attrs[1].value,
+            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms"
+        );
     }
     #[test]
     fn unauthorized_claim_ownership() {
@@ -388,7 +397,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);

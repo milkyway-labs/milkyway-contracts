@@ -4,7 +4,7 @@ use crate::ibc;
 use crate::msg::ExecuteMsg;
 use crate::state::{IbcConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use cosmwasm_std::{
-    ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
+    ensure, ensure_eq, to_binary, Addr, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
     Response, StdResult, Timestamp, Uint128, WasmMsg,
 };
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -257,7 +257,10 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = deps.api.addr_validate(&new_validator)?;
+    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
+        bech32::decode(&new_validator);
+    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
+    let new_validator_addr = Addr::unchecked(&new_validator);
 
     // Check if the new_validator is already in the list.
     if config
@@ -291,7 +294,10 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validator_addr_to_remove = deps.api.addr_validate(&validator_to_remove)?;
+    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
+        bech32::decode(&validator_to_remove);
+    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
+    let validator_addr_to_remove = Addr::unchecked(&validator_to_remove);
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
