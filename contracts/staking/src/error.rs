@@ -39,6 +39,9 @@ pub enum ContractError {
     #[error("Validator not found")]
     ValidatorNotFound { validator: String },
 
+    #[error("Address is not valid")]
+    InvalidAddress {},
+
     #[error("MilkyWay only supports unordered channels")]
     OrderedChannel {},
 
