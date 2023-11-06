@@ -37,36 +37,35 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let api = deps.api;
-    let node_operators = validate_addresses(api, msg.node_operators)?;
-    let validators = validate_addresses(api, msg.validators)?;
+
+    let operators = validate_addresses(deps.api, msg.operators)?;
+    let validators = validate_addresses(deps.api, msg.validators)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
 
-    // Init Config
+    // Initialize config
     let config = Config {
         native_token_denom: msg.native_token_denom,
         liquid_stake_token_denom: format!(
             "factory/{0}/{1}",
             env.contract.address, msg.liquid_stake_token_denom
-        ), //TODO determine the format to save in
+        ), // TODO: determine the format to save in
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
-        node_operators,
+        operators,
         validators,
         batch_period: msg.batch_period,
         unbonding_period: msg.unbonding_period,
         protocol_fee_config: msg.protocol_fee_config,
         multisig_address_config: msg.multisig_address_config,
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
-        minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
     };
 
-    // TODO: Add validations
+    // TODO: validate the config values
 
     CONFIG.save(deps.storage, &config)?;
 
-    // Init State
+    // Initialize state
     let state = State {
         total_native_token: Uint128::zero(),
         total_liquid_stake_token: Uint128::zero(),
@@ -80,7 +79,6 @@ pub fn instantiate(
         sender: env.contract.address.to_string(),
         subdenom: msg.liquid_stake_token_denom,
     };
-
     let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
 
     let pending_batch = Batch::new(
@@ -184,7 +182,7 @@ mod tests {
             native_token_denom: "osmoTIA".to_string(),
             liquid_stake_token_denom: "stTIA".to_string(),
             treasury_address: "treasury".to_string(),
-            node_operators: vec!["node1".to_string(), "node2".to_string()],
+            operators: vec!["node1".to_string(), "node2".to_string()],
             validators: vec!["val1".to_string(), "val2".to_string()],
             batch_period: 86400,
             unbonding_period: 1209600,
@@ -197,7 +195,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked("reward_collector"),
             },
             minimum_liquid_stake_amount: Uint128::from(100u128),
-            minimum_rewards_to_collect: Uint128::from(10u128),
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
@@ -216,6 +213,7 @@ mod tests {
 
         deps
     }
+
     #[test]
     fn proper_instantiation() {
         let mut deps = mock_dependencies();
@@ -224,7 +222,7 @@ mod tests {
             native_token_denom: "osmoTIA".to_string(),
             liquid_stake_token_denom: "stTIA".to_string(),
             treasury_address: "treasury".to_string(),
-            node_operators: vec!["node1".to_string(), "node2".to_string()],
+            operators: vec!["node1".to_string(), "node2".to_string()],
             validators: vec!["val1".to_string(), "val2".to_string()],
             batch_period: 86400,
             unbonding_period: 1209600,
@@ -237,7 +235,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked("reward_collector"),
             },
             minimum_liquid_stake_amount: Uint128::from(100u128),
-            minimum_rewards_to_collect: Uint128::from(10u128),
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
@@ -249,6 +246,7 @@ mod tests {
         let batch = PENDING_BATCH.load(&deps.storage).unwrap();
         assert!(batch.id == 1);
     }
+
     #[test]
     fn proper_add_validator() {
         let mut deps = init();
@@ -276,6 +274,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
     }
+
     #[test]
     fn proper_remove_validator() {
         let mut deps = init();
@@ -303,6 +302,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
     }
+
     #[test]
     fn non_admin_remove_validator() {
         let mut deps = init();
@@ -314,6 +314,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
     }
+
     #[test]
     fn non_admin_add_validator() {
         let mut deps = init();
@@ -325,6 +326,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
     }
+
     #[test]
     fn proper_transfer_ownership() {
         let mut deps = init();
@@ -340,6 +342,7 @@ mod tests {
         assert_eq!(attrs[0].value, "transfer_ownership");
         assert_eq!(attrs[1].value, "new_owner");
     }
+
     #[test]
     fn non_admin_transfer_ownership() {
         let mut deps = init();
@@ -351,6 +354,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
     }
+
     #[test]
     fn proper_claim_ownership() {
         let mut deps = init();
@@ -371,6 +375,7 @@ mod tests {
         assert_eq!(attrs[0].value, "accept_ownership");
         assert_eq!(attrs[1].value, "new_owner");
     }
+
     #[test]
     fn unauthorized_claim_ownership() {
         let mut deps = init();
@@ -389,6 +394,7 @@ mod tests {
 
         assert!(res2.is_err());
     }
+
     #[test]
     fn proper_revoke_ownership_transfer() {
         let mut deps = init();
@@ -408,6 +414,7 @@ mod tests {
         let attrs = res2.unwrap().attributes;
         assert_eq!(attrs[0].value, "revoke_ownership_transfer");
     }
+
     #[test]
     fn non_admin_revoke_ownership_transfer() {
         let mut deps = init();
@@ -418,6 +425,7 @@ mod tests {
 
         assert!(res2.is_err());
     }
+
     #[test]
     fn proper_liquid_stake() {
         let mut deps = init();
@@ -475,6 +483,7 @@ mod tests {
         // Submit batch
         assert_eq!(resp.messages.len(), 1);
     }
+
     // #[test]
     // fn double_liquid_unstake() {
     //     let mut deps = init();
@@ -509,6 +518,7 @@ mod tests {
     //     assert_eq!(resp.messages.len(), 1);
 
     // }
+
     #[test]
     fn invalid_denom_liquid_unstake() {
         let mut deps = init();
@@ -525,6 +535,7 @@ mod tests {
 
         assert!(res.is_err());
     }
+
     #[test]
     fn empty_submit_batch() {
         let mut deps = init();
@@ -546,6 +557,7 @@ mod tests {
         print!("{:?}", res);
         assert!(res.is_err());
     }
+
     #[test]
     fn not_ready_submit_batch() {
         let mut deps = init();

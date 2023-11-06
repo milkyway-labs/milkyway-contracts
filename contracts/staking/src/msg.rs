@@ -12,9 +12,9 @@ pub struct InstantiateMsg {
     pub liquid_stake_token_denom: String,
     /// Treasury contract address
     pub treasury_address: String,
-    /// Set of node operators who will operate the protocol
-    pub node_operators: Vec<String>,
-    /// Set of validators who will receive the delegations
+    /// Set of operators who operate the MilkyWay protocol
+    pub operators: Vec<String>,
+    /// Set of Celestia validators who receive delegations fromt the MilkyWay protocol
     pub validators: Vec<String>,
     /// How often the unbonding queue is to be executed in seconds
     pub batch_period: u64,
@@ -26,8 +26,6 @@ pub struct InstantiateMsg {
     pub multisig_address_config: MultisigAddressConfig,
     /// Minimum amount to liquid stake
     pub minimum_liquid_stake_amount: Uint128,
-    /// Minimum staking rewards to collect on Celestia
-    pub minimum_rewards_to_collect: Uint128,
 }
 
 #[cw_serde]
@@ -53,18 +51,19 @@ pub enum IbcExecuteMsg {
         reward_amount: Uint128,
     },
 }
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct ConfigResponse {
     pub native_token_denom: String,
     pub liquid_stake_token_denom: String,
     pub treasury_address: String,
-    pub node_operators: Vec<String>,
+    pub operators: Vec<String>,
     pub validators: Vec<String>,
     pub batch_period: u64,
     pub unbonding_period: u64,
     pub minimum_liquid_stake_amount: Uint128,
-    pub minimum_rewards_to_collect: Uint128,
 }
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct StateResponse {
     pub total_native_token: Uint128,
