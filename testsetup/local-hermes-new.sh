@@ -30,4 +30,4 @@ hermes create channel --a-chain celestia-dev-1 --a-connection connection-0 --a-p
 tmux new -s hermes -d hermes start
 
 # start a loop to clear packets
-tmux new -s hermes-clear-lopp sh ./local-hermes-clear-packets.sh
+tmux new -s hermes-clear-lopp -d sh ./local-hermes-clear-packets.sh
