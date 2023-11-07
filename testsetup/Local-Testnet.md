@@ -1,6 +1,6 @@
 # Local Osmosis - Celestia Testnet
 
-## Use Docker
+## Use Docker as a simple setup with an isolated environment
 
 First build the image, this will take a while and leaves you with a setup testnet for both networks and a setup relayer
 
@@ -14,12 +14,28 @@ Now you can always boot into the clean config
 docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp docker.io/library/mw-testnet
 ```
 
-Fund you account:
+Test accounts are funded, check out `./local-accounts.sh`
+But you need to import the mnemonic:
 
 ```
-OSMOSIS_ADDR=osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms && docker exec mw-testnet osmosisd tx bank send validator1 $OSMOSIS_ADDR 500uosmo --keyring-backend=test --home=~/.osmosisd/validator1 --chain-id=osmosis-dev-1 --broadcast-mode block --yes --fees 875stake
+boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require
+```
 
-CELESTIA_ADDR=celestia12snm6dnzlt70lln6vtfj7vjhnrncc7ccs42wss && docker exec mw-testnet celestia-appd tx bank send validator $CELESTIA_ADDR 500utia --keyring-backend=test --home=~/.celestia-app --chain-id=celestia-dev-1 --node http://localhost:26661 --broadcast-mode block --yes --fees 21000utia
+```
+osmosisd keys add test_master --recover
+celestia-appd keys add test_master --recover
+```
+
+Now you can deploy the contract:
+
+```
+sh ./init_stake_contract.sh
+```
+
+After this you can liquid stake (currently you need to wait a couple of seconds after ibc transfer TIA to Osmosis):
+
+```
+sh ./liquid_stake.sh
 ```
 
 ## Install deps
