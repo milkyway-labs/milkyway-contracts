@@ -32,40 +32,6 @@ osmosisd gentx validator1 500000000uosmo --keyring-backend=test --home=$HOME/.os
 osmosisd collect-gentxs --home=$HOME/.osmosisd/validator1
 
 
-# update staking genesis
-update_genesis '.app_state["staking"]["params"]["unbonding_time"]="240s"'
-
-# update crisis variable to uosmo
-update_genesis '.app_state["crisis"]["constant_fee"]["denom"]="uosmo"'
-
-# udpate gov genesis
-update_genesis '.app_state["gov"]["voting_params"]["voting_period"]="60s"'
-update_genesis '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="uosmo"'
-
-# update epochs genesis
-update_genesis '.app_state["epochs"]["epochs"][1]["duration"]="60s"'
-
-# update poolincentives genesis
-update_genesis '.app_state["poolincentives"]["lockable_durations"][0]="120s"'
-update_genesis '.app_state["poolincentives"]["lockable_durations"][1]="180s"'
-update_genesis '.app_state["poolincentives"]["lockable_durations"][2]="240s"'
-update_genesis '.app_state["poolincentives"]["params"]["minted_denom"]="uosmo"'
-
-# update incentives genesis
-update_genesis '.app_state["incentives"]["lockable_durations"][0]="1s"'
-update_genesis '.app_state["incentives"]["lockable_durations"][1]="120s"'
-update_genesis '.app_state["incentives"]["lockable_durations"][2]="180s"'
-update_genesis '.app_state["incentives"]["lockable_durations"][3]="240s"'
-update_genesis '.app_state["incentives"]["params"]["distr_epoch_identifier"]="day"'
-
-# update mint genesis
-update_genesis '.app_state["mint"]["params"]["mint_denom"]="uosmo"'
-update_genesis '.app_state["mint"]["params"]["epoch_identifier"]="day"'
-
-# update gamm genesis
-update_genesis '.app_state["gamm"]["params"]["pool_creation_fee"][0]["denom"]="uosmo"'
-
-
 # port key (validator1 uses default ports)
 # validator1 1317, 9090, 9091, 26658, 26657, 26656, 6060
 # validator2 1316, 9088, 9089, 26655, 26654, 26653, 6061
