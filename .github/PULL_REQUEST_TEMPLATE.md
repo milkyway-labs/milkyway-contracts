@@ -12,7 +12,7 @@ are the most critical to review.
 
 closes: #XXXX
 
-## Changes
+## What changes have been made in this PR?
 
 - [ ]
 
