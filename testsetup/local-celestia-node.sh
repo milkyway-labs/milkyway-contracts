@@ -1,5 +1,10 @@
 #!/bin/sh
 
+#
+# This script initializes a single local Celestia chain and run it in your local machine for testing.
+# Source: https://github.com/celestiaorg/celestia-app/blob/v1.3.0/scripts/single-node.sh
+#
+
 # Stop script execution if an error is encountered
 set -o errexit
 # Stop script execution if an undefined variable is used
@@ -14,6 +19,7 @@ COINS="1000000000000000utia"
 DELEGATION_AMOUNT="5000000000utia"
 CELESTIA_APP_HOME="${HOME}/.celestia-app"
 CELESTIA_APP_VERSION=$(celestia-appd version 2>&1)
+MNEMONIC_VALIDATOR="guard cream sadness conduct invite crumble clock pudding hole grit liar hotel maid produce squeeze return argue turtle know drive eight casino maze host"
 
 echo "celestia-app home: ${CELESTIA_APP_HOME}"
 echo "celestia-app version: ${CELESTIA_APP_VERSION}"
@@ -35,9 +41,10 @@ if [[ $response != "n" ]]; then
       &> /dev/null # Hide output to reduce terminal noise
 
     echo "Adding a new key to the keyring..."
-    celestia-appd keys add ${KEY_NAME} \
+    echo $MNEMONIC_VALIDATOR | celestia-appd keys add ${KEY_NAME} \
       --keyring-backend=${KEYRING_BACKEND} \
       --home ${CELESTIA_APP_HOME} \
+      --recover \
       &> /dev/null # Hide output to reduce terminal noise
 
     echo "Adding genesis account..."
@@ -84,18 +91,18 @@ if [[ $response != "n" ]]; then
 
       echo "Registered EVM address."
     } &
-
 fi
 
-# Start celestia-app
+# Start the Celestia chain
 echo "Starting celestia-app..."
-tmux new -s celestiavalidator1 -d celestia-appd start \
+tmux new -s celestiavalidator -d celestia-appd start \
   --home ${CELESTIA_APP_HOME} \
   --api.enable \
   --grpc.enable \
   --grpc-web.enable \
   --p2p.laddr tcp://127.0.0.1:26660 \
-   --rpc.laddr tcp://127.0.0.1:26661 \
-   --api.address tcp://0.0.0.0:1340 \
-   --grpc.address 0.0.0.0:9190 \
-   --grpc-web.address 0.0.0.0:9191
+  --rpc.laddr tcp://127.0.0.1:26661 \
+  --api.address tcp://0.0.0.0:1340 \
+  --grpc.address 0.0.0.0:9190 \
+  --grpc-web.address 0.0.0.0:9191
+
