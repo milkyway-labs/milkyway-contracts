@@ -84,14 +84,16 @@ sed -i -E "s|persistent_peers = \"\"|persistent_peers = \"$(osmosisd tendermint 
 sed -i -E "s|persistent_peers = \"\"|persistent_peers = \"$(osmosisd tendermint show-node-id --home=$HOME/.osmosisd/validator1)@localhost:26656\"|g" $HOME/.osmosisd/validator3/config/config.toml
 
 # start all three validators
-tmux new -s osmosisvalidator1 -d osmosisd start --home=$HOME/.osmosisd/validator1
-tmux new -s osmosisvalidator2 -d osmosisd start --home=$HOME/.osmosisd/validator2
-tmux new -s osmosisvalidator3 -d osmosisd start --home=$HOME/.osmosisd/validator3
+tmux new -s osmosis1 -d osmosisd start --home=$HOME/.osmosisd/validator1
+tmux new -s osmosis2 -d osmosisd start --home=$HOME/.osmosisd/validator2
+tmux new -s osmosis3 -d osmosisd start --home=$HOME/.osmosisd/validator3
 
 
 # send uosmo from first validator to second validator
 echo "Waiting 10 seconds to send funds to validators 2 and 3..."
-sleep 10
+sh ./check-node-running.sh osmosis1
+sh ./check-node-running.sh osmosis2
+sh ./check-node-running.sh osmosis3
 osmosisd tx bank send validator1 $(osmosisd keys show validator2 -a --keyring-backend=test --home=$HOME/.osmosisd/validator2) 500000000uosmo --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id=osmosis-dev-1 --broadcast-mode block --node http://localhost:26657 --yes --fees 875stake
 osmosisd tx bank send validator1 $(osmosisd keys show validator2 -a --keyring-backend=test --home=$HOME/.osmosisd/validator2) 100000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id=osmosis-dev-1 --broadcast-mode block --node http://localhost:26657 --yes --fees 875stake
 osmosisd tx bank send validator1 $(osmosisd keys show validator3 -a --keyring-backend=test --home=$HOME/.osmosisd/validator3) 400000000uosmo --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id=osmosis-dev-1 --broadcast-mode block --node http://localhost:26657 --yes --fees 875stake
@@ -102,7 +104,3 @@ osmosisd tx staking create-validator --amount=500000000uosmo --from=validator2 -
 osmosisd tx staking create-validator --amount=400000000uosmo --from=validator3 --pubkey=$(osmosisd tendermint show-validator --home=$HOME/.osmosisd/validator3) --moniker="validator3" --chain-id="osmosis-dev-1" --commission-rate="0.1" --commission-max-rate="0.2" --commission-max-change-rate="0.05" --min-self-delegation="400000000" --keyring-backend=test --home=$HOME/.osmosisd/validator3 --broadcast-mode block --node http://localhost:26657 --yes --fees 875stake
 
 echo "All 3 Validators are up and running!"
-
-tmux capture-pane -p -t osmosisvalidator1 > ${HOME}/osmosis1-tmux-buffer.txt
-tmux capture-pane -p -t osmosisvalidator2 > ${HOME}/osmosis2-tmux-buffer.txt
-tmux capture-pane -p -t osmosisvalidator3 > ${HOME}/osmosis3-tmux-buffer.txt

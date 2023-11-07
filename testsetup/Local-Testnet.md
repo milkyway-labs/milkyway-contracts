@@ -5,7 +5,7 @@
 First build the image, this will take a while and leaves you with a setup testnet for both networks and a setup relayer
 
 ```
-docker build . --tag mw-testnet
+docker build ./testsetup --tag mw-testnet
 ```
 
 Now you can always boot into the clean config
@@ -117,10 +117,10 @@ tmux new -s hermes -d hermes start
 You can the output of the validators with Tmux
 
 ```
-tmux a -t celestiavalidator1
-tmux a -t osmosisvalidator1
-tmux a -t osmosisvalidator2
-tmux a -t osmosisvalidator3
+tmux a -t celestia1
+tmux a -t osmosis1
+tmux a -t osmosis2
+tmux a -t osmosis3
 tmux a -t hermes
 ```
 
