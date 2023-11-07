@@ -7,7 +7,7 @@ set -o nounset
 
 killall celestia-appd || true
 
-CHAIN_ID="celestia--dev-1"
+CHAIN_ID="celestia-dev-1"
 KEY_NAME="validator"
 KEYRING_BACKEND="test"
 COINS="1000000000000000utia"
