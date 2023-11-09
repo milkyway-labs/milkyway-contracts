@@ -12,13 +12,15 @@ RUN wget https://github.com/osmosis-labs/osmosis/releases/download/v20.1.1/osmos
 RUN mv osmosisd-20.1.1-linux-amd64 /usr/local/bin/osmosisd
 RUN chmod +x /usr/local/bin/osmosisd
 
-RUN wget https://github.com/celestiaorg/celestia-app/releases/download/v1.3.0/celestia-app_Linux_arm64.tar.gz
-RUN tar -xvf celestia-app_Linux_arm64.tar.gz
+RUN ARCH=$(arch | sed s/aarch64/arm64/) && \
+    wget https://github.com/celestiaorg/celestia-app/releases/download/v1.3.0/celestia-app_Linux_$ARCH.tar.gz && \
+    tar -xvf celestia-app_Linux_$ARCH.tar.gz
 RUN mv celestia-appd /usr/local/bin
 RUN chmod +x /usr/local/bin/celestia-appd
 
-RUN wget https://github.com/informalsystems/hermes/releases/download/v1.7.0/hermes-v1.7.0-aarch64-unknown-linux-gnu.zip
-RUN unzip hermes-v1.7.0-aarch64-unknown-linux-gnu.zip
+RUN ARCH=$(arch) && \
+    wget https://github.com/informalsystems/hermes/releases/download/v1.7.0/hermes-v1.7.0-$ARCH-unknown-linux-gnu.zip && \
+    unzip hermes-v1.7.0-$ARCH-unknown-linux-gnu.zip
 RUN mv hermes /usr/local/bin
 RUN chmod +x /usr/local/bin/hermes
 
@@ -45,6 +47,8 @@ RUN sh ./local-osmosis-testnet-new.sh && \
 
 EXPOSE 26661
 EXPOSE 26657
+EXPOSE 1317
+EXPOSE 1340
 
 # last command needs to be persistant to keep container running
 CMD sh ./local-celestia-testnet-continue.sh && \
