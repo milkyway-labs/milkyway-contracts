@@ -11,7 +11,7 @@ docker build ./testsetup --tag mw-testnet
 Now you can always boot into the clean config
 
 ```
-docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp docker.io/library/mw-testnet
+docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1340:1340 docker.io/library/mw-testnet
 ```
 
 Test accounts are funded, check out `./local-accounts.sh`
