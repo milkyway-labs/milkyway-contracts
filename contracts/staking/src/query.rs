@@ -2,7 +2,6 @@ use crate::msg::{BatchResponse, ConfigResponse, StateResponse};
 use crate::state::{BATCHES, CONFIG, STATE};
 use cosmwasm_std::{Deps, StdResult};
 
-
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
 

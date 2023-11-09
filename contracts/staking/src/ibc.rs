@@ -1,5 +1,5 @@
 use crate::ack::{make_ack_fail, make_ack_success};
-use crate::error::{ContractError};
+use crate::error::ContractError;
 use crate::msg::IbcExecuteMsg;
 use crate::state::{BATCHES, STATE};
 #[cfg(not(feature = "library"))]
@@ -9,7 +9,6 @@ use cosmwasm_std::{
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Uint128,
 };
 use milky_way::staking::BatchStatus;
-
 
 // TODO: implement
 pub const IBC_VERSION: &str = "mw-1";
