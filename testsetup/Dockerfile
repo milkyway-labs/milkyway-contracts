@@ -33,17 +33,23 @@ COPY ./local-hermes-continue.sh ./local-hermes-continue.sh
 COPY ./local-hermes-new.sh ./local-hermes-new.sh
 COPY ./local-account.sh ./local-account.sh
 COPY ./hermes-config.toml ./hermes-config.toml
+COPY ./local-hermes-clear-packets.sh ./local-hermes-clear-packets.sh
+COPY ./check-node-running.sh ./check-node-running.sh
 
 RUN sh ./local-osmosis-testnet-new.sh && \
     sh ./local-celestia-testnet-new.sh && \
-    sleep 15s && \
+    sh ./check-node-running.sh osmosis1 && \
+    sh ./check-node-running.sh celestia1 && \
     sh ./local-hermes-new.sh && \
     sh ./local-account.sh
 
 EXPOSE 26661
 EXPOSE 26657
 
+# last command needs to be persistant to keep container running
 CMD sh ./local-celestia-testnet-continue.sh && \
     sh ./local-osmosis-testnet-continue.sh && \
-    sleep 15s && \
+    sh ./check-node-running.sh osmosis1 && \
+    sh ./check-node-running.sh celestia1 && \
+    sh ./local-hermes-clear-packets.sh && \
     hermes start
