@@ -1,11 +1,8 @@
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
-
-use crate::msg::ExecuteMsg;
 use crate::state::{ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use cosmwasm_std::{
-    ensure, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
-    Timestamp, Uint128, WasmMsg,
+    ensure, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, Timestamp, Uint128,
 };
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -62,14 +59,13 @@ pub fn execute_liquid_stake(
         env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    // I can probably do better than unwrapping
-    let ibc_channel = ibc_config
-        .channel
-        .ok_or(ContractError::IbcChannelNotFound {})?;
+    if ibc_config.channel_id.is_empty() {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
 
     // Transfer native token to multisig address
     let ibc_msg = IbcMsg::Transfer {
-        channel_id: ibc_channel.connection_id,
+        channel_id: ibc_config.channel_id,
         to_address: config.multisig_address_config.staker_address.to_string(),
         amount: ibc_coin,
         timeout,
@@ -90,12 +86,12 @@ pub fn execute_liquid_stake(
 
 pub fn execute_liquid_unstake(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-    let _state = STATE.load(deps.storage)?;
+    STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
@@ -125,28 +121,29 @@ pub fn execute_liquid_unstake(
     // Add amount to batch total (stTIA)
     pending_batch.batch_total_liquid_stake += amount;
 
-    let mut msgs: Vec<CosmosMsg> = vec![];
+    // let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
-    if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
-        if est_next_batch_action >= env.block.time.seconds() {
-            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::SubmitBatch {
-                    batch_id: pending_batch.id,
-                })?,
-                funds: vec![],
-            }))
-        }
+    // for simplicity not doing this for now
+    // if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
+    //     if est_next_batch_action >= env.block.time.seconds() {
+    //         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+    //             contract_addr: env.contract.address.to_string(),
+    //             msg: to_binary(&ExecuteMsg::SubmitBatch {
+    //                 batch_id: pending_batch.id,
+    //             })?,
+    //             funds: vec![],
+    //         }))
+    //     }
 
-        // Save updated pending batch
-        PENDING_BATCH.save(deps.storage, &pending_batch)?;
-    }
+    //     // Save updated pending batch
+    //     PENDING_BATCH.save(deps.storage, &pending_batch)?;
+    // }
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
         .add_attribute("sender", info.sender)
-        .add_attribute("amount", amount)
-        .add_messages(msgs))
+        .add_attribute("amount", amount))
+    // .add_messages(msgs))
 }
 
 // Submit batch and transition pending batch to submitted
