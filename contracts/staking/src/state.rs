@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, IbcChannel, IbcEndpoint, IbcOrder, Timestamp, Uint128};
+use cosmwasm_std::{Addr, IbcChannel, Timestamp, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 use milky_way::staking::Batch;

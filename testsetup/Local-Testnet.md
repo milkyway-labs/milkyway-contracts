@@ -1,5 +1,43 @@
 # Local Osmosis - Celestia Testnet
 
+## Use Docker as a simple setup with an isolated environment
+
+First build the image, this will take a while and leaves you with a setup testnet for both networks and a setup relayer
+
+```
+docker build ./testsetup --tag mw-testnet
+```
+
+Now you can always boot into the clean config
+
+```
+docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1340:1340 docker.io/library/mw-testnet
+```
+
+Test accounts are funded, check out `./local-accounts.sh`
+But you need to import the mnemonic:
+
+```
+boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require
+```
+
+```
+osmosisd keys add test_master --recover
+celestia-appd keys add test_master --recover
+```
+
+Now you can deploy the contract:
+
+```
+sh ./init_stake_contract.sh
+```
+
+After this you can liquid stake (currently you need to wait a couple of seconds after ibc transfer TIA to Osmosis):
+
+```
+sh ./liquid_stake.sh
+```
+
 ## Install deps
 
 ```
@@ -30,8 +68,8 @@ This will launch a 3 node Osmosis testnet and a 1 node Celestia testnet.
 This will create keys for the validators and fund the validators.
 
 ```
-sh ./local-celestia-testnet.sh
-sh ./local-osmosis-testnet.sh
+sh ./local-celestia-testnet-new.sh
+sh ./local-osmosis-testnet-new.sh
 ```
 
 Notes:
@@ -44,13 +82,13 @@ Notes:
 Create a key for the relayer on Celestia side and store in in a file celestia-relayer-key.json
 
 ```
-celestia-appd keys add relayer --output=json
+celestia-appd keys add relayer --output=json > celestia-relayer-key.json
 ```
 
 Create a key for the relayer on Osmosis side and store in in a file osmosis-relayer-key.json
 
 ```
-osmosisd keys add relayer --output=json
+osmosisd keys add relayer --output=json > osmosis-relayer-key.json
 ```
 
 Import the Hermes config locally
@@ -71,19 +109,17 @@ Fund the accounts, replace the addresses with the addresses from the key files
 // osmosis local testnet uses stake for fees
 
 ```
-osmosisd tx bank send validator1 OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1
-celestia-appd tx bank send validator CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia
+osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000stake --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id osmosis-dev-1
+celestia-appd tx bank send validator $CELESTIA_ADDR 5000000000utia --node http://127.0.0.1:26661 --fees 21000utia
 ```
 
 Create the connection between the local chains
 
 ```
-- hermes keys add --chain osmosis-dev-1 --key-file 'osmosis-validator-key.json'
-- hermes keys add --chain celestia-dev-1 --key-file 'celestia-validator-key.json'
-- hermes create client --host-chain celestia-dev-1 --reference-chain osmosis-dev-1
-- hermes create client --host-chain osmosis-dev-1 --reference-chain celestia-dev-1
-- hermes create connection --a-chain celestia-dev-1 --b-chain osmosis-dev-1
-- hermes create channel --a-chain celestia-dev-1 --a-connection connection-0 --a-port transfer --b-port transfer
+hermes create client --host-chain celestia-dev-1 --reference-chain osmosis-dev-1
+hermes create client --host-chain osmosis-dev-1 --reference-chain celestia-dev-1
+hermes create connection --a-chain celestia-dev-1 --b-chain osmosis-dev-1
+hermes create channel --a-chain celestia-dev-1 --a-connection connection-0 --a-port transfer --b-port transfer
 ```
 
 Start Hermes (subsequently you only need to run this command)
@@ -97,11 +133,21 @@ tmux new -s hermes -d hermes start
 You can the output of the validators with Tmux
 
 ```
-tmux a -t celestiavalidator1
-tmux a -t osmosisvalidator1
-tmux a -t osmosisvalidator2
-tmux a -t osmosisvalidator3
+tmux a -t celestia1
+tmux a -t osmosis1
+tmux a -t osmosis2
+tmux a -t osmosis3
 tmux a -t hermes
 ```
 
 To leave Tmux `Ctrl+B, D`
+
+## Start Again
+
+To start the network again after setting it up run:
+
+```
+sh ./local-osmosis-testnet-continue.sh
+sh ./local-celestia-testnet-continue.sh
+tmux new -s hermes -d hermes start
+```

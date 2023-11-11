@@ -14,7 +14,7 @@ use crate::{
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
+use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
