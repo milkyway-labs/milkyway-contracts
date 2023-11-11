@@ -57,3 +57,8 @@ pub const BATCHES: Map<u64, Batch> = Map::new("batches");
 // Only one batch can be pending at a time in the current design
 pub const PENDING_BATCH: Item<Batch> = Item::new("pending_batch");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
+
+/// (channel_id) -> count. Reset on channel closure.
+pub const CONNECTION_COUNTS: Map<String, u32> = Map::new("connection_counts");
+/// (channel_id) -> timeout_count. Reset on channel closure.
+pub const TIMEOUT_COUNTS: Map<String, u32> = Map::new("timeout_count");

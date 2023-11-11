@@ -1,5 +1,5 @@
 use crate::execute::execute_submit_batch;
-use crate::helpers::validate_addresses;
+use crate::helpers::{derive_intermediate_sender, validate_addresses};
 use crate::query::{query_batch, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use crate::{
@@ -141,6 +141,25 @@ pub fn execute(
         ExecuteMsg::AcceptOwnership {} => execute_accept_ownership(deps, env, info),
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
+        }
+        ExecuteMsg::Bounce {} => {
+            let config: Config = CONFIG.load(deps.storage)?;
+            let expected_sender = derive_intermediate_sender(
+                &config.ibc_channel_id,
+                &config.multisig_address_config.staker_address.to_string(),
+                "osmo",
+            );
+            if expected_sender.is_err() {
+                return Err(ContractError::Unauthorized {
+                    sender: info.sender.to_string(),
+                });
+            }
+            if info.sender.to_string() != expected_sender.unwrap() {
+                return Err(ContractError::Unauthorized {
+                    sender: info.sender.to_string(),
+                });
+            }
+            Ok(Response::new().add_attribute("method", "bounce"))
         }
     }
 }

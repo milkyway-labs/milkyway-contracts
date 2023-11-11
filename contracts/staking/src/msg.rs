@@ -43,18 +43,9 @@ pub enum ExecuteMsg {
     TransferOwnership { new_owner: String },
     AcceptOwnership {},
     RevokeOwnershipTransfer {},
+    Bounce {},
 }
 
-#[cw_serde]
-pub enum IbcExecuteMsg {
-    ReceiveBatch {
-        batch_id: u64,
-        batch_amount: Uint128,
-    },
-    ReceiveRewards {
-        reward_amount: Uint128,
-    },
-}
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct ConfigResponse {
     pub native_token_denom: String,
