@@ -80,10 +80,15 @@ pub struct LiquidUnstakeRequest {
     pub user: Addr,
     /// The user's share in the batch
     pub shares: Uint128,
+    pub redeemed: bool,
 }
 impl LiquidUnstakeRequest {
     pub fn new(user: Addr, shares: Uint128) -> Self {
-        Self { user, shares }
+        Self {
+            user,
+            shares,
+            redeemed: false,
+        }
     }
 
     // Add to existing request for user

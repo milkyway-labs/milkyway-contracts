@@ -54,6 +54,12 @@ pub enum ContractError {
     #[error("No liquid unstake requests in batch")]
     BatchEmpty {},
 
+    #[error("Batch provided doesn't have a request for the user")]
+    NoRequestInBatch {},
+
+    #[error("Request has already been redeemed")]
+    AlreadyRedeemed {},
+
     #[error("From wrong channel")]
     FromOtherChannel { channel: String },
 

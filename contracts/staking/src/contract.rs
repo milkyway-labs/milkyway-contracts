@@ -1,4 +1,4 @@
-use crate::execute::execute_submit_batch;
+use crate::execute::{execute_submit_batch, receive_rewards, receive_unstaked_tokens};
 use crate::helpers::{derive_intermediate_sender, validate_addresses};
 use crate::query::{query_batch, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
@@ -128,7 +128,7 @@ pub fn execute(
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
-        ExecuteMsg::Withdraw {} => execute_withdraw(deps, env, info),
+        ExecuteMsg::Withdraw { batch_id } => execute_withdraw(deps, env, info, batch_id),
         ExecuteMsg::AddValidator { new_validator } => {
             execute_add_validator(deps, env, info, new_validator)
         }
@@ -142,25 +142,8 @@ pub fn execute(
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
         }
-        ExecuteMsg::Bounce {} => {
-            let config: Config = CONFIG.load(deps.storage)?;
-            let expected_sender = derive_intermediate_sender(
-                &config.ibc_channel_id,
-                &config.multisig_address_config.staker_address.to_string(),
-                "osmo",
-            );
-            if expected_sender.is_err() {
-                return Err(ContractError::Unauthorized {
-                    sender: info.sender.to_string(),
-                });
-            }
-            if info.sender.to_string() != expected_sender.unwrap() {
-                return Err(ContractError::Unauthorized {
-                    sender: info.sender.to_string(),
-                });
-            }
-            Ok(Response::new().add_attribute("method", "bounce"))
-        }
+        ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
+        ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
     }
 }
 

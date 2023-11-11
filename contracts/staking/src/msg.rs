@@ -37,13 +37,14 @@ pub enum ExecuteMsg {
     LiquidStake {},
     LiquidUnstake {},
     SubmitBatch { batch_id: u64 },
-    Withdraw {},
+    Withdraw { batch_id: u64 },
     AddValidator { new_validator: String },
     RemoveValidator { validator: String },
     TransferOwnership { new_owner: String },
     AcceptOwnership {},
     RevokeOwnershipTransfer {},
-    Bounce {},
+    ReceiveRewards {},
+    ReceiveUnstakedTokens {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
