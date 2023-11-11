@@ -53,10 +53,10 @@ pub fn execute_liquid_stake(
     };
     let ibc_coin = cosmwasm_std::Coin {
         denom: config.native_token_denom,
-        amount: amount,
+        amount,
     };
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos() as u64,
+        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
     if ibc_config.channel_id.is_empty() {
@@ -68,7 +68,7 @@ pub fn execute_liquid_stake(
         channel_id: ibc_config.channel_id,
         to_address: config.multisig_address_config.staker_address.to_string(),
         amount: ibc_coin,
-        timeout: timeout,
+        timeout,
     };
 
     state.total_native_token += amount;
@@ -171,7 +171,7 @@ pub fn execute_submit_batch(
             expected: 0u64,
         });
     }
-    if batch.liquid_unstake_requests.len() == 0 {
+    if batch.liquid_unstake_requests.is_empty() {
         return Err(ContractError::BatchEmpty {});
     }
 
