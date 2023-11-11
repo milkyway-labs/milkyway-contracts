@@ -1,6 +1,7 @@
 use crate::msg::{BatchResponse, ConfigResponse, StateResponse};
-use crate::state::{BATCHES, CONFIG, STATE};
+use crate::state::{Config, BATCHES, CONFIG, PENDING_BATCH, STATE};
 use cosmwasm_std::{Deps, StdResult};
+use std::fmt::DebugMap;
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;

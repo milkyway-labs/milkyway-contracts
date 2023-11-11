@@ -1,11 +1,11 @@
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
-
+use crate::ibc;
 use crate::msg::ExecuteMsg;
-use crate::state::{ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
+use crate::state::{IbcConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
 use cosmwasm_std::{
-    ensure, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
-    Timestamp, Uint128, WasmMsg,
+    ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
+    Response, StdResult, Timestamp, Uint128, WasmMsg,
 };
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -56,10 +56,10 @@ pub fn execute_liquid_stake(
     };
     let ibc_coin = cosmwasm_std::Coin {
         denom: config.native_token_denom,
-        amount,
+        amount: amount,
     };
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
+        env.block.time.nanos() + ibc_config.default_timeout.nanos() as u64,
     ));
 
     // I can probably do better than unwrapping
@@ -72,7 +72,7 @@ pub fn execute_liquid_stake(
         channel_id: ibc_channel.connection_id,
         to_address: config.multisig_address_config.staker_address.to_string(),
         amount: ibc_coin,
-        timeout,
+        timeout: timeout,
     };
 
     state.total_native_token += amount;
@@ -95,7 +95,7 @@ pub fn execute_liquid_unstake(
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-    let _state = STATE.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
@@ -174,7 +174,7 @@ pub fn execute_submit_batch(
             expected: 0u64,
         });
     }
-    if batch.liquid_unstake_requests.is_empty() {
+    if batch.liquid_unstake_requests.len() == 0 {
         return Err(ContractError::BatchEmpty {});
     }
 
@@ -241,7 +241,7 @@ pub fn execute_submit_batch(
 // doing a "push over pool" pattern for now
 // eventually we can move this to auto-withdraw all funds upon batch completion
 // Reasoning - any one issue in the batch will cause the entire batch to fail
-pub fn execute_withdraw(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
+pub fn execute_withdraw(_deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
     // TODO: not implemented yet
     // TODO: I know this is not ideal, I need to make BATCH an indexed map i think
     Ok(Response::new().add_attribute("action", "execute_withdraw"))

@@ -1,14 +1,16 @@
 use crate::ack::{make_ack_fail, make_ack_success};
-use crate::error::ContractError;
+use crate::error::{ContractError, ContractResult};
 use crate::msg::IbcExecuteMsg;
-use crate::state::{BATCHES, STATE};
+use crate::state::{BATCHES, IBC_CONFIG, STATE};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, DepsMut, Env, IbcBasicResponse, IbcChannel, IbcOrder, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Uint128,
+    from_binary, DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, StdResult, Uint128,
 };
 use milky_way::staking::BatchStatus;
+use osmosis_std::types::ibc;
 
 // TODO: implement
 pub const IBC_VERSION: &str = "mw-1";
@@ -69,9 +71,9 @@ pub fn ibc_packet_ack(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_timeout(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
-    _msg: IbcPacketTimeoutMsg,
+    msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     // TODO: Implement this.
     Ok(IbcBasicResponse::new().add_attribute("method", "ibc_packet_timeout"))
