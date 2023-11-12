@@ -1,7 +1,6 @@
 use cosmwasm_std::{Addr, Uint128};
-use schemars::JsonSchema;
+use schemars::{JsonSchema, Map};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, JsonSchema)]
 pub enum BatchStatus {
@@ -30,7 +29,7 @@ pub struct Batch {
     // The amount of native tokens that should be received after unbonding
     pub expected_native_unstaked: Option<Uint128>,
 
-    pub liquid_unstake_requests: BTreeMap<Addr, LiquidUnstakeRequest>,
+    pub liquid_unstake_requests: Map<String, LiquidUnstakeRequest>,
 
     /// Estimated time when next batch action occurs
     pub next_batch_action_time: Option<u64>,
@@ -44,7 +43,7 @@ impl Batch {
         Self {
             id,
             batch_total_liquid_stake: batch_total,
-            liquid_unstake_requests: BTreeMap::new(),
+            liquid_unstake_requests: Map::new(),
             next_batch_action_time: Some(est_next_batch_action),
             status: BatchStatus::Pending,
             expected_native_unstaked: None,

@@ -1,17 +1,20 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use crate::contract::{execute, instantiate, IBC_TIMEOUT};
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::state::{
-        IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, CONFIG, IBC_CONFIG, PENDING_BATCH,
-        STATE,
+        IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG, IBC_CONFIG, STATE,
     };
 
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, Addr, Coin, OwnedDeps, Uint128};
+    use cosmwasm_std::{coins, Addr, BankMsg, Coin, CosmosMsg, Order, OwnedDeps, SubMsg, Uint128};
+    use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
+    use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -79,8 +82,14 @@ mod tests {
         let attrs = res.attributes;
         assert_eq!(attrs[0].value, "instantiate");
 
-        let batch = PENDING_BATCH.load(&deps.storage).unwrap();
-        assert!(batch.id == 1);
+        let pending_batch = BATCHES
+            .range(&deps.storage, None, None, Order::Descending)
+            .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
+            .unwrap()
+            .unwrap()
+            .1;
+
+        assert!(pending_batch.id == 1);
     }
     #[test]
     fn proper_add_validator() {
@@ -267,8 +276,13 @@ mod tests {
         let attrs = &unwrapped_res.attributes;
         assert_eq!(attrs[0].value, "liquid_stake");
 
-        let batch = PENDING_BATCH.load(&deps.storage).unwrap();
-        assert!(batch.id == 1);
+        let pending_batch = BATCHES
+            .range(&deps.storage, None, None, Order::Descending)
+            .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
+            .unwrap()
+            .unwrap()
+            .1;
+        assert!(pending_batch.id == 1);
 
         // Use the previously unwrapped value
         assert_eq!(unwrapped_res.messages.len(), 2);
@@ -309,40 +323,39 @@ mod tests {
         // currently disabled auto batch submit
         // assert_eq!(resp.messages.len(), 1);
     }
-    // #[test]
-    // fn double_liquid_unstake() {
-    //     let mut deps = init();
+    #[test]
+    fn double_liquid_unstake() {
+        let mut deps = init();
 
-    //     let mut state = STATE.load(&deps.storage).unwrap();
+        let mut state = STATE.load(&deps.storage).unwrap();
 
-    //     state.total_liquid_stake_token = Uint128::from(100_000u128);
-    //     STATE.save(&mut deps.storage, &state).unwrap();
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
 
-    //     let mut pending_batch = PENDING_BATCH.load(&deps.storage).unwrap();
-    //     pending_batch.liquid_unstake_requests.insert(
-    //         Addr::unchecked("bob"),
-    //         LiquidUnstakeRequest {
-    //             user: Addr::unchecked("bob"),
-    //             shares: Uint128::from(100u128),
-    //         },
-    //     );
+        let mut pending_batch = BATCHES.load(&deps.storage, 1).unwrap();
+        pending_batch.liquid_unstake_requests.insert(
+            "bob".to_string(),
+            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(100u128)),
+        );
+        BATCHES.save(&mut deps.storage, 1, &pending_batch).unwrap();
 
-    //     // PENDING_BATCH.save(&mut deps.storage, &pending_batch).unwrap();
+        let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+        let msg = ExecuteMsg::LiquidUnstake {};
 
-    //     let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
-    //     let msg = ExecuteMsg::LiquidUnstake {};
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
 
-    //     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-
-    //     let resp = res.unwrap();
-
-    //     let attrs = resp.attributes;
-    //     assert_eq!(attrs[0].value, "liquid_unstake");
-
-    //     // Submit batch
-    //     assert_eq!(resp.messages.len(), 1);
-
-    // }
+        let pending_batch = BATCHES.load(&deps.storage, 1).unwrap();
+        assert!(pending_batch.liquid_unstake_requests.len() == 1);
+        assert!(
+            pending_batch
+                .liquid_unstake_requests
+                .get("bob")
+                .unwrap()
+                .shares
+                == Uint128::from(1100u128)
+        );
+    }
     #[test]
     fn invalid_denom_liquid_unstake() {
         let mut deps = init();
@@ -402,6 +415,72 @@ mod tests {
 
         assert!(res.is_err());
     }
+    #[test]
+    fn withdraw() {
+        let mut deps = init();
+        let mut env = mock_env();
+        let mut state = STATE.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let mut pending_batch: Batch =
+            Batch::new(1, Uint128::zero(), env.block.time.seconds() + 10000);
+        pending_batch.liquid_unstake_requests.insert(
+            "bob".to_string(),
+            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(10u128)),
+        );
+        let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
+        assert!(res.is_ok());
+
+        let pending_batch_2: Batch =
+            Batch::new(2, Uint128::zero(), env.block.time.seconds() + 10000);
+        let res = BATCHES.save(&mut deps.storage, 2, &pending_batch_2);
+        assert!(res.is_ok());
+
+        // batch not ready
+        let msg = ExecuteMsg::Withdraw { batch_id: 1 };
+        let info = mock_info("bob", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_err());
+
+        // batch ready
+        pending_batch.status = milky_way::staking::BatchStatus::Received;
+        let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
+        assert!(res.is_ok());
+
+        // no request in batch
+        let msg = ExecuteMsg::Withdraw { batch_id: 2 };
+        let info = mock_info("bob", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_err());
+
+        let msg = ExecuteMsg::Withdraw { batch_id: 1 };
+        let info = mock_info("alice", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_err());
+
+        // success
+        println!("success");
+        let msg = ExecuteMsg::Withdraw {
+            batch_id: pending_batch.id,
+        };
+        let info = mock_info("bob", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_ok());
+
+        assert!(res.unwrap().messages.len() == 1); // send message as sub message
+                                                   // TODO
+                                                   // let msg: MsgSend = res.unwrap().messages.get(0).unwrap().into();
+                                                   // assert!(
+                                                   //     msg.amount = [Coin {
+                                                   //         amount: Uint128::from(100u128),
+                                                   //         denom: config.native_token_denom.clone(),
+                                                   //     }]
+                                                   // );
+                                                   // assert!(msg.to_address = "bob");
+    }
+
     #[test]
     fn receive_rewards() {
         let mut deps = init();
@@ -496,10 +575,12 @@ mod tests {
         assert!(res.is_err());
 
         // liquid unstake
-        // let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
-        // let msg = ExecuteMsg::LiquidUnstake {};
-        // let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-        // assert!(res.is_err());
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+        let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+        let msg = ExecuteMsg::LiquidUnstake {};
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_err());
 
         // receive rewards
         let msg = ExecuteMsg::ReceiveRewards {};
