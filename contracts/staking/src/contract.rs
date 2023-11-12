@@ -1,4 +1,4 @@
-use crate::execute::execute_submit_batch;
+use crate::execute::{execute_submit_batch, update_config};
 use crate::helpers::validate_addresses;
 use crate::query::{query_batch, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
@@ -142,6 +142,24 @@ pub fn execute(
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
         }
+        ExecuteMsg::UpdateConfig {
+            batch_period,
+            unbonding_period,
+            minimum_liquid_stake_amount,
+            minimum_rewards_to_collect,
+            multisig_address_config,
+            protocol_fee_config,
+        } => update_config(
+            deps,
+            env,
+            info,
+            batch_period,
+            unbonding_period,
+            minimum_liquid_stake_amount,
+            minimum_rewards_to_collect,
+            multisig_address_config,
+            protocol_fee_config,
+        ),
     }
 }
 
@@ -567,5 +585,48 @@ mod tests {
         let res = execute(deps.as_mut(), env, info, msg);
 
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn update_config() {
+        let mut deps = init();
+        let info = mock_info("creator", &coins(1000, "uosmo"));
+        let msg = ExecuteMsg::UpdateConfig {
+            batch_period: Some(1000),
+            unbonding_period: Some(1000),
+            minimum_liquid_stake_amount: Some(Uint128::from(10u128)),
+            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
+            multisig_address_config: Some(MultisigAddressConfig {
+                controller_address: Addr::unchecked("controller_updated"),
+                staker_address: Addr::unchecked("staker_updated"),
+                reward_collector_address: Addr::unchecked("reward_collector_updated"),
+            }),
+            protocol_fee_config: Some(ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(1000u128),
+            }),
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        assert!(res.is_ok());
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+        assert_eq!(config.batch_period, 1000);
+        assert_eq!(config.unbonding_period, 1000);
+        assert_eq!(config.minimum_liquid_stake_amount, Uint128::from(10u128));
+        assert_eq!(config.minimum_rewards_to_collect, Uint128::from(10u128));
+        assert_eq!(
+            config.multisig_address_config,
+            MultisigAddressConfig {
+                controller_address: Addr::unchecked("controller_updated"),
+                staker_address: Addr::unchecked("staker_updated"),
+                reward_collector_address: Addr::unchecked("reward_collector_updated"),
+            }
+        );
+        assert_eq!(
+            config.protocol_fee_config,
+            ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(1000u128),
+            }
+        );
     }
 }

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 // Validates addresses are valid and unique and returns a vector of validated addresses
 pub fn validate_addresses(
-    api: &dyn Api,
+    _api: &dyn Api,
     addresses: Vec<String>,
     prefix: String,
 ) -> StdResult<Vec<Addr>> {
