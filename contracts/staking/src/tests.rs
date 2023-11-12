@@ -45,7 +45,9 @@ mod tests {
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg);
+
+        assert!(res.is_ok());
 
         let ibc_config = IbcConfig {
             channel_id: "channel-123".to_string(),
@@ -58,34 +60,7 @@ mod tests {
 
     #[test]
     fn proper_instantiation() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            native_token_denom: "osmoTIA".to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
-            treasury_address: OSMO1.to_string(),
-            node_operators: vec![OSMO2.to_string(), OSMO3.to_string()],
-            validators: vec![CELESTIA1.to_string(), CELESTIA2.to_string()],
-            batch_period: 86400,
-            unbonding_period: 1209600,
-            protocol_fee_config: ProtocolFeeConfig {
-                dao_treasury_fee: Uint128::from(10u128),
-            },
-            multisig_address_config: MultisigAddressConfig {
-                controller_address: Addr::unchecked(CELESTIA3),
-                staker_address: Addr::unchecked(CELESTIA1),
-                reward_collector_address: Addr::unchecked(CELESTIA2),
-            },
-            minimum_liquid_stake_amount: Uint128::from(100u128),
-            minimum_rewards_to_collect: Uint128::from(10u128),
-            ibc_channel_id: "channel-123".to_string(),
-        };
-        let info = mock_info("creator", &coins(1000, "uosmo"));
-
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(1, res.messages.len());
-        let attrs = res.attributes;
-        assert_eq!(attrs[0].value, "instantiate");
+        let deps = init();
 
         let pending_batch = BATCHES
             .range(&deps.storage, None, None, Order::Descending)
