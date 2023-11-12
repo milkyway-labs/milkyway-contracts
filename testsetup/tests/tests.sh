@@ -38,7 +38,7 @@ PACKET_SEQUENCE=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --fr
 test_failure && echo "success" || echo "failure"
 
 # circuit breaker
-MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"circuite_breaker":{}}}'
+MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"circuit_breaker":{}}}'
 PACKET_SEQUENCE=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 10utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log | fromjson | .[0].events[] | select(.type == "send_packet") | .attributes[] | select(.key == "packet_sequence") | .value')
 test_success && echo "success" || echo "failure"
 
