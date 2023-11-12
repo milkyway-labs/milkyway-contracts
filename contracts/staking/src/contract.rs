@@ -4,7 +4,7 @@ use crate::execute::{
 };
 use crate::helpers::validate_addresses;
 use crate::query::{query_batch, query_config, query_state};
-use crate::state::{Config, IbcConfig, State, ADMIN, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
+use crate::state::{Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
 use crate::{
     error::ContractError,
     execute::{
@@ -95,7 +95,7 @@ pub fn instantiate(
     );
 
     // Set pending batch and batches
-    PENDING_BATCH.save(deps.storage, &pending_batch)?;
+    BATCHES.save(deps.storage, 1, &pending_batch)?;
 
     let ibc_config = IbcConfig {
         channel_id: msg.ibc_channel_id.clone(),

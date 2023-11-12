@@ -1,6 +1,6 @@
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{compute_mint_amount, compute_unbond_amount, derive_intermediate_sender};
-use crate::state::{Config, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
+use crate::state::{Config, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
 use cosmwasm_std::{
     ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
     Uint128,
@@ -129,7 +129,12 @@ pub fn execute_liquid_unstake(
         }
     );
     // Load current pending batch
-    let mut pending_batch = PENDING_BATCH.load(deps.storage)?;
+    let mut pending_batch: Batch = BATCHES
+        .range(deps.storage, None, None, Order::Descending)
+        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
+        .unwrap()
+        .unwrap()
+        .1;
 
     // Add unstake request to pending batch
     match pending_batch.liquid_unstake_requests.get_mut(&info.sender) {
@@ -184,7 +189,7 @@ pub fn execute_submit_batch(
 
     check_stopped(&config)?;
 
-    let mut batch = PENDING_BATCH.load(deps.storage)?;
+    let mut batch = BATCHES.load(deps.storage, id)?;
 
     if let Some(est_next_batch_time) = batch.next_batch_action_time {
         // Check if the batch has been submitted
@@ -225,7 +230,7 @@ pub fn execute_submit_batch(
     );
 
     // Save new pending batch
-    PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
+    BATCHES.save(deps.storage, new_pending_batch.id, &new_pending_batch)?;
 
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
