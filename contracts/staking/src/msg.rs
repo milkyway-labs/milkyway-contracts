@@ -45,6 +45,8 @@ pub enum ExecuteMsg {
     RevokeOwnershipTransfer {},
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
+    CircuiteBreaker {},
+    ResumeContract {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]

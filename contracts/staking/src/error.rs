@@ -74,4 +74,7 @@ pub enum ContractError {
         actual: BatchStatus,
         expected: BatchStatus,
     },
+
+    #[error("contract was intentionally halted")]
+    Halted {},
 }

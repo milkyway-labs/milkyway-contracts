@@ -38,6 +38,13 @@ pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMs
     Ok(ibc_msg)
 }
 
+pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
+    if config.stopped {
+        return Err(ContractError::Halted {});
+    }
+    Ok(())
+}
+
 // PENDING
 // Payment validation handled by caller
 // Denom validation handled by caller
@@ -48,6 +55,9 @@ pub fn execute_liquid_stake(
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
     let mut state = STATE.load(deps.storage)?;
     ensure!(
         amount > config.minimum_liquid_stake_amount,
@@ -104,6 +114,9 @@ pub fn execute_liquid_unstake(
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
     STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
@@ -167,6 +180,10 @@ pub fn execute_submit_batch(
     _info: MessageInfo,
     id: u64,
 ) -> ContractResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
     let mut batch = PENDING_BATCH.load(deps.storage)?;
 
     if let Some(est_next_batch_time) = batch.next_batch_action_time {
@@ -258,11 +275,18 @@ pub fn execute_withdraw(
     batch_id: u64,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
+    println!("{}", batch_id);
+
     let _batch = BATCHES.load(deps.storage, batch_id);
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
     let batch = _batch.unwrap();
+
+    println!("x");
 
     if batch.status != BatchStatus::Received {
         return Err(ContractError::BatchNotReady {
@@ -447,6 +471,9 @@ pub fn execute_accept_ownership(
 
 pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
     let expected_sender = derive_intermediate_sender(
         &config.ibc_channel_id,
         &config
@@ -475,11 +502,13 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     }
 
     let amount = coin.unwrap().amount;
-    execute_liquid_stake(deps, env, info, amount)?;
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "receive_rewards")
-        .add_attribute("amount", amount))
+        .add_attribute("method", "transfer_stake")
+        .add_attribute("amount", amount)
+        .add_message(ibc_transfer_msg))
 }
 
 pub fn receive_unstaked_tokens(
@@ -488,6 +517,9 @@ pub fn receive_unstaked_tokens(
     info: MessageInfo,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
     let expected_sender = derive_intermediate_sender(
         &config.ibc_channel_id,
         &config.multisig_address_config.staker_address.to_string(),
@@ -537,4 +569,34 @@ pub fn receive_unstaked_tokens(
     Ok(Response::new()
         .add_attribute("method", "receive_unstaked_tokens")
         .add_attribute("amount", amount))
+}
+
+pub fn circuite_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+    let sender = info.sender.to_string();
+
+    let mut config: Config = CONFIG.load(deps.storage)?;
+
+    if !config
+        .node_operators
+        .iter()
+        .any(|v| v.to_string() == sender)
+    {
+        return Err(ContractError::Unauthorized { sender });
+    }
+
+    config.stopped = true;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("method", "circuit_breaker"))
+}
+
+pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config: Config = CONFIG.load(deps.storage)?;
+
+    config.stopped = false;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("method", "resume_contract"))
 }
