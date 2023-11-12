@@ -137,13 +137,16 @@ pub fn execute_liquid_unstake(
         .1;
 
     // Add unstake request to pending batch
-    match pending_batch.liquid_unstake_requests.get_mut(&info.sender) {
+    match pending_batch
+        .liquid_unstake_requests
+        .get_mut(&info.sender.to_string())
+    {
         Some(request) => {
             request.shares += amount;
         }
         None => {
             pending_batch.liquid_unstake_requests.insert(
-                info.sender.clone(),
+                info.sender.to_string(),
                 LiquidUnstakeRequest::new(info.sender.clone(), amount),
             );
         }
@@ -151,6 +154,8 @@ pub fn execute_liquid_unstake(
 
     // Add amount to batch total (stTIA)
     pending_batch.batch_total_liquid_stake += amount;
+
+    BATCHES.save(deps.storage, pending_batch.id, &pending_batch)?;
 
     // let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
@@ -302,7 +307,7 @@ pub fn execute_withdraw(
 
     let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender)
+        .get(&info.sender.to_string())
         .map(|r| r.clone());
 
     if _liquid_unstake_request.is_none() {
