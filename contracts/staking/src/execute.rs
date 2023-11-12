@@ -581,7 +581,7 @@ pub fn receive_unstaked_tokens(
         .add_attribute("amount", amount))
 }
 
-pub fn circuite_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
     let sender = info.sender.to_string();
 
     let mut config: Config = CONFIG.load(deps.storage)?;

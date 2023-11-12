@@ -45,7 +45,7 @@ pub enum ExecuteMsg {
     RevokeOwnershipTransfer {},
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
-    CircuiteBreaker {},
+    CircuitBreaker {},
     ResumeContract {},
 }
 

@@ -550,7 +550,7 @@ mod tests {
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let msg = ExecuteMsg::CircuiteBreaker {};
+        let msg = ExecuteMsg::CircuitBreaker {};
 
         let contract = env.contract.address.clone().to_string();
 

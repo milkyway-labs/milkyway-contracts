@@ -1,5 +1,5 @@
 use crate::execute::{
-    circuite_breaker, execute_submit_batch, receive_rewards, receive_unstaked_tokens,
+    circuit_breaker, execute_submit_batch, receive_rewards, receive_unstaked_tokens,
     resume_contract,
 };
 use crate::helpers::validate_addresses;
@@ -148,7 +148,7 @@ pub fn execute(
         }
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
-        ExecuteMsg::CircuiteBreaker {} => circuite_breaker(deps, env, info),
+        ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
     }
 }
