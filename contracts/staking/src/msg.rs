@@ -28,6 +28,8 @@ pub struct InstantiateMsg {
     pub minimum_liquid_stake_amount: Uint128,
     /// Minimum staking rewards to collect on Celestia
     pub minimum_rewards_to_collect: Uint128,
+    // IBC channel id on Osmosis to Celestia
+    pub ibc_channel_id: String,
 }
 
 #[cw_serde]
@@ -35,24 +37,18 @@ pub enum ExecuteMsg {
     LiquidStake {},
     LiquidUnstake {},
     SubmitBatch { batch_id: u64 },
-    Withdraw {},
+    Withdraw { batch_id: u64 },
     AddValidator { new_validator: String },
     RemoveValidator { validator: String },
     TransferOwnership { new_owner: String },
     AcceptOwnership {},
     RevokeOwnershipTransfer {},
+    ReceiveRewards {},
+    ReceiveUnstakedTokens {},
+    CircuitBreaker {},
+    ResumeContract {},
 }
 
-#[cw_serde]
-pub enum IbcExecuteMsg {
-    ReceiveBatch {
-        batch_id: u64,
-        batch_amount: Uint128,
-    },
-    ReceiveRewards {
-        reward_amount: Uint128,
-    },
-}
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct ConfigResponse {
     pub native_token_denom: String,

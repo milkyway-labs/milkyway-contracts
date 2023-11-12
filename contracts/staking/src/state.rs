@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, IbcChannel, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 use milky_way::staking::Batch;
@@ -17,6 +17,8 @@ pub struct Config {
     pub multisig_address_config: MultisigAddressConfig,
     pub minimum_liquid_stake_amount: Uint128,
     pub minimum_rewards_to_collect: Uint128,
+    pub ibc_channel_id: String,
+    pub stopped: bool,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?
@@ -44,7 +46,7 @@ pub struct MultisigAddressConfig {
 // since we are not interacting with the channel as far as I know
 #[cw_serde]
 pub struct IbcConfig {
-    pub channel: Option<IbcChannel>,
+    pub channel_id: String,
     pub default_timeout: Timestamp,
 }
 
@@ -53,6 +55,4 @@ pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
 // TODO: Finalize and discuss batch structure
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
-// Only one batch can be pending at a time in the current design
-pub const PENDING_BATCH: Item<Batch> = Item::new("pending_batch");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");

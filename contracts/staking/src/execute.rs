@@ -1,15 +1,49 @@
 use crate::error::{ContractError, ContractResult};
-use crate::helpers::{compute_mint_amount, compute_unbond_amount};
-
-use crate::msg::ExecuteMsg;
-use crate::state::{ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
+use crate::helpers::{compute_mint_amount, compute_unbond_amount, derive_intermediate_sender};
+use crate::state::{Config, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
 use cosmwasm_std::{
-    ensure, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
-    Timestamp, Uint128, WasmMsg,
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
+    Uint128,
 };
+use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
+use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
+
+pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let ibc_config = IBC_CONFIG.load(deps.storage)?;
+
+    if ibc_config.channel_id.is_empty() {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+
+    let ibc_coin = cosmwasm_std::Coin {
+        denom: config.native_token_denom,
+        amount,
+    };
+
+    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
+        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
+    ));
+
+    let ibc_msg = IbcMsg::Transfer {
+        channel_id: ibc_config.channel_id,
+        to_address: config.multisig_address_config.staker_address.to_string(),
+        amount: ibc_coin,
+        timeout,
+    };
+
+    Ok(ibc_msg)
+}
+
+pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
+    if config.stopped {
+        return Err(ContractError::Halted {});
+    }
+    Ok(())
+}
 
 // PENDING
 // Payment validation handled by caller
@@ -21,8 +55,10 @@ pub fn execute_liquid_stake(
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
     let mut state = STATE.load(deps.storage)?;
-    let ibc_config = IBC_CONFIG.load(deps.storage)?;
     ensure!(
         amount > config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
@@ -54,26 +90,9 @@ pub fn execute_liquid_stake(
         }),
         mint_to_address: info.sender.to_string(),
     };
-    let ibc_coin = cosmwasm_std::Coin {
-        denom: config.native_token_denom,
-        amount,
-    };
-    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
-    ));
-
-    // I can probably do better than unwrapping
-    let ibc_channel = ibc_config
-        .channel
-        .ok_or(ContractError::IbcChannelNotFound {})?;
 
     // Transfer native token to multisig address
-    let ibc_msg = IbcMsg::Transfer {
-        channel_id: ibc_channel.connection_id,
-        to_address: config.multisig_address_config.staker_address.to_string(),
-        amount: ibc_coin,
-        timeout,
-    };
+    let ibc_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
@@ -84,18 +103,21 @@ pub fn execute_liquid_stake(
         .add_message(mint_msg)
         .add_message(ibc_msg)
         .add_attribute("action", "liquid_stake")
-        .add_attribute("sender", info.sender)
+        .add_attribute("sender", info.sender.to_string())
         .add_attribute("amount", amount))
 }
 
 pub fn execute_liquid_unstake(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-    let _state = STATE.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
+    STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
@@ -107,16 +129,24 @@ pub fn execute_liquid_unstake(
         }
     );
     // Load current pending batch
-    let mut pending_batch = PENDING_BATCH.load(deps.storage)?;
+    let mut pending_batch: Batch = BATCHES
+        .range(deps.storage, None, None, Order::Descending)
+        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
+        .unwrap()
+        .unwrap()
+        .1;
 
     // Add unstake request to pending batch
-    match pending_batch.liquid_unstake_requests.get_mut(&info.sender) {
+    match pending_batch
+        .liquid_unstake_requests
+        .get_mut(&info.sender.to_string())
+    {
         Some(request) => {
             request.shares += amount;
         }
         None => {
             pending_batch.liquid_unstake_requests.insert(
-                info.sender.clone(),
+                info.sender.to_string(),
                 LiquidUnstakeRequest::new(info.sender.clone(), amount),
             );
         }
@@ -125,28 +155,31 @@ pub fn execute_liquid_unstake(
     // Add amount to batch total (stTIA)
     pending_batch.batch_total_liquid_stake += amount;
 
-    let mut msgs: Vec<CosmosMsg> = vec![];
-    // if batch period has elapsed, submit batch
-    if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
-        if est_next_batch_action >= env.block.time.seconds() {
-            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::SubmitBatch {
-                    batch_id: pending_batch.id,
-                })?,
-                funds: vec![],
-            }))
-        }
+    BATCHES.save(deps.storage, pending_batch.id, &pending_batch)?;
 
-        // Save updated pending batch
-        PENDING_BATCH.save(deps.storage, &pending_batch)?;
-    }
+    // let mut msgs: Vec<CosmosMsg> = vec![];
+    // if batch period has elapsed, submit batch
+    // for simplicity not doing this for now
+    // if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
+    //     if est_next_batch_action >= env.block.time.seconds() {
+    //         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+    //             contract_addr: env.contract.address.to_string(),
+    //             msg: to_binary(&ExecuteMsg::SubmitBatch {
+    //                 batch_id: pending_batch.id,
+    //             })?,
+    //             funds: vec![],
+    //         }))
+    //     }
+
+    //     // Save updated pending batch
+    //     PENDING_BATCH.save(deps.storage, &pending_batch)?;
+    // }
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
         .add_attribute("sender", info.sender)
-        .add_attribute("amount", amount)
-        .add_messages(msgs))
+        .add_attribute("amount", amount))
+    // .add_messages(msgs))
 }
 
 // Submit batch and transition pending batch to submitted
@@ -157,7 +190,11 @@ pub fn execute_submit_batch(
     _info: MessageInfo,
     id: u64,
 ) -> ContractResult<Response> {
-    let mut batch = PENDING_BATCH.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
+    let mut batch = BATCHES.load(deps.storage, id)?;
 
     if let Some(est_next_batch_time) = batch.next_batch_action_time {
         // Check if the batch has been submitted
@@ -198,7 +235,7 @@ pub fn execute_submit_batch(
     );
 
     // Save new pending batch
-    PENDING_BATCH.save(deps.storage, &new_pending_batch)?;
+    BATCHES.save(deps.storage, new_pending_batch.id, &new_pending_batch)?;
 
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
@@ -241,10 +278,69 @@ pub fn execute_submit_batch(
 // doing a "push over pool" pattern for now
 // eventually we can move this to auto-withdraw all funds upon batch completion
 // Reasoning - any one issue in the batch will cause the entire batch to fail
-pub fn execute_withdraw(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
-    // TODO: not implemented yet
-    // TODO: I know this is not ideal, I need to make BATCH an indexed map i think
-    Ok(Response::new().add_attribute("action", "execute_withdraw"))
+pub fn execute_withdraw(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    batch_id: u64,
+) -> ContractResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
+    println!("{}", batch_id);
+
+    let _batch = BATCHES.load(deps.storage, batch_id);
+    if _batch.is_err() {
+        return Err(ContractError::BatchEmpty {});
+    }
+    let batch = _batch.unwrap();
+
+    println!("x");
+
+    if batch.status != BatchStatus::Received {
+        return Err(ContractError::BatchNotReady {
+            actual: batch.status as u64,
+            expected: BatchStatus::Received as u64,
+        });
+    }
+
+    let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
+        .liquid_unstake_requests
+        .get(&info.sender.to_string())
+        .cloned();
+
+    if _liquid_unstake_request.is_none() {
+        return Err(ContractError::NoRequestInBatch {});
+    }
+
+    let mut liquid_unstake_request = _liquid_unstake_request.unwrap();
+
+    if liquid_unstake_request.redeemed {
+        return Err(ContractError::AlreadyRedeemed {});
+    }
+
+    liquid_unstake_request.redeemed = true;
+    BATCHES.save(deps.storage, batch.id, &batch)?;
+
+    // TODO make this a share of total liquid stake? in case of slashes?
+    // let total_shares = batch.batch_total_liquid_stake;
+    let amount = liquid_unstake_request.shares;
+
+    let send_msg = MsgSend {
+        from_address: env.contract.address.to_string(),
+        to_address: info.sender.to_string(),
+        amount: vec![Coin {
+            denom: config.native_token_denom,
+            amount: amount.to_string(),
+        }],
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "execute_withdraw")
+        .add_attribute("batch", batch.id.to_string())
+        .add_attribute("amount", amount.to_string())
+        .add_message(send_msg))
 }
 
 // Add a validator to the list of validators; callable by the owner
@@ -381,4 +477,132 @@ pub fn execute_accept_ownership(
         }
         None => Err(ContractError::NoPendingOwner {}),
     }
+}
+
+pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
+    let expected_sender = derive_intermediate_sender(
+        &config.ibc_channel_id,
+        config
+            .multisig_address_config
+            .reward_collector_address
+            .as_ref(),
+        "osmo",
+    );
+    if expected_sender.is_err() {
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
+    }
+    if info.sender != expected_sender.unwrap() {
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
+    }
+
+    let coin = info
+        .funds
+        .iter()
+        .find(|c| c.denom == config.native_token_denom);
+    if coin.is_none() {
+        return Err(ContractError::Payment(PaymentError::NoFunds {}));
+    }
+
+    let amount = coin.unwrap().amount;
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "receive_rewards")
+        .add_attribute("method", "transfer_stake")
+        .add_attribute("amount", amount)
+        .add_message(ibc_transfer_msg))
+}
+
+pub fn receive_unstaked_tokens(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> ContractResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    check_stopped(&config)?;
+
+    let expected_sender = derive_intermediate_sender(
+        &config.ibc_channel_id,
+        config.multisig_address_config.staker_address.as_ref(),
+        "osmo",
+    );
+    if expected_sender.is_err() {
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
+    }
+    if info.sender != expected_sender.unwrap() {
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
+    }
+
+    let coin = info
+        .funds
+        .iter()
+        .find(|c| c.denom == config.native_token_denom);
+    if coin.is_none() {
+        return Err(ContractError::Payment(PaymentError::NoFunds {}));
+    }
+
+    let amount = coin.unwrap().amount;
+
+    // get the oldest submitted batch
+    let _batch: Option<Batch> = BATCHES
+        .range(deps.storage, None, None, Order::Ascending)
+        .find(|r| {
+            r.is_ok()
+                && r.as_ref().unwrap().1.status == BatchStatus::Submitted
+                && r.as_ref().unwrap().1.expected_native_unstaked.is_some()
+        })
+        .map(|r| r.unwrap().1);
+
+    if _batch.is_none() {
+        return Err(ContractError::BatchEmpty {});
+    }
+
+    let mut batch = _batch.unwrap();
+
+    batch.update_status(BatchStatus::Received, None);
+
+    BATCHES.save(deps.storage, batch.id, &batch)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "receive_unstaked_tokens")
+        .add_attribute("amount", amount))
+}
+
+pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+    let sender = info.sender.to_string();
+
+    let mut config: Config = CONFIG.load(deps.storage)?;
+
+    if !config.node_operators.iter().any(|v| *v == sender) {
+        return Err(ContractError::Unauthorized { sender });
+    }
+
+    config.stopped = true;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("method", "circuit_breaker"))
+}
+
+pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config: Config = CONFIG.load(deps.storage)?;
+
+    config.stopped = false;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("method", "resume_contract"))
 }
