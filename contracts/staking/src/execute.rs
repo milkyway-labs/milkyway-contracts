@@ -307,8 +307,7 @@ pub fn execute_withdraw(
 
     let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender.to_string())
-        .map(|r| r.clone());
+        .get(&info.sender.to_string()).cloned();
 
     if _liquid_unstake_request.is_none() {
         return Err(ContractError::NoRequestInBatch {});
@@ -486,10 +485,9 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
 
     let expected_sender = derive_intermediate_sender(
         &config.ibc_channel_id,
-        &config
+        config
             .multisig_address_config
-            .reward_collector_address
-            .to_string(),
+            .reward_collector_address.as_ref(),
         "osmo",
     );
     if expected_sender.is_err() {
@@ -497,7 +495,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
             sender: info.sender.to_string(),
         });
     }
-    if info.sender.to_string() != expected_sender.unwrap() {
+    if info.sender != expected_sender.unwrap() {
         return Err(ContractError::Unauthorized {
             sender: info.sender.to_string(),
         });
@@ -532,7 +530,7 @@ pub fn receive_unstaked_tokens(
 
     let expected_sender = derive_intermediate_sender(
         &config.ibc_channel_id,
-        &config.multisig_address_config.staker_address.to_string(),
+        config.multisig_address_config.staker_address.as_ref(),
         "osmo",
     );
     if expected_sender.is_err() {
@@ -540,7 +538,7 @@ pub fn receive_unstaked_tokens(
             sender: info.sender.to_string(),
         });
     }
-    if info.sender.to_string() != expected_sender.unwrap() {
+    if info.sender != expected_sender.unwrap() {
         return Err(ContractError::Unauthorized {
             sender: info.sender.to_string(),
         });
@@ -589,7 +587,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     if !config
         .node_operators
         .iter()
-        .any(|v| v.to_string() == sender)
+        .any(|v| *v == sender)
     {
         return Err(ContractError::Unauthorized { sender });
     }
