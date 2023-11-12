@@ -14,7 +14,7 @@ use crate::{
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
+use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
@@ -60,6 +60,7 @@ pub fn instantiate(
         multisig_address_config: msg.multisig_address_config,
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
         minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
+        ibc_channel_id: msg.ibc_channel_id.clone(),
     };
 
     // TODO: Add validations
@@ -93,7 +94,7 @@ pub fn instantiate(
     PENDING_BATCH.save(deps.storage, &pending_batch)?;
 
     let ibc_config = IbcConfig {
-        channel: None,
+        channel_id: msg.ibc_channel_id.clone(),
         default_timeout: IBC_TIMEOUT,
     };
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
@@ -173,10 +174,9 @@ mod tests {
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_ibc_channel, mock_info, MockApi, MockQuerier, MockStorage,
+        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
-    use milky_way::staking::LiquidUnstakeRequest;
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -208,6 +208,7 @@ mod tests {
             },
             minimum_liquid_stake_amount: Uint128::from(100u128),
             minimum_rewards_to_collect: Uint128::from(10u128),
+            ibc_channel_id: "channel-123".to_string(),
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
@@ -217,13 +218,8 @@ mod tests {
             panic!("error: {:?}", res);
         }
 
-        let channel = cosmwasm_std::testing::mock_ibc_channel(
-            "channel-123",
-            cosmwasm_std::IbcOrder::Unordered,
-            "mw-1",
-        );
         let ibc_config = IbcConfig {
-            channel: Some(channel),
+            channel_id: "channel-123".to_string(),
             default_timeout: IBC_TIMEOUT,
         };
         IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
@@ -476,7 +472,8 @@ mod tests {
         assert_eq!(attrs[0].value, "liquid_unstake");
 
         // Submit batch
-        assert_eq!(resp.messages.len(), 1);
+        // currently disabled auto batch submit
+        // assert_eq!(resp.messages.len(), 1);
     }
     // #[test]
     // fn double_liquid_unstake() {
@@ -533,7 +530,7 @@ mod tests {
         let mut deps = init();
         let mut env = mock_env();
 
-        let mut state = STATE.load(&deps.storage).unwrap();
+        let state = STATE.load(&deps.storage).unwrap();
         let config = CONFIG.load(&deps.storage).unwrap();
 
         STATE.save(&mut deps.storage, &state).unwrap();

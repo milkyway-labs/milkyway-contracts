@@ -40,16 +40,13 @@ pub fn compute_mint_amount(
     //TODO: Review integer math
     // Possible truncation issues when quantities are small
     // Initial very large total_native_token would cause round to 0 and block minting
-    let mint_amount;
     // Mint at a 1:1 ratio if there is no total native token or total liquid stake token
     // Amount = Total stTIA * (Amount of native token / Total native token)
     if total_native_token.is_zero() {
-        mint_amount = native_to_stake
+        native_to_stake
     } else {
-        mint_amount = total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
+        total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
     }
-
-    mint_amount
 }
 
 pub fn compute_unbond_amount(
@@ -57,20 +54,15 @@ pub fn compute_unbond_amount(
     total_liquid_stake_token: Uint128,
     batch_liquid_stake_token: Uint128,
 ) -> Uint128 {
-    let unbond_amount: Uint128;
-
     if batch_liquid_stake_token.is_zero() {
-        unbond_amount = Uint128::zero()
+        Uint128::zero()
     } else {
         // unbond amount is calculated at the batch level
         // total_native_token - total TIA delegated by MilkyWay
         // batch_liquid_stake_token - total stTIA in submitted batch
         // total_liquid_stake_token - total stTIA minted by MilkyWay
-        unbond_amount =
-            total_native_token.multiply_ratio(batch_liquid_stake_token, total_liquid_stake_token)
+        total_native_token.multiply_ratio(batch_liquid_stake_token, total_liquid_stake_token)
     }
-
-    unbond_amount
 }
 
 #[cfg(test)]
