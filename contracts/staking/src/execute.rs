@@ -559,16 +559,15 @@ pub fn receive_unstaked_tokens(
     // get the oldest submitted batch
     let _batch: Option<Batch> = BATCHES
         .range(deps.storage, None, None, Order::Ascending)
-        .find(|r| {
-            r.is_ok()
-                && r.as_ref().unwrap().1.status == BatchStatus::Submitted
-                && r.as_ref().unwrap().1.expected_native_unstaked.is_some()
-        })
+        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Submitted)
         .map(|r| r.unwrap().1);
 
     if _batch.is_none() {
         return Err(ContractError::BatchEmpty {});
     }
+
+    let mut state = STATE.load(deps.storage)?;
+    state.total_staked += amount;
 
     let mut batch = _batch.unwrap();
 
@@ -605,4 +604,30 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attribute("method", "resume_contract"))
+}
+
+pub fn confirm_staked(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+) -> ContractResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let sender = info.sender.to_string();
+
+    check_stopped(&config)?;
+
+    if !config.node_operators.iter().any(|v| *v == sender) {
+        return Err(ContractError::Unauthorized { sender });
+    }
+
+    let mut state = STATE.load(deps.storage)?;
+
+    state.total_staked += amount;
+
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "confirm_staked")
+        .add_attribute("amount", amount))
 }

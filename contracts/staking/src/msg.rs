@@ -47,6 +47,7 @@ pub enum ExecuteMsg {
     ReceiveUnstakedTokens {},
     CircuitBreaker {},
     ResumeContract {},
+    ConfirmStaked { amount: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -67,6 +68,7 @@ pub struct StateResponse {
     pub total_liquid_stake_token: Uint128,
     pub pending_owner: String,
     pub total_reward_amount: Uint128,
+    pub total_staked: Uint128,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchResponse {

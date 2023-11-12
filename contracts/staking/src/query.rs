@@ -38,6 +38,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
             .map(|v| v.to_string())
             .unwrap_or_default(),
         total_reward_amount: state.total_reward_amount,
+        total_staked: state.total_staked,
     };
     Ok(res)
 }

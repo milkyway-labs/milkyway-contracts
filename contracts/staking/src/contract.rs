@@ -150,6 +150,7 @@ pub fn execute(
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
+        ExecuteMsg::ConfirmStaked { amount } => confirm_staked(deps, env, info, amount),
     }
 }
 
