@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
 
     use crate::contract::{execute, instantiate, IBC_TIMEOUT};
     use crate::helpers::derive_intermediate_sender;
@@ -12,9 +11,8 @@ mod tests {
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, Addr, BankMsg, Coin, CosmosMsg, Order, OwnedDeps, SubMsg, Uint128};
+    use cosmwasm_std::{coins, Addr, Coin, Order, OwnedDeps, Uint128};
     use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
-    use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -616,10 +614,18 @@ mod tests {
         assert!(res.is_err());
 
         // execute withdraw
-        // let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-        // let info = mock_info("bob", &[]);
-        // let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-        // assert!(res.is_err());
+        let mut pending_batch: Batch =
+            Batch::new(1, Uint128::zero(), env.block.time.seconds() + 10000);
+        pending_batch.liquid_unstake_requests.insert(
+            "bob".to_string(),
+            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(10u128)),
+        );
+        pending_batch.status = milky_way::staking::BatchStatus::Received;
+        let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
+        let msg = ExecuteMsg::Withdraw { batch_id: 1 };
+        let info = mock_info("bob", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_err());
 
         // submit batch
         env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
