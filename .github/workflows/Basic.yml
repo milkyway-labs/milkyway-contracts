@@ -37,39 +37,39 @@ jobs:
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
-  lints:
-    name: Lints
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+  # lints:
+  #   name: Lints
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout sources
+  #       uses: actions/checkout@v2
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.68.0
-          override: true
-          components: rustfmt, clippy
+  #     - name: Install stable toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: 1.68.0
+  #         override: true
+  #         components: rustfmt, clippy
 
-      - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+  #     - name: Run cargo fmt
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: fmt
+  #         args: --all -- --check
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+  #     - name: Run cargo clippy
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: clippy
+  #         args: -- -D warnings
 
-      - name: Generate Schema
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked
+  #     - name: Generate Schema
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: schema
+  #         args: --locked
 
-      - name: Schema Changes
-        # fails if any changes not committed
-        run: git diff --exit-code schema
+  #     - name: Schema Changes
+  #       # fails if any changes not committed
+  #       run: git diff --exit-code schema

@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn withdraw() {
         let mut deps = init();
-        let mut env = mock_env();
+        let env = mock_env();
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
@@ -482,7 +482,7 @@ mod tests {
     #[test]
     fn receive_rewards() {
         let mut deps = init();
-        let mut env = mock_env();
+        let env = mock_env();
 
         let mut state = STATE.load(&deps.storage).unwrap();
         let config = CONFIG.load(&deps.storage).unwrap();
@@ -621,7 +621,7 @@ mod tests {
             LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(10u128)),
         );
         pending_batch.status = milky_way::staking::BatchStatus::Received;
-        let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
+        let _res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
         let msg = ExecuteMsg::Withdraw { batch_id: 1 };
         let info = mock_info("bob", &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());

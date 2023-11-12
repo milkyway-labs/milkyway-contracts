@@ -307,7 +307,8 @@ pub fn execute_withdraw(
 
     let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender.to_string()).cloned();
+        .get(&info.sender.to_string())
+        .cloned();
 
     if _liquid_unstake_request.is_none() {
         return Err(ContractError::NoRequestInBatch {});
@@ -487,7 +488,8 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         &config.ibc_channel_id,
         config
             .multisig_address_config
-            .reward_collector_address.as_ref(),
+            .reward_collector_address
+            .as_ref(),
         "osmo",
     );
     if expected_sender.is_err() {
@@ -584,11 +586,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if !config
-        .node_operators
-        .iter()
-        .any(|v| *v == sender)
-    {
+    if !config.node_operators.iter().any(|v| *v == sender) {
         return Err(ContractError::Unauthorized { sender });
     }
 
