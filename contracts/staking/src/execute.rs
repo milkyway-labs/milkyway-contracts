@@ -1,16 +1,19 @@
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
-use crate::state::{ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH, STATE};
+use crate::state::{
+    MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH,
+    STATE,
+};
 use cosmwasm_std::{
-    ensure, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, Timestamp, Uint128,
+    ensure, Addr, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, Timestamp, Uint128,
 };
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 
 // PENDING
-// Payment validation handled by caller
-// Denom validation handled by caller
+// Payment validation handled by caller (not sure what this means)
+// Denom validation handled by caller (done in contract.rs)
 pub fn execute_liquid_stake(
     deps: DepsMut,
     env: Env,
@@ -141,7 +144,7 @@ pub fn execute_liquid_unstake(
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
-        .add_attribute("sender", info.sender)
+        .add_attribute("sender", info.sender.to_string())
         .add_attribute("amount", amount))
     // .add_messages(msgs))
 }
@@ -254,7 +257,10 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = deps.api.addr_validate(&new_validator)?;
+    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
+        bech32::decode(&new_validator);
+    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
+    let new_validator_addr = Addr::unchecked(&new_validator);
 
     // Check if the new_validator is already in the list.
     if config
@@ -288,7 +294,10 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validator_addr_to_remove = deps.api.addr_validate(&validator_to_remove)?;
+    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
+        bech32::decode(&validator_to_remove);
+    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
+    let validator_addr_to_remove = Addr::unchecked(&validator_to_remove);
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -378,4 +387,44 @@ pub fn execute_accept_ownership(
         }
         None => Err(ContractError::NoPendingOwner {}),
     }
+}
+
+// Update the config; callable by the owner
+pub fn update_config(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    batch_period: Option<u64>,
+    unbonding_period: Option<u64>,
+    minimum_liquid_stake_amount: Option<Uint128>,
+    minimum_rewards_to_collect: Option<Uint128>,
+    multisig_address_config: Option<MultisigAddressConfig>,
+    protocol_fee_config: Option<ProtocolFeeConfig>,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut config = CONFIG.load(deps.storage)?;
+
+    if let Some(batch_period) = batch_period {
+        config.batch_period = batch_period;
+    }
+    if let Some(unbonding_period) = unbonding_period {
+        config.unbonding_period = unbonding_period;
+    }
+    if let Some(minimum_liquid_stake_amount) = minimum_liquid_stake_amount {
+        config.minimum_liquid_stake_amount = minimum_liquid_stake_amount;
+    }
+    if let Some(minimum_rewards_to_collect) = minimum_rewards_to_collect {
+        config.minimum_rewards_to_collect = minimum_rewards_to_collect;
+    }
+    if let Some(multisig_address_config) = multisig_address_config {
+        config.multisig_address_config = multisig_address_config;
+    }
+    if let Some(protocol_fee_config) = protocol_fee_config {
+        config.protocol_fee_config = protocol_fee_config;
+    }
+
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
