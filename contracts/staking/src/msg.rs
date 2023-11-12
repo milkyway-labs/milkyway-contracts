@@ -39,7 +39,9 @@ pub enum ExecuteMsg {
     SubmitBatch {
         batch_id: u64,
     },
-    Withdraw {},
+    Withdraw {
+        batch_id: u64,
+    },
     AddValidator {
         new_validator: String,
     },
@@ -59,18 +61,12 @@ pub enum ExecuteMsg {
         multisig_address_config: Option<MultisigAddressConfig>,
         protocol_fee_config: Option<ProtocolFeeConfig>,
     },
+    ReceiveRewards {},
+    ReceiveUnstakedTokens {},
+    CircuitBreaker {},
+    ResumeContract {},
 }
 
-#[cw_serde]
-pub enum IbcExecuteMsg {
-    ReceiveBatch {
-        batch_id: u64,
-        batch_amount: Uint128,
-    },
-    ReceiveRewards {
-        reward_amount: Uint128,
-    },
-}
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct ConfigResponse {
     pub native_token_denom: String,

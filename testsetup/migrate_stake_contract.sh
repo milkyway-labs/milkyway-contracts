@@ -9,7 +9,6 @@ RES=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master
 CODE_ID=$(echo $RES | jq -r '.logs[0].events[-1].attributes[-1].value')
 osmosisd tx wasm migrate $CONTRACT $CODE_ID '{}' \
     --from test_master -y \
-    -y -b block \
+    -b block \
     --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmosis-dev-1 \
-    --output json
+    --chain-id osmosis-dev-1

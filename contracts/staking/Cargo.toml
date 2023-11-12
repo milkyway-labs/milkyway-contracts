@@ -35,6 +35,8 @@ cw-controllers = "1.1.1"
 cw-utils = { workspace = true }
 milky_way = { path = "../../packages/milky_way" }
 bech32 = "0.9.1"
+bech32-no_std = "0.7.3"
+sha2 = "0.10.8"
 
 [dev-dependencies]
 cw-multi-test = "0.17.0"
