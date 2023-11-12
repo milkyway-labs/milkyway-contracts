@@ -1,7 +1,7 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
-use milky_way::staking::{Batch, BatchStatus};
+use milky_way::staking::BatchStatus;
 use thiserror::Error;
 
 pub type ContractResult<T> = core::result::Result<T, ContractError>;
@@ -38,6 +38,9 @@ pub enum ContractError {
 
     #[error("Validator not found")]
     ValidatorNotFound { validator: String },
+
+    #[error("Address is not valid")]
+    InvalidAddress {},
 
     #[error("MilkyWay only supports unordered channels")]
     OrderedChannel {},

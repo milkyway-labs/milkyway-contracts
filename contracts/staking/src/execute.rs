@@ -1,22 +1,19 @@
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{compute_mint_amount, compute_unbond_amount};
-use crate::ibc;
-use crate::msg::ExecuteMsg;
 use crate::state::{
-    IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
-    PENDING_BATCH, STATE,
+    MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH,
+    STATE,
 };
 use cosmwasm_std::{
-    ensure, ensure_eq, to_binary, CosmosMsg, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
-    Response, StdResult, Timestamp, Uint128, WasmMsg,
+    ensure, Addr, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, Timestamp, Uint128,
 };
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 
 // PENDING
-// Payment validation handled by caller
-// Denom validation handled by caller
+// Payment validation handled by caller (not sure what this means)
+// Denom validation handled by caller (done in contract.rs)
 pub fn execute_liquid_stake(
     deps: DepsMut,
     env: Env,
@@ -59,23 +56,22 @@ pub fn execute_liquid_stake(
     };
     let ibc_coin = cosmwasm_std::Coin {
         denom: config.native_token_denom,
-        amount: amount,
+        amount,
     };
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos() as u64,
+        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    // I can probably do better than unwrapping
-    let ibc_channel = ibc_config
-        .channel
-        .ok_or(ContractError::IbcChannelNotFound {})?;
+    if ibc_config.channel_id.is_empty() {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
 
     // Transfer native token to multisig address
     let ibc_msg = IbcMsg::Transfer {
-        channel_id: ibc_channel.connection_id,
+        channel_id: ibc_config.channel_id,
         to_address: config.multisig_address_config.staker_address.to_string(),
         amount: ibc_coin,
-        timeout: timeout,
+        timeout,
     };
 
     state.total_native_token += amount;
@@ -93,12 +89,12 @@ pub fn execute_liquid_stake(
 
 pub fn execute_liquid_unstake(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-    let mut state = STATE.load(deps.storage)?;
+    STATE.load(deps.storage)?;
 
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
@@ -128,28 +124,29 @@ pub fn execute_liquid_unstake(
     // Add amount to batch total (stTIA)
     pending_batch.batch_total_liquid_stake += amount;
 
-    let mut msgs: Vec<CosmosMsg> = vec![];
+    // let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
-    if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
-        if est_next_batch_action >= env.block.time.seconds() {
-            msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::SubmitBatch {
-                    batch_id: pending_batch.id,
-                })?,
-                funds: vec![],
-            }))
-        }
+    // for simplicity not doing this for now
+    // if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
+    //     if est_next_batch_action >= env.block.time.seconds() {
+    //         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
+    //             contract_addr: env.contract.address.to_string(),
+    //             msg: to_binary(&ExecuteMsg::SubmitBatch {
+    //                 batch_id: pending_batch.id,
+    //             })?,
+    //             funds: vec![],
+    //         }))
+    //     }
 
-        // Save updated pending batch
-        PENDING_BATCH.save(deps.storage, &pending_batch)?;
-    }
+    //     // Save updated pending batch
+    //     PENDING_BATCH.save(deps.storage, &pending_batch)?;
+    // }
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
-        .add_attribute("sender", info.sender)
-        .add_attribute("amount", amount)
-        .add_messages(msgs))
+        .add_attribute("sender", info.sender.to_string())
+        .add_attribute("amount", amount))
+    // .add_messages(msgs))
 }
 
 // Submit batch and transition pending batch to submitted
@@ -177,7 +174,7 @@ pub fn execute_submit_batch(
             expected: 0u64,
         });
     }
-    if batch.liquid_unstake_requests.len() == 0 {
+    if batch.liquid_unstake_requests.is_empty() {
         return Err(ContractError::BatchEmpty {});
     }
 
@@ -244,7 +241,7 @@ pub fn execute_submit_batch(
 // doing a "push over pool" pattern for now
 // eventually we can move this to auto-withdraw all funds upon batch completion
 // Reasoning - any one issue in the batch will cause the entire batch to fail
-pub fn execute_withdraw(_deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn execute_withdraw(_deps: DepsMut, _env: Env, _info: MessageInfo) -> ContractResult<Response> {
     // TODO: not implemented yet
     // TODO: I know this is not ideal, I need to make BATCH an indexed map i think
     Ok(Response::new().add_attribute("action", "execute_withdraw"))
@@ -260,7 +257,10 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = deps.api.addr_validate(&new_validator)?;
+    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
+        bech32::decode(&new_validator);
+    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
+    let new_validator_addr = Addr::unchecked(&new_validator);
 
     // Check if the new_validator is already in the list.
     if config
@@ -294,7 +294,10 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validator_addr_to_remove = deps.api.addr_validate(&validator_to_remove)?;
+    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
+        bech32::decode(&validator_to_remove);
+    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
+    let validator_addr_to_remove = Addr::unchecked(&validator_to_remove);
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config

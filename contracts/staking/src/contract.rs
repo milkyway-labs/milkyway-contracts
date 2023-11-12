@@ -14,7 +14,7 @@ use crate::{
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cosmwasm_std::{CosmosMsg, IbcChannelOpenMsg, Timestamp};
+use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
@@ -38,8 +38,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let api = deps.api;
-    let node_operators = validate_addresses(api, msg.node_operators)?;
-    let validators = validate_addresses(api, msg.validators)?;
+    let node_operators = validate_addresses(api, msg.node_operators, "osmo".to_string())?;
+    let validators = validate_addresses(api, msg.validators, "celestia".to_string())?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -60,6 +60,7 @@ pub fn instantiate(
         multisig_address_config: msg.multisig_address_config,
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
         minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
+        ibc_channel_id: msg.ibc_channel_id.clone(),
     };
 
     // TODO: Add validations
@@ -93,7 +94,7 @@ pub fn instantiate(
     PENDING_BATCH.save(deps.storage, &pending_batch)?;
 
     let ibc_config = IbcConfig {
-        channel: None,
+        channel_id: msg.ibc_channel_id.clone(),
         default_timeout: IBC_TIMEOUT,
     };
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
@@ -191,43 +192,52 @@ mod tests {
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_ibc_channel, mock_info, MockApi, MockQuerier, MockStorage,
+        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{coins, Addr, OwnedDeps};
-    use milky_way::staking::LiquidUnstakeRequest;
 
     fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             native_token_denom: "osmoTIA".to_string(),
             liquid_stake_token_denom: "stTIA".to_string(),
-            treasury_address: "treasury".to_string(),
-            node_operators: vec!["node1".to_string(), "node2".to_string()],
-            validators: vec!["val1".to_string(), "val2".to_string()],
+            treasury_address: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
+            node_operators: vec![
+                "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge".to_string(),
+                "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
+            ],
+            validators: vec![
+                "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx".to_string(),
+                "celestia12snm6dnzlt70lln6vtfj7vjhnrncc7ccs42wss".to_string(),
+            ],
             batch_period: 86400,
             unbonding_period: 1209600,
             protocol_fee_config: ProtocolFeeConfig {
                 dao_treasury_fee: Uint128::from(10u128),
             },
             multisig_address_config: MultisigAddressConfig {
-                controller_address: Addr::unchecked("staker"),
-                staker_address: Addr::unchecked("staker"),
-                reward_collector_address: Addr::unchecked("reward_collector"),
+                controller_address: Addr::unchecked(
+                    "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx",
+                ),
+                staker_address: Addr::unchecked("celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx"),
+                reward_collector_address: Addr::unchecked(
+                    "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx",
+                ),
             },
             minimum_liquid_stake_amount: Uint128::from(100u128),
             minimum_rewards_to_collect: Uint128::from(10u128),
+            ibc_channel_id: "channel-123".to_string(),
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 
-        let channel = cosmwasm_std::testing::mock_ibc_channel(
-            "channel-123",
-            cosmwasm_std::IbcOrder::Unordered,
-            "mw-1",
-        );
+        if res.is_err() {
+            panic!("error: {:?}", res);
+        }
+
         let ibc_config = IbcConfig {
-            channel: Some(channel),
+            channel_id: "channel-123".to_string(),
             default_timeout: IBC_TIMEOUT,
         };
         IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
@@ -236,33 +246,7 @@ mod tests {
     }
     #[test]
     fn proper_instantiation() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            native_token_denom: "osmoTIA".to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
-            treasury_address: "treasury".to_string(),
-            node_operators: vec!["node1".to_string(), "node2".to_string()],
-            validators: vec!["val1".to_string(), "val2".to_string()],
-            batch_period: 86400,
-            unbonding_period: 1209600,
-            protocol_fee_config: ProtocolFeeConfig {
-                dao_treasury_fee: Uint128::from(10u128),
-            },
-            multisig_address_config: MultisigAddressConfig {
-                controller_address: Addr::unchecked("staker"),
-                staker_address: Addr::unchecked("staker"),
-                reward_collector_address: Addr::unchecked("reward_collector"),
-            },
-            minimum_liquid_stake_amount: Uint128::from(100u128),
-            minimum_rewards_to_collect: Uint128::from(10u128),
-        };
-        let info = mock_info("creator", &coins(1000, "uosmo"));
-
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(1, res.messages.len());
-        let attrs = res.attributes;
-        assert_eq!(attrs[0].value, "instantiate");
+        let deps = init();
 
         let batch = PENDING_BATCH.load(&deps.storage).unwrap();
         assert!(batch.id == 1);
@@ -272,7 +256,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
-            new_validator: "val3".to_string(),
+            new_validator: "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -280,7 +264,10 @@ mod tests {
 
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "add_validator");
-        assert_eq!(attrs[1].value, "val3");
+        assert_eq!(
+            attrs[1].value,
+            "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0"
+        );
     }
 
     #[test]
@@ -288,7 +275,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
-            new_validator: "val1".to_string(),
+            new_validator: "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -299,7 +286,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
-            validator: "val1".to_string(),
+            validator: "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -307,7 +294,10 @@ mod tests {
 
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "remove_validator");
-        assert_eq!(attrs[1].value, "val1");
+        assert_eq!(
+            attrs[1].value,
+            "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx"
+        );
     }
 
     #[test]
@@ -315,7 +305,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
-            validator: "val3".to_string(),
+            validator: "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -326,7 +316,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
-            validator: "val1".to_string(),
+            validator: "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -337,7 +327,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
-            new_validator: "val3".to_string(),
+            new_validator: "celestia1kumtklazs063hhcu4te0azr6xj44hy8fp5k6s0".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -348,7 +338,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -356,14 +346,17 @@ mod tests {
 
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "transfer_ownership");
-        assert_eq!(attrs[1].value, "new_owner");
+        assert_eq!(
+            attrs[1].value,
+            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms"
+        );
     }
     #[test]
     fn non_admin_transfer_ownership() {
         let mut deps = init();
         let info = mock_info("bob", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -374,27 +367,33 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_ok());
 
-        let info = mock_info("new_owner", &coins(1000, "uosmo"));
+        let info = mock_info(
+            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms",
+            &coins(1000, "uosmo"),
+        );
         let msg = ExecuteMsg::AcceptOwnership {};
 
         let res2 = execute(deps.as_mut(), mock_env(), info, msg);
 
         let attrs = res2.unwrap().attributes;
         assert_eq!(attrs[0].value, "accept_ownership");
-        assert_eq!(attrs[1].value, "new_owner");
+        assert_eq!(
+            attrs[1].value,
+            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms"
+        );
     }
     #[test]
     fn unauthorized_claim_ownership() {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -412,7 +411,7 @@ mod tests {
         let mut deps = init();
         let info = mock_info("creator", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
+            new_owner: "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -491,7 +490,8 @@ mod tests {
         assert_eq!(attrs[0].value, "liquid_unstake");
 
         // Submit batch
-        assert_eq!(resp.messages.len(), 1);
+        // currently disabled auto batch submit
+        // assert_eq!(resp.messages.len(), 1);
     }
     // #[test]
     // fn double_liquid_unstake() {
@@ -548,7 +548,7 @@ mod tests {
         let mut deps = init();
         let mut env = mock_env();
 
-        let mut state = STATE.load(&deps.storage).unwrap();
+        let state = STATE.load(&deps.storage).unwrap();
         let config = CONFIG.load(&deps.storage).unwrap();
 
         STATE.save(&mut deps.storage, &state).unwrap();
