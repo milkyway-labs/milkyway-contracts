@@ -5,7 +5,8 @@ mod tests {
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::state::{
-        IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG, IBC_CONFIG, STATE,
+        Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG, IBC_CONFIG,
+        STATE,
     };
 
     use cosmwasm_std::testing::{
@@ -653,6 +654,45 @@ mod tests {
         let info = mock_info("creator", &coins(1000, "osmoTIA"));
         let msg = ExecuteMsg::LiquidStake {};
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn receive_unstaked_tokens() {
+        let mut deps = init();
+        let mut env = mock_env();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+        let config: Config = CONFIG.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+
+        let sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            &config.multisig_address_config.staker_address.to_string(),
+            "osmo",
+        )
+        .unwrap();
+
+        let info = mock_info(
+            &sender,
+            &[Coin {
+                amount: Uint128::from(100u128),
+                denom: config.native_token_denom.clone(),
+            }],
+        );
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err());
+
+        let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
+        batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() - 1));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert!(res.is_ok());
     }
 }

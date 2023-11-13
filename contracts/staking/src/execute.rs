@@ -523,7 +523,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
 
 pub fn receive_unstaked_tokens(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
@@ -559,11 +559,7 @@ pub fn receive_unstaked_tokens(
     // get the oldest submitted batch
     let _batch: Option<Batch> = BATCHES
         .range(deps.storage, None, None, Order::Ascending)
-        .find(|r| {
-            r.is_ok()
-                && r.as_ref().unwrap().1.status == BatchStatus::Submitted
-                && r.as_ref().unwrap().1.expected_native_unstaked.is_some()
-        })
+        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Submitted)
         .map(|r| r.unwrap().1);
 
     if _batch.is_none() {
@@ -571,6 +567,20 @@ pub fn receive_unstaked_tokens(
     }
 
     let mut batch = _batch.unwrap();
+
+    if batch.next_batch_action_time.is_none() {
+        return Err(ContractError::BatchNotReady {
+            actual: env.block.time.seconds(),
+            expected: 0,
+        });
+    }
+    let next_batch_action_time = batch.next_batch_action_time.unwrap();
+    if next_batch_action_time > env.block.time.seconds() {
+        return Err(ContractError::BatchNotReady {
+            actual: env.block.time.seconds(),
+            expected: next_batch_action_time,
+        });
+    }
 
     batch.update_status(BatchStatus::Received, None);
 
