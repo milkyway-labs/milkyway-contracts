@@ -477,8 +477,8 @@ pub fn execute_accept_ownership(
     };
 
     match new_owner {
-        Some(pending_owner) => {
-            ADMIN.set(deps, Some(pending_owner))?;
+        Some(new_owner) => {
+            ADMIN.set(deps, Some(new_owner))?;
             Ok(Response::new()
                 .add_attribute("action", "accept_ownership")
                 .add_attribute("new_owner", info.sender))
