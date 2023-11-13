@@ -11,8 +11,8 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("Unauthorized: {sender}")]
+    Unauthorized { sender: String },
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
     #[error("Admin error: {0}")]
@@ -57,6 +57,12 @@ pub enum ContractError {
     #[error("No liquid unstake requests in batch")]
     BatchEmpty {},
 
+    #[error("Batch provided doesn't have a request for the user")]
+    NoRequestInBatch {},
+
+    #[error("Request has already been redeemed")]
+    AlreadyRedeemed {},
+
     #[error("From wrong channel")]
     FromOtherChannel { channel: String },
 
@@ -71,4 +77,7 @@ pub enum ContractError {
         actual: BatchStatus,
         expected: BatchStatus,
     },
+
+    #[error("contract was intentionally halted")]
+    Halted {},
 }
