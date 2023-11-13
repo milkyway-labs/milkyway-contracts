@@ -59,4 +59,5 @@ CMD sh ./local-celestia-testnet-multi-continue.sh && \
     sh ./check-node-running.sh osmosis1 && \
     sh ./check-node-running.sh celestia1 && \
     sh ./local-hermes-clear-packets.sh && \
-    hermes start
+    sh ./local-hermes-continue.sh && \
+    tail -f /dev/null
