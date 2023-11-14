@@ -60,6 +60,11 @@ pub fn execute_liquid_stake(
 
     check_stopped(&config)?;
 
+    if info.sender.as_str().len() != 43 {
+        // currently not allowing to stake via IBC
+        return Err(ContractError::InvalidAddress {});
+    }
+
     let mut state = STATE.load(deps.storage)?;
     ensure!(
         amount > config.minimum_liquid_stake_amount,
