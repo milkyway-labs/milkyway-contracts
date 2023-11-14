@@ -26,6 +26,12 @@ echo $MNEMONIC | celestia-appd keys add test_master --recover
 
 Now you can deploy the contract:
 
+You will need the bech32 dep to parse validator addresses:
+
+```
+cargo install --git https://github.com/cmoog/bech32
+```
+
 ```
 sh ./init_stake_contract.sh
 ```

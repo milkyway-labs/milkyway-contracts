@@ -6,7 +6,7 @@ docker run --rm -v "$(pwd)":/code \
 
 # cargo install --git https://github.com/cmoog/bech32         
 
-RES=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --output json --node http://localhost:26657 -y -b block --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto --chain-id osmosis-dev-1)
+RES=$(osmosisd tx wasm store ../artifacts/staking-aarch64.wasm --from test_master --output json --node http://localhost:26657 -y -b block --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto --chain-id osmosis-dev-1)
 CODE_ID=$(osmosisd query wasm list-code --output json | jq -r '.code_infos[-1].code_id')
 ADMIN_OSMOSIS=osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge
 ADMIN_CELESTIA=celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx
