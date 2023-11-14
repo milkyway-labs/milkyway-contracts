@@ -55,15 +55,16 @@ mod staking_tests {
 
         let pending_batch = BATCHES.load(&deps.storage, 1).unwrap();
         assert!(pending_batch.liquid_unstake_requests.len() == 1);
-        assert!(
+        assert_eq!(
             pending_batch
                 .liquid_unstake_requests
                 .get("bob")
                 .unwrap()
                 .shares
-                == Uint128::from(1100u128)
+                , Uint128::from(1100u128)
         );
     }
+
     #[test]
     fn invalid_denom_liquid_unstake() {
         let mut deps = init();
