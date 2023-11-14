@@ -23,3 +23,6 @@ artifacts/
 # Code coverage
 tarpaulin-report.*
 
+# testdata
+testdata
+.DS_Store
