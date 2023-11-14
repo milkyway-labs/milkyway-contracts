@@ -34,7 +34,9 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    LiquidStake {},
+    LiquidStake {
+        original_sender: Option<String>,
+    },
     LiquidUnstake {},
     SubmitBatch {
         batch_id: u64,

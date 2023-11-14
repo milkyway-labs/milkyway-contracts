@@ -55,15 +55,45 @@ pub fn execute_liquid_stake(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
+    original_sender: Option<String>,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
 
-    if info.sender.as_str().len() != 43 {
-        // currently not allowing to stake via IBC
-        return Err(ContractError::InvalidAddress {});
-    }
+    // if sent via IBC the user needs to provide his osmosis address which we validate and use
+    let mint_to_address = if info.sender.as_str().len() != 43 {
+        if original_sender.is_none() {
+            return Err(ContractError::InvalidAddress {});
+        }
+
+        let original_addr_base = bech32_no_std::decode(original_sender.as_ref().unwrap());
+        if original_addr_base.is_err() {
+            return Err(ContractError::InvalidAddress {});
+        }
+
+        // we are calculating both to allow osmo and celestia address in request
+        let osmosis_addr =
+            bech32_no_std::encode("osmo", original_addr_base.as_ref().unwrap().1.clone());
+        let celestia_addr =
+            bech32_no_std::encode("celestia", original_addr_base.as_ref().unwrap().1.clone());
+        if osmosis_addr.is_err() || celestia_addr.is_err() {
+            return Err(ContractError::InvalidAddress {});
+        }
+
+        // test if sender fits ibc sender
+        let derived_sender =
+            derive_intermediate_sender(&config.ibc_channel_id, &celestia_addr.unwrap(), "osmo")
+                .unwrap_or("".to_string());
+
+        if derived_sender != info.sender.to_string() {
+            return Err(ContractError::InvalidAddress {});
+        }
+
+        osmosis_addr.unwrap()
+    } else {
+        info.sender.to_string()
+    };
 
     let mut state = STATE.load(deps.storage)?;
     ensure!(
@@ -95,7 +125,7 @@ pub fn execute_liquid_stake(
             denom: config.liquid_stake_token_denom,
             amount: mint_amount.to_string(),
         }),
-        mint_to_address: info.sender.to_string(),
+        mint_to_address,
     };
 
     // Transfer native token to multisig address
@@ -334,7 +364,7 @@ pub fn execute_withdraw(
     // let total_shares = batch.batch_total_liquid_stake;
     let amount = liquid_unstake_request.shares;
 
-    let send_msg = MsgSend {
+    let send_msg: MsgSend = MsgSend {
         from_address: env.contract.address.to_string(),
         to_address: info.sender.to_string(),
         amount: vec![Coin {

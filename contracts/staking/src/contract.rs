@@ -123,9 +123,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
-        ExecuteMsg::LiquidStake {} => {
+        ExecuteMsg::LiquidStake { original_sender } => {
             let payment = must_pay(&info, &config.native_token_denom)?;
-            execute_liquid_stake(deps, env, info, payment)
+            execute_liquid_stake(deps, env, info, payment, original_sender)
         }
         ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
