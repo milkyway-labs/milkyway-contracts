@@ -26,3 +26,4 @@ tarpaulin-report.*
 # testdata
 testdata
 .DS_Store
+.idea
