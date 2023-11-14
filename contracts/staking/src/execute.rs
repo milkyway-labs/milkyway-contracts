@@ -86,7 +86,7 @@ pub fn execute_liquid_stake(
             derive_intermediate_sender(&config.ibc_channel_id, &celestia_addr.unwrap(), "osmo")
                 .unwrap_or("".to_string());
 
-        if derived_sender != info.sender.to_string() {
+        if derived_sender != info.sender {
             return Err(ContractError::InvalidAddress {});
         }
 
