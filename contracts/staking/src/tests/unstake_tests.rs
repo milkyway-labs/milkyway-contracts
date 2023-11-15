@@ -26,10 +26,19 @@ mod staking_tests {
 
         let attrs = resp.attributes;
         assert_eq!(attrs[0].value, "liquid_unstake");
+        assert_eq!(attrs[2].value, "1000");
+
+        let batch = BATCHES.load(&deps.storage, 1).unwrap();
+        assert_eq!(batch.batch_total_liquid_stake, Uint128::from(1000u128));
 
         // Submit batch
         // currently disabled auto batch submit
         // assert_eq!(resp.messages.len(), 1);
+
+
+        // print!("{:?}", msgs);
+        // env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
+        // let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
     }
     #[test]
     fn double_liquid_unstake() {
