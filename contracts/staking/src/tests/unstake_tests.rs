@@ -2,7 +2,7 @@
 mod staking_tests {
     use crate::contract::execute;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, STATE};
+    use crate::state::{BATCHES, STATE, CONFIG};
     use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, Addr, Uint128};
@@ -34,12 +34,19 @@ mod staking_tests {
         // Submit batch
         // currently disabled auto batch submit
         // assert_eq!(resp.messages.len(), 1);
+        let mut env = mock_env();
+        let config = CONFIG.load(&deps.storage).unwrap();
+
+        env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
 
-        // print!("{:?}", msgs);
-        // env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        // let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let attrs = res.unwrap().attributes;
+        assert_eq!(attrs[0].value, "submit_batch");
+        assert_eq!(attrs[2].value, "1000");
     }
+
     #[test]
     fn double_liquid_unstake() {
         let mut deps = init();
@@ -56,7 +63,7 @@ mod staking_tests {
         );
         BATCHES.save(&mut deps.storage, 1, &pending_batch).unwrap();
 
-        let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+        let info = mock_info("bob", &coins(1_000, "factory/cosmos2contract/stTIA"));
         let msg = ExecuteMsg::LiquidUnstake {};
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -71,6 +78,23 @@ mod staking_tests {
                 .unwrap()
                 .shares
                 , Uint128::from(1100u128)
+        );
+
+        let info = mock_info("bob", &coins(5_000, "factory/cosmos2contract/stTIA"));
+        let msg = ExecuteMsg::LiquidUnstake {};
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+
+        let pending_batch = BATCHES.load(&deps.storage, 1).unwrap();
+        assert_eq!(pending_batch.batch_total_liquid_stake, Uint128::from(6000u128));
+        assert_eq!(
+            pending_batch
+                .liquid_unstake_requests
+                .get("bob")
+                .unwrap()
+                .shares
+                , Uint128::from(6100u128)
         );
     }
 
