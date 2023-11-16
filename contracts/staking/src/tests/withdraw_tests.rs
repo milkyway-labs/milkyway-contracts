@@ -63,16 +63,7 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert!(messages.len() == 1); // send message as sub message
-                                                   // TODO
-                                                   // let msg: MsgSend = res.unwrap().messages.get(0).unwrap().into();
-                                                   // assert!(
-                                                   //     msg.amount = [Coin {
-                                                   //         amount: Uint128::from(100u128),
-                                                   //         denom: config.native_token_denom.clone(),
-                                                   //     }]
-                                                   // );
-                                                   // assert!(msg.to_address = "bob");
+        assert!(messages.len() == 1); 
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -80,6 +71,7 @@ mod withdraw_tests {
             amount: "10".to_string(),
         };
 
+        // check the MsgSend
         let mut coins = Vec::new();
         coins.push(coin);                  
         assert_eq!(messages[0], SubMsg {
