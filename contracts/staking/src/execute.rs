@@ -62,7 +62,7 @@ pub fn execute_liquid_stake(
 
     let mut state = STATE.load(deps.storage)?;
     ensure!(
-        amount > config.minimum_liquid_stake_amount,
+        amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)
@@ -124,7 +124,7 @@ pub fn execute_liquid_unstake(
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
     ensure!(
-        amount > config.minimum_liquid_stake_amount,
+        amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)

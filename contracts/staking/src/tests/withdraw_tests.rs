@@ -2,10 +2,10 @@
 mod withdraw_tests {
     use crate::contract::execute;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, STATE, CONFIG};
+    use crate::state::{BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{Addr, Uint128, SubMsg, ReplyOn, CosmosMsg};
+    use cosmwasm_std::{Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
     use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -63,7 +63,7 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert!(messages.len() == 1); 
+        assert!(messages.len() == 1);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -73,16 +73,19 @@ mod withdraw_tests {
 
         // check the MsgSend
         let mut coins = Vec::new();
-        coins.push(coin);                  
-        assert_eq!(messages[0], SubMsg {
-            id: 0,
-            msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
-                from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                to_address: "bob".to_string(),
-                amount: coins
-            }),
-            gas_limit: None,
-            reply_on: ReplyOn::Never,
-        });                                            
+        coins.push(coin);
+        assert_eq!(
+            messages[0],
+            SubMsg {
+                id: 0,
+                msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
+                    from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                    to_address: "bob".to_string(),
+                    amount: coins
+                }),
+                gas_limit: None,
+                reply_on: ReplyOn::Never,
+            }
+        );
     }
 }

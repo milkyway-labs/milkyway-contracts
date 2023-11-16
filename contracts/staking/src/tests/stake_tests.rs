@@ -1,15 +1,18 @@
 #[cfg(test)]
 mod staking_tests {
     use crate::contract::{execute, IBC_TIMEOUT};
+    use crate::error::ContractError;
     use crate::msg::ExecuteMsg;
     use crate::state::{BATCHES, STATE};
-    use crate::tests::test_helper::{init, CHANNEL_ID, CELESTIA1, NATIVE_TOKEN};
+    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{coins, Order, Uint128, attr, IbcTimeout, CosmosMsg, ReplyOn, Timestamp, IbcMsg, Addr, SubMsg};
-    use milky_way::staking::{BatchStatus};
-    use crate::error::ContractError;
-    use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
+    use cosmwasm_std::{
+        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, ReplyOn, SubMsg, Timestamp,
+        Uint128,
+    };
+    use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
+    use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
 
     #[test]
     fn proper_liquid_stake() {
@@ -30,35 +33,45 @@ mod staking_tests {
 
         match res {
             Ok(ref result) => {
-                assert_eq!(result.attributes,
-                           vec![attr("action", "liquid_stake"), attr("sender", "creator"), attr("amount", "1000")]
+                assert_eq!(
+                    result.attributes,
+                    vec![
+                        attr("action", "liquid_stake"),
+                        attr("sender", "creator"),
+                        attr("amount", "1000")
+                    ]
                 );
                 assert_eq!(result.messages.len(), 2);
-                assert_eq!(result.messages[1], SubMsg {
-                    id: 0,
-                    msg: <cosmwasm_std::IbcMsg as Into<CosmosMsg>>::into(IbcMsg::Transfer {
-                        channel_id: CHANNEL_ID.to_string(),
-                        to_address: Addr::unchecked(CELESTIA1).to_string(),
-                        amount: ibc_coin,
-                        timeout,
-                    }),
-                    gas_limit: None,
-                    reply_on: ReplyOn::Never,
-                });
-                assert_eq!(result.messages[0], SubMsg {
-                    id: 0,
-                    msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
-                        sender: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                        amount: Some(Coin {
-                            denom: "factory/cosmos2contract/stTIA".to_string(),
-                            amount: "1000".to_string(),
+                assert_eq!(
+                    result.messages[1],
+                    SubMsg {
+                        id: 0,
+                        msg: <cosmwasm_std::IbcMsg as Into<CosmosMsg>>::into(IbcMsg::Transfer {
+                            channel_id: CHANNEL_ID.to_string(),
+                            to_address: Addr::unchecked(CELESTIA1).to_string(),
+                            amount: ibc_coin,
+                            timeout,
                         }),
-                        mint_to_address: "creator".to_string(),
+                        gas_limit: None,
+                        reply_on: ReplyOn::Never,
                     }
-                    ),
-                    gas_limit: None,
-                    reply_on: ReplyOn::Never,
-                });
+                );
+                assert_eq!(
+                    result.messages[0],
+                    SubMsg {
+                        id: 0,
+                        msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
+                            sender: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                            amount: Some(Coin {
+                                denom: "factory/cosmos2contract/stTIA".to_string(),
+                                amount: "1000".to_string(),
+                            }),
+                            mint_to_address: "creator".to_string(),
+                        }),
+                        gas_limit: None,
+                        reply_on: ReplyOn::Never,
+                    }
+                );
             }
             Err(e) => {
                 panic!("Unexpected error: {:?}", e);
@@ -82,7 +95,10 @@ mod staking_tests {
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         assert!(res.is_ok());
         let state_for_bob = STATE.load(&deps.storage).unwrap();
-        assert_eq!(state_for_bob.total_liquid_stake_token, Uint128::from(11000u128));
+        assert_eq!(
+            state_for_bob.total_liquid_stake_token,
+            Uint128::from(11000u128)
+        );
         assert_eq!(state_for_bob.total_native_token, Uint128::from(11000u128));
 
         // set total_liquid_statke_token: 1_000_000_000,
@@ -96,11 +112,13 @@ mod staking_tests {
         let info = mock_info("bob", &coins(50_000_000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         assert!(res.is_ok());
-        
-        let state = STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.total_liquid_stake_token, Uint128::from(51_000_000_000u128));
-        assert_eq!(state.total_native_token, Uint128::from(51_000_000u128));
 
+        let state = STATE.load(&deps.storage).unwrap();
+        assert_eq!(
+            state.total_liquid_stake_token,
+            Uint128::from(51_000_000_000u128)
+        );
+        assert_eq!(state.total_native_token, Uint128::from(51_000_000u128));
 
         // set total_liquid_statke_token: 1_000_000,
         // native_token: 1_000_000_000
@@ -113,7 +131,7 @@ mod staking_tests {
         let info = mock_info("bob", &coins(50_000_000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
-        
+
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1_050_000u128));
         assert_eq!(state.total_native_token, Uint128::from(1_050_000_000u128));
@@ -131,7 +149,7 @@ mod staking_tests {
             Err(e) => {
                 if let ContractError::MinimumLiquidStakeAmount {
                     minimum_stake_amount,
-                    sent_amount
+                    sent_amount,
                 } = e
                 {
                     assert_eq!(minimum_stake_amount, Uint128::from(100u128));
