@@ -120,7 +120,7 @@ mod staking_tests {
         );
         assert_eq!(state.total_native_token, Uint128::from(51_000_000u128));
 
-        // set total_liquid_statke_token: 1_000_000,
+        // set total_liquid_stake_token: 1_000_000,
         // native_token: 1_000_000_000
         deps = init();
         let mut state = STATE.load(&deps.storage).unwrap();
