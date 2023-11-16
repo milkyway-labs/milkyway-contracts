@@ -11,22 +11,26 @@ docker build ./testsetup --tag mw-testnet
 Now you can always boot into the clean config
 
 ```
-docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1340:1340 docker.io/library/mw-testnet
+docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 docker.io/library/mw-testnet
 ```
 
 Test accounts are funded, check out `./local-accounts.sh`
 But you need to import the mnemonic:
 
 ```
-boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require
-```
+MNEMONIC="boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require"
 
-```
-osmosisd keys add test_master --recover
-celestia-appd keys add test_master --recover
+echo $MNEMONIC | osmosisd keys add test_master --recover
+echo $MNEMONIC | celestia-appd keys add test_master --recover
 ```
 
 Now you can deploy the contract:
+
+You will need the bech32 dep to parse validator addresses:
+
+```
+cargo install --git https://github.com/cmoog/bech32
+```
 
 ```
 sh ./init_stake_contract.sh
@@ -64,11 +68,11 @@ pr `cargo install ibc-relayer-cli --bin hermes --locked`
 
 ## Start Networks
 
-This will launch a 3 node Osmosis testnet and a 1 node Celestia testnet.
+This will launch a 1 node Osmosis testnet and a 3 node Celestia testnet.
 This will create keys for the validators and fund the validators.
 
 ```
-sh ./local-celestia-testnet-new.sh
+sh ./local-celestia-testnet-multi-new.sh
 sh ./local-osmosis-testnet-new.sh
 ```
 
@@ -135,8 +139,6 @@ You can the output of the validators with Tmux
 ```
 tmux a -t celestia1
 tmux a -t osmosis1
-tmux a -t osmosis2
-tmux a -t osmosis3
 tmux a -t hermes
 ```
 
@@ -148,6 +150,6 @@ To start the network again after setting it up run:
 
 ```
 sh ./local-osmosis-testnet-continue.sh
-sh ./local-celestia-testnet-continue.sh
+sh ./local-celestia-testnet-multi-continue.sh
 tmux new -s hermes -d hermes start
 ```

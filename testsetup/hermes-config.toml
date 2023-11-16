@@ -28,7 +28,7 @@ port = 3001
 [[chains]]
 id = 'celestia-dev-1'
 rpc_addr = 'http://localhost:26661'
-grpc_addr = 'http://localhost:9190'
+grpc_addr = 'http://localhost:9084'
 event_source = { mode = 'push', url = 'ws://localhost:26661/websocket', batch_delay = '200ms' }
 rpc_timeout = '15s'
 trusted_node = true

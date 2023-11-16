@@ -1,6 +1,6 @@
 use crate::execute::{
     circuit_breaker, execute_submit_batch, receive_rewards, receive_unstaked_tokens,
-    resume_contract,
+    resume_contract, update_config,
 };
 use crate::helpers::validate_addresses;
 use crate::query::{query_batch, query_config, query_state};
@@ -41,8 +41,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let api = deps.api;
-    let node_operators = validate_addresses(api, msg.node_operators)?;
-    let validators = validate_addresses(api, msg.validators)?;
+    let node_operators = validate_addresses(api, msg.node_operators, "osmo".to_string())?;
+    let validators = validate_addresses(api, msg.validators, "celestia".to_string())?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -146,6 +146,24 @@ pub fn execute(
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
         }
+        ExecuteMsg::UpdateConfig {
+            batch_period,
+            unbonding_period,
+            minimum_liquid_stake_amount,
+            minimum_rewards_to_collect,
+            multisig_address_config,
+            protocol_fee_config,
+        } => update_config(
+            deps,
+            env,
+            info,
+            batch_period,
+            unbonding_period,
+            minimum_liquid_stake_amount,
+            minimum_rewards_to_collect,
+            multisig_address_config,
+            protocol_fee_config,
+        ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),

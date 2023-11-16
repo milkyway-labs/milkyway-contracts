@@ -1,3 +1,5 @@
+# clears the packages in the channel as they frequently get stuck
+
 while true
 do
     hermes clear packets --chain osmosis-dev-1 --port transfer --channel channel-0
