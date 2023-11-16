@@ -180,6 +180,7 @@ pub fn execute_liquid_unstake(
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
         .add_attribute("sender", info.sender.to_string())
+        .add_attribute("batch", pending_batch.id.to_string())
         .add_attribute("amount", amount))
     // .add_messages(msgs))
 }

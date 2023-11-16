@@ -1,6 +1,6 @@
 use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Decimal, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -83,15 +83,26 @@ pub struct ConfigResponse {
 pub struct StateResponse {
     pub total_native_token: Uint128,
     pub total_liquid_stake_token: Uint128,
+    pub rate: Decimal,
     pub pending_owner: String,
     pub total_reward_amount: Uint128,
+}
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct LiquidUnstakeRequestResponse {
+    pub user: String,
+    pub amount: Uint128,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchResponse {
     pub batch_total_liquid_stake: Uint128,
     pub expected_native_unstaked: Uint128,
-    pub next_batch_action_time: u64,
+    pub next_batch_action_time: Timestamp,
     pub status: String,
+    pub requests: Vec<LiquidUnstakeRequestResponse>,
+}
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct BatchesResponse {
+    pub batches: Vec<BatchResponse>,
 }
 
 #[cw_serde]
@@ -103,9 +114,8 @@ pub enum QueryMsg {
     State {},
     #[returns(BatchResponse)]
     Batch { id: u64 },
-    // PendingBatch {},
-    // LastDispatchedBatch {},
-    // Validators {},
+    #[returns(BatchesResponse)]
+    Batches {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
