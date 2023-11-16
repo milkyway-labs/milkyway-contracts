@@ -2,11 +2,13 @@
 mod withdraw_tests {
     use crate::contract::execute;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, STATE};
+    use crate::state::{BATCHES, STATE, CONFIG};
     use crate::tests::test_helper::init;
-    use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
+    use cosmwasm_std::{Addr, Uint128, SubMsg, ReplyOn, CosmosMsg};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
+    use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
+    use osmosis_std::types::cosmos::base::v1beta1::Coin;
 
     #[test]
     fn withdraw() {
@@ -54,15 +56,14 @@ mod withdraw_tests {
         assert!(res.is_err());
 
         // success
-        println!("success");
         let msg = ExecuteMsg::Withdraw {
             batch_id: pending_batch.id,
         };
         let info = mock_info("bob", &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
-
-        assert!(res.unwrap().messages.len() == 1); // send message as sub message
+        let messages = res.unwrap().messages;
+        assert!(messages.len() == 1); // send message as sub message
                                                    // TODO
                                                    // let msg: MsgSend = res.unwrap().messages.get(0).unwrap().into();
                                                    // assert!(
@@ -72,5 +73,24 @@ mod withdraw_tests {
                                                    //     }]
                                                    // );
                                                    // assert!(msg.to_address = "bob");
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+        let coin = Coin {
+            denom: config.native_token_denom.clone(),
+            amount: "10".to_string(),
+        };
+
+        let mut coins = Vec::new();
+        coins.push(coin);                  
+        assert_eq!(messages[0], SubMsg {
+            id: 0,
+            msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
+                from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                to_address: "bob".to_string(),
+                amount: coins
+            }),
+            gas_limit: None,
+            reply_on: ReplyOn::Never,
+        });                                            
     }
 }
