@@ -47,6 +47,14 @@ pub fn instantiate(
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
 
+    if msg.ibc_channel_id == "" {
+        return Err(ContractError::ConfigWrong {});
+    }
+
+    if msg.native_token_denom == "" {
+        return Err(ContractError::ConfigWrong {});
+    }
+
     // Init Config
     let config = Config {
         native_token_denom: msg.native_token_denom,
@@ -66,8 +74,6 @@ pub fn instantiate(
         ibc_channel_id: msg.ibc_channel_id.clone(),
         stopped: false,
     };
-
-    // TODO: Add validations
 
     CONFIG.save(deps.storage, &config)?;
 
@@ -153,6 +159,8 @@ pub fn execute(
             minimum_rewards_to_collect,
             multisig_address_config,
             protocol_fee_config,
+            reserve_token,
+            channel_id,
         } => update_config(
             deps,
             env,
@@ -163,6 +171,8 @@ pub fn execute(
             minimum_rewards_to_collect,
             multisig_address_config,
             protocol_fee_config,
+            reserve_token,
+            channel_id,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),

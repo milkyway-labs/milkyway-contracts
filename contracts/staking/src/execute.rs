@@ -499,10 +499,12 @@ pub fn update_config(
     minimum_rewards_to_collect: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
+    reserve_token: Option<String>,
+    channel_id: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let mut config = CONFIG.load(deps.storage)?;
+    let mut config: Config = CONFIG.load(deps.storage)?;
 
     if let Some(batch_period) = batch_period {
         config.batch_period = batch_period;
@@ -521,6 +523,16 @@ pub fn update_config(
     }
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
+    }
+    if channel_id.is_some() && reserve_token.is_none() {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if let Some(reserve_token) = reserve_token {
+        if channel_id.is_none() {
+            return Err(ContractError::IbcChannelNotFound {});
+        }
+        config.ibc_channel_id = channel_id.unwrap();
+        config.native_token_denom = reserve_token;
     }
 
     CONFIG.save(deps.storage, &config)?;
