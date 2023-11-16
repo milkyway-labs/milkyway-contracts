@@ -2,7 +2,7 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, receive_rewards, receive_unstaked_tokens,
     resume_contract, update_config,
 };
-use crate::helpers::validate_addresses;
+use crate::helpers::{validate_address, validate_addresses};
 use crate::query::{query_batch, query_batches, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
 use crate::{
@@ -41,8 +41,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let api = deps.api;
-    let node_operators = validate_addresses(api, msg.node_operators, "osmo".to_string())?;
-    let validators = validate_addresses(api, msg.validators, "celestia".to_string())?;
+    let node_operators = validate_addresses(msg.node_operators, "osmo".to_string())?;
+    let validators = validate_addresses(msg.validators, "celestia".to_string())?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -54,6 +54,21 @@ pub fn instantiate(
     if msg.native_token_denom == "" {
         return Err(ContractError::ConfigWrong {});
     }
+
+    validate_address(
+        msg.multisig_address_config.controller_address.to_string(),
+        "celestia".to_string(),
+    )?;
+    validate_address(
+        msg.multisig_address_config
+            .reward_collector_address
+            .to_string(),
+        "celestia".to_string(),
+    )?;
+    validate_address(
+        msg.multisig_address_config.staker_address.to_string(),
+        "celestia".to_string(),
+    )?;
 
     // Init Config
     let config = Config {
