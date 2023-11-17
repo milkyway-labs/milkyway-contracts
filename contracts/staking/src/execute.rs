@@ -496,7 +496,6 @@ pub fn update_config(
     batch_period: Option<u64>,
     unbonding_period: Option<u64>,
     minimum_liquid_stake_amount: Option<Uint128>,
-    minimum_rewards_to_collect: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
 ) -> ContractResult<Response> {
@@ -512,9 +511,6 @@ pub fn update_config(
     }
     if let Some(minimum_liquid_stake_amount) = minimum_liquid_stake_amount {
         config.minimum_liquid_stake_amount = minimum_liquid_stake_amount;
-    }
-    if let Some(minimum_rewards_to_collect) = minimum_rewards_to_collect {
-        config.minimum_rewards_to_collect = minimum_rewards_to_collect;
     }
     if let Some(multisig_address_config) = multisig_address_config {
         config.multisig_address_config = multisig_address_config;
@@ -645,7 +641,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if !config.node_operators.iter().any(|v| *v == sender) {
+    if !config.operators.iter().any(|v| *v == sender) {
         return Err(ContractError::Unauthorized { sender });
     }
 
