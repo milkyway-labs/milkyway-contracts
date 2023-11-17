@@ -3,7 +3,7 @@ use crate::execute::{
     resume_contract, update_config,
 };
 use crate::helpers::validate_addresses;
-use crate::query::{query_batch, query_config, query_state};
+use crate::query::{query_batch, query_batches, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
 use crate::{
     error::ContractError,
@@ -181,6 +181,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
+        QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
     }
 }
 

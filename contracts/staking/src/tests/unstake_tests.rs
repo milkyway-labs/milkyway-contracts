@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod staking_tests {
     use crate::contract::execute;
+    use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, CONFIG, STATE};
+    use crate::state::{Config, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
-    use milky_way::staking::BatchStatus;
+    use milky_way::staking::{Batch, BatchStatus};
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 
@@ -23,10 +24,12 @@ mod staking_tests {
         let msg = ExecuteMsg::LiquidUnstake {};
         let mut res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         let resp = res.unwrap();
-
         let attrs = resp.attributes;
+
         assert_eq!(attrs[0].value, "liquid_unstake");
-        assert_eq!(attrs[2].value, "1000");
+        assert_eq!(attrs[1].value, "bob"); // sender
+        assert_eq!(attrs[2].value, "1"); // batch id
+        assert_eq!(attrs[3].value, "1000"); // amount
 
         let batch = BATCHES.load(&deps.storage, 1).unwrap();
         assert_eq!(batch.batch_total_liquid_stake, Uint128::from(1000u128));
@@ -43,6 +46,7 @@ mod staking_tests {
 
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "submit_batch");
+        assert_eq!(attrs[1].value, "1"); // batch id
         assert_eq!(attrs[2].value, "1000");
     }
 
@@ -163,7 +167,6 @@ mod staking_tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
         assert!(res.is_ok());
 
-
         // CHK
         // If minimum == 100, shouldn't we allow 100?
         // amount >= minimum
@@ -190,6 +193,45 @@ mod staking_tests {
     }
 
     #[test]
+    fn receive_unstaked_tokens() {
+        let mut deps = init();
+        let env = mock_env();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+        let config: Config = CONFIG.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+
+        let sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            &config.multisig_address_config.staker_address.to_string(),
+            "osmo",
+        )
+        .unwrap();
+
+        let info = mock_info(
+            &sender,
+            &[cosmwasm_std::Coin {
+                amount: Uint128::from(100u128),
+                denom: config.native_token_denom.clone(),
+            }],
+        );
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err());
+
+        let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
+        batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() - 1));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_ok());
+    }
+
+    #[test]
     fn invalid_amount_liquid_unstake() {
         let mut deps = init();
 
@@ -209,7 +251,9 @@ mod staking_tests {
 
         let attrs = resp.attributes;
         assert_eq!(attrs[0].value, "liquid_unstake");
-        assert_eq!(attrs[2].value, "1000000000");
+        assert_eq!(attrs[1].value, "bob"); // sender
+        assert_eq!(attrs[2].value, "1"); // batch id
+        assert_eq!(attrs[3].value, "1000000000");
 
         // CHK: Is that possible unstaking large amount than total_liquid_stake_token?
         // total_liquid_stake_token = 100_000
@@ -233,6 +277,7 @@ mod staking_tests {
 
         let attrs = resp.attributes;
         assert_eq!(attrs[0].value, "submit_batch");
+        assert_eq!(attrs[1].value, "1"); // sender
         assert_eq!(attrs[2].value, "1000000000");
 
         let messages = resp.messages;
