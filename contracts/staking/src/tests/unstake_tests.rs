@@ -86,7 +86,7 @@ mod staking_tests {
     #[test]
     fn receive_unstaked_tokens() {
         let mut deps = init();
-        let mut env = mock_env();
+        let env = mock_env();
 
         let mut state = STATE.load(&deps.storage).unwrap();
         let config: Config = CONFIG.load(&deps.storage).unwrap();

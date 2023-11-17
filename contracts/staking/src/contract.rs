@@ -40,7 +40,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let api = deps.api;
     let node_operators = validate_addresses(msg.node_operators, "osmo".to_string())?;
     let validators = validate_addresses(msg.validators, "celestia".to_string())?;
 

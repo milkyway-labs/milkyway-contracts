@@ -141,4 +141,110 @@ mod tests {
         );
         assert!(res.is_err());
     }
+
+    #[test]
+    fn update_config() {
+        let mut deps = init();
+
+        let info = cosmwasm_std::testing::mock_info("creator", &[]);
+
+        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+            batch_period: Some(86400),
+            unbonding_period: Some(1209600),
+            protocol_fee_config: Some(ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(10u128),
+            }),
+            multisig_address_config: Some(MultisigAddressConfig {
+                controller_address: Addr::unchecked(CELESTIA3),
+                staker_address: Addr::unchecked(CELESTIA1),
+                reward_collector_address: Addr::unchecked(CELESTIA2),
+            }),
+            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
+            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
+            reserve_token: Some(
+                "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA".to_string(),
+            ),
+            channel_id: Some("channel-0".to_string()),
+        };
+
+        let res = crate::contract::execute(
+            deps.as_mut(),
+            cosmwasm_std::testing::mock_env(),
+            info.clone(),
+            config_update_msg,
+        );
+        assert!(res.is_ok());
+
+        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+            batch_period: Some(86400),
+            unbonding_period: Some(1209600),
+            protocol_fee_config: Some(ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(10u128),
+            }),
+            multisig_address_config: Some(MultisigAddressConfig {
+                controller_address: Addr::unchecked(CELESTIA3),
+                staker_address: Addr::unchecked(CELESTIA1),
+                reward_collector_address: Addr::unchecked(CELESTIA2),
+            }),
+            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
+            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
+            reserve_token: Some("".to_string()),
+            channel_id: Some("channel-0".to_string()),
+        };
+        let res = crate::contract::execute(
+            deps.as_mut(),
+            cosmwasm_std::testing::mock_env(),
+            info.clone(),
+            config_update_msg,
+        );
+        assert!(res.is_err());
+
+        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+            batch_period: Some(86400),
+            unbonding_period: Some(1209600),
+            protocol_fee_config: Some(ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(10u128),
+            }),
+            multisig_address_config: Some(MultisigAddressConfig {
+                controller_address: Addr::unchecked(CELESTIA3),
+                staker_address: Addr::unchecked(CELESTIA1),
+                reward_collector_address: Addr::unchecked(CELESTIA2),
+            }),
+            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
+            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
+            reserve_token: Some("ibc/abc".to_string()),
+            channel_id: Some("".to_string()),
+        };
+        let res = crate::contract::execute(
+            deps.as_mut(),
+            cosmwasm_std::testing::mock_env(),
+            info.clone(),
+            config_update_msg,
+        );
+        assert!(res.is_err());
+
+        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+            batch_period: Some(86400),
+            unbonding_period: Some(1209600),
+            protocol_fee_config: Some(ProtocolFeeConfig {
+                dao_treasury_fee: Uint128::from(10u128),
+            }),
+            multisig_address_config: Some(MultisigAddressConfig {
+                controller_address: Addr::unchecked(CELESTIA3),
+                staker_address: Addr::unchecked(CELESTIA1),
+                reward_collector_address: Addr::unchecked(CELESTIA2),
+            }),
+            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
+            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
+            reserve_token: Some("".to_string()),
+            channel_id: Some("".to_string()),
+        };
+        let res = crate::contract::execute(
+            deps.as_mut(),
+            cosmwasm_std::testing::mock_env(),
+            info.clone(),
+            config_update_msg,
+        );
+        assert!(res.is_err());
+    }
 }

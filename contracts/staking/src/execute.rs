@@ -527,12 +527,23 @@ pub fn update_config(
     if channel_id.is_some() && reserve_token.is_none() {
         return Err(ContractError::IbcChannelNotFound {});
     }
-    if let Some(reserve_token) = reserve_token {
-        if channel_id.is_none() {
-            return Err(ContractError::IbcChannelNotFound {});
-        }
+
+    let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
+    if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
+    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if reserve_token.is_some() && channel_id.is_none()
+        || channel_id.is_some() && reserve_token.is_none()
+    {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if reserve_token.is_some() && channel_id.is_some() {
         config.ibc_channel_id = channel_id.unwrap();
-        config.native_token_denom = reserve_token;
+        config.native_token_denom = reserve_token.unwrap();
     }
 
     CONFIG.save(deps.storage, &config)?;
