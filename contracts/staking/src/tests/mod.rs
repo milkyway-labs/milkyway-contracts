@@ -8,3 +8,4 @@ mod test_helper;
 mod unstake_tests;
 mod validator_tests;
 mod withdraw_tests;
+mod query_tests;
