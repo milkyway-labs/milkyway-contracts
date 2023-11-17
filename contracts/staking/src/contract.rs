@@ -15,7 +15,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
@@ -173,7 +173,7 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: DepsMut, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),

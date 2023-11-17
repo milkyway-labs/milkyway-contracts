@@ -2,10 +2,10 @@ use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, LiquidUnstakeRequestResponse, StateResponse,
 };
 use crate::state::{BATCHES, CONFIG, STATE};
-use cosmwasm_std::{Decimal, DepsMut, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
 
-pub fn query_config(deps: DepsMut) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
 
     let res = ConfigResponse {
@@ -29,7 +29,7 @@ pub fn query_config(deps: DepsMut) -> StdResult<ConfigResponse> {
     Ok(res)
 }
 
-pub fn query_state(deps: DepsMut) -> StdResult<StateResponse> {
+pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
 
     let res = StateResponse {
@@ -68,12 +68,12 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
     }
 }
 
-pub fn query_batch(deps: DepsMut, id: u64) -> StdResult<BatchResponse> {
+pub fn query_batch(deps: Deps, id: u64) -> StdResult<BatchResponse> {
     let batch: Batch = BATCHES.load(deps.storage, id)?;
     Ok(batch_to_response(batch))
 }
 
-pub fn query_batches(deps: DepsMut) -> StdResult<BatchesResponse> {
+pub fn query_batches(deps: Deps) -> StdResult<BatchesResponse> {
     let batches = BATCHES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending);
 
     let res = BatchesResponse {
