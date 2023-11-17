@@ -12,7 +12,6 @@ mod query_tests {
         let msg = QueryMsg::Config {};
         let bin = query(deps.as_mut(), mock_env(), msg.clone()).unwrap();
         let result = from_binary::<ConfigResponse>(&bin);
-        println!("result {:?}", result);
         match result {
             Ok(res) => {
                 assert_eq!(res.native_token_denom, "osmoTIA".to_string());
@@ -62,7 +61,6 @@ mod query_tests {
         bin = query(deps.as_mut(), mock_env(), msg.clone()).unwrap();
         result = from_binary::<StateResponse>(&bin);
 
-        println!("result {:?}", result);
         match result {
             Ok(res) => {
                 assert_eq!(res.total_native_token, Uint128::from(1000u128));
