@@ -561,7 +561,27 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     }
 
     let amount = coin.unwrap().amount;
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
+    let fee = config
+        .protocol_fee_config
+        .dao_treasury_fee
+        .multiply_ratio(amount, 100_000u128);
+    let amount_after_fees = amount.checked_sub(fee);
+    if amount_after_fees.is_err() {
+        return Err(ContractError::FormatError {});
+    }
+    let amount_after_fees = amount_after_fees.unwrap();
+
+    // update the accounting of tokens
+    let mut state = STATE.load(deps.storage)?;
+
+    state.total_native_token += amount_after_fees.clone();
+    state.total_reward_amount += amount.clone();
+    state.total_fees += fee;
+
+    STATE.save(deps.storage, &state)?;
+
+    // transfer the funds to Celestia to be staked
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
 
     Ok(Response::new()
         .add_attribute("method", "receive_rewards")
