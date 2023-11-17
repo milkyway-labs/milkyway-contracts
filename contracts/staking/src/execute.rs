@@ -1,5 +1,8 @@
 use crate::error::{ContractError, ContractResult};
-use crate::helpers::{compute_mint_amount, compute_unbond_amount, derive_intermediate_sender};
+use crate::helpers::{
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
+    validate_addresses,
+};
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE,
 };
@@ -356,10 +359,8 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
-        bech32::decode(&new_validator);
-    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
-    let new_validator_addr = Addr::unchecked(&new_validator);
+    let new_validator_addr =
+        validate_address(new_validator.clone(), "celestiavaloper".to_string())?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -368,7 +369,7 @@ pub fn execute_add_validator(
         .any(|validator| *validator == new_validator_addr)
     {
         return Err(ContractError::DuplicateValidator {
-            validator: new_validator,
+            validator: new_validator.clone(),
         });
     }
 
@@ -393,10 +394,8 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
-        bech32::decode(&validator_to_remove);
-    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
-    let validator_addr_to_remove = Addr::unchecked(&validator_to_remove);
+    let validator_addr_to_remove =
+        validate_address(validator_to_remove.clone(), "celestiavaloper".to_string())?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -409,7 +408,7 @@ pub fn execute_remove_validator(
     } else {
         // If the validator is not found, return an error.
         return Err(ContractError::ValidatorNotFound {
-            validator: validator_to_remove,
+            validator: validator_to_remove.clone(),
         });
     }
 

@@ -41,7 +41,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let node_operators = validate_addresses(msg.node_operators, "osmo".to_string())?;
-    let validators = validate_addresses(msg.validators, "celestia".to_string())?;
+    let validators = validate_addresses(msg.validators, "celestiavaloper".to_string())?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
