@@ -49,9 +49,6 @@ pub enum ExecuteMsg {
 	SubmitBatch {
 		batch_id u64,
 	},
-
-	/// Call to claim unbonded amount and accrued staking rewards
-	Claim {}, 
 	
 	/// Add a validator from the validator set; callable by the owner
 	AddValidator { 
