@@ -1,10 +1,13 @@
+use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
-use crate::helpers::{compute_mint_amount, compute_unbond_amount, derive_intermediate_sender};
+use crate::helpers::{
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
+};
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE,
 };
 use cosmwasm_std::{
-    ensure, Addr, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
     Uint128,
 };
 use cw_utils::PaymentError;
@@ -356,10 +359,7 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
-        bech32::decode(&new_validator);
-    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
-    let new_validator_addr = Addr::unchecked(&new_validator);
+    let new_validator_addr = validate_address(new_validator.clone(), CELESTIA_VALIDATOR_PREFIX)?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -368,7 +368,7 @@ pub fn execute_add_validator(
         .any(|validator| *validator == new_validator_addr)
     {
         return Err(ContractError::DuplicateValidator {
-            validator: new_validator,
+            validator: new_validator.clone(),
         });
     }
 
@@ -393,10 +393,8 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
-        bech32::decode(&validator_to_remove);
-    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
-    let validator_addr_to_remove = Addr::unchecked(&validator_to_remove);
+    let validator_addr_to_remove =
+        validate_address(validator_to_remove.clone(), CELESTIA_VALIDATOR_PREFIX)?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -409,7 +407,7 @@ pub fn execute_remove_validator(
     } else {
         // If the validator is not found, return an error.
         return Err(ContractError::ValidatorNotFound {
-            validator: validator_to_remove,
+            validator: validator_to_remove.clone(),
         });
     }
 
@@ -499,10 +497,12 @@ pub fn update_config(
     minimum_rewards_to_collect: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
+    reserve_token: Option<String>,
+    channel_id: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let mut config = CONFIG.load(deps.storage)?;
+    let mut config: Config = CONFIG.load(deps.storage)?;
 
     if let Some(batch_period) = batch_period {
         config.batch_period = batch_period;
@@ -521,6 +521,27 @@ pub fn update_config(
     }
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
+    }
+    if channel_id.is_some() && reserve_token.is_none() {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+
+    let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
+    if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
+    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if reserve_token.is_some() && channel_id.is_none()
+        || channel_id.is_some() && reserve_token.is_none()
+    {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if reserve_token.is_some() && channel_id.is_some() {
+        config.ibc_channel_id = channel_id.unwrap();
+        config.native_token_denom = reserve_token.unwrap();
     }
 
     CONFIG.save(deps.storage, &config)?;
