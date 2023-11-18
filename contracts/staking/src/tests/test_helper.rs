@@ -27,7 +27,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         batch_period: 86400,
         unbonding_period: 1209600,
         protocol_fee_config: ProtocolFeeConfig {
-            dao_treasury_fee: Uint128::from(10u128),
+            dao_treasury_fee: Uint128::from(10000u128),
         },
         multisig_address_config: MultisigAddressConfig {
             controller_address: Addr::unchecked(CELESTIA3),

@@ -28,11 +28,12 @@ pub struct State {
     pub total_liquid_stake_token: Uint128,
     pub pending_owner: Option<Addr>,
     pub total_reward_amount: Uint128,
+    pub total_fees: Uint128,
 }
 
 #[cw_serde]
 pub struct ProtocolFeeConfig {
-    pub dao_treasury_fee: Uint128,
+    pub dao_treasury_fee: Uint128, // not using a fraction, fee percentage=x/100000
 }
 
 #[cw_serde]
