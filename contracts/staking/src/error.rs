@@ -83,4 +83,7 @@ pub enum ContractError {
 
     #[error("Config provided is wrong")]
     ConfigWrong {},
+
+    #[error("format error")]
+    FormatError {},
 }
