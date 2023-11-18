@@ -3,7 +3,7 @@ mod query_tests {
     use crate::contract::{execute, query};
     use crate::msg::{ConfigResponse, ExecuteMsg, QueryMsg, StateResponse};
     use crate::tests::test_helper::{
-        init, CELESTIA1, CELESTIA2, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
+        init, CELESTIAVAL1, CELESTIAVAL2, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, Decimal, Uint128};
@@ -25,7 +25,7 @@ mod query_tests {
                 assert_eq!(res.operators, vec![OSMO2.to_string(), OSMO3.to_string()]);
                 assert_eq!(
                     res.validators,
-                    vec![CELESTIA1.to_string(), CELESTIA2.to_string()]
+                    vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
                 );
                 assert_eq!(res.batch_period, 86400);
                 assert_eq!(res.unbonding_period, 1209600);

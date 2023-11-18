@@ -2,7 +2,7 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, receive_rewards, receive_unstaked_tokens,
     resume_contract, update_config,
 };
-use crate::helpers::validate_addresses;
+use crate::helpers::{validate_address, validate_addresses};
 use crate::query::{query_batch, query_batches, query_config, query_state};
 use crate::state::{Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
 use crate::{
@@ -28,6 +28,10 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
+pub const CELESTIA_ACCOUNT_PREFIX: &str = &"celestia";
+pub const OSMOSIS_ACCOUNT_PREFIX: &str = &"osmo";
+pub const CELESTIA_VALIDATOR_PREFIX: &str = &"celestiavaloper";
+
 ///////////////////
 /// INSTANTIATE ///
 ///////////////////
@@ -40,12 +44,34 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let api = deps.api;
-    let operators = validate_addresses(api, msg.operators, "osmo".to_string())?;
-    let validators = validate_addresses(api, msg.validators, "celestia".to_string())?;
+    let operators = validate_addresses(msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
+    let validators = validate_addresses(msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+
+    if msg.ibc_channel_id == "" {
+        return Err(ContractError::ConfigWrong {});
+    }
+
+    if msg.native_token_denom == "" {
+        return Err(ContractError::ConfigWrong {});
+    }
+
+    validate_address(
+        msg.multisig_address_config.controller_address.to_string(),
+        &CELESTIA_ACCOUNT_PREFIX.to_string(),
+    )?;
+    validate_address(
+        msg.multisig_address_config
+            .reward_collector_address
+            .to_string(),
+        &CELESTIA_ACCOUNT_PREFIX,
+    )?;
+    validate_address(
+        msg.multisig_address_config.staker_address.to_string(),
+        &CELESTIA_ACCOUNT_PREFIX,
+    )?;
 
     // Init Config
     let config = Config {
@@ -66,8 +92,6 @@ pub fn instantiate(
         stopped: false,
     };
 
-    // TODO: Add validations
-
     CONFIG.save(deps.storage, &config)?;
 
     // Init State
@@ -76,6 +100,7 @@ pub fn instantiate(
         total_liquid_stake_token: Uint128::zero(),
         pending_owner: None,
         total_reward_amount: Uint128::zero(),
+        total_fees: Uint128::zero(),
     };
     STATE.save(deps.storage, &state)?;
 
@@ -151,6 +176,8 @@ pub fn execute(
             minimum_liquid_stake_amount,
             multisig_address_config,
             protocol_fee_config,
+            reserve_token,
+            channel_id,
         } => update_config(
             deps,
             env,
@@ -160,6 +187,8 @@ pub fn execute(
             minimum_liquid_stake_amount,
             multisig_address_config,
             protocol_fee_config,
+            reserve_token,
+            channel_id,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
