@@ -1,13 +1,13 @@
+use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
-    validate_addresses,
 };
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE,
 };
 use cosmwasm_std::{
-    ensure, Addr, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
     Uint128,
 };
 use cw_utils::PaymentError;
@@ -359,8 +359,7 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr =
-        validate_address(new_validator.clone(), "celestiavaloper".to_string())?;
+    let new_validator_addr = validate_address(new_validator.clone(), CELESTIA_VALIDATOR_PREFIX)?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -395,7 +394,7 @@ pub fn execute_remove_validator(
 
     let mut config = CONFIG.load(deps.storage)?;
     let validator_addr_to_remove =
-        validate_address(validator_to_remove.clone(), "celestiavaloper".to_string())?;
+        validate_address(validator_to_remove.clone(), CELESTIA_VALIDATOR_PREFIX)?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config

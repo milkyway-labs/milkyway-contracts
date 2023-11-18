@@ -28,6 +28,10 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
+pub const CELESTIA_ACCOUNT_PREFIX: &str = &"celestia";
+pub const OSMOSIS_ACCOUNT_PREFIX: &str = &"osmo";
+pub const CELESTIA_VALIDATOR_PREFIX: &str = &"celestiavaloper";
+
 ///////////////////
 /// INSTANTIATE ///
 ///////////////////
@@ -40,8 +44,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let node_operators = validate_addresses(msg.node_operators, "osmo".to_string())?;
-    let validators = validate_addresses(msg.validators, "celestiavaloper".to_string())?;
+    let node_operators = validate_addresses(msg.node_operators, OSMOSIS_ACCOUNT_PREFIX)?;
+    let validators = validate_addresses(msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -56,17 +60,17 @@ pub fn instantiate(
 
     validate_address(
         msg.multisig_address_config.controller_address.to_string(),
-        "celestia".to_string(),
+        &CELESTIA_ACCOUNT_PREFIX.to_string(),
     )?;
     validate_address(
         msg.multisig_address_config
             .reward_collector_address
             .to_string(),
-        "celestia".to_string(),
+        &CELESTIA_ACCOUNT_PREFIX,
     )?;
     validate_address(
         msg.multisig_address_config.staker_address.to_string(),
-        "celestia".to_string(),
+        &CELESTIA_ACCOUNT_PREFIX,
     )?;
 
     // Init Config

@@ -2,14 +2,14 @@ use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
-pub fn validate_address(address: String, prefix: String) -> StdResult<Addr> {
+pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
 
     if validated_addr.is_err() {
         return Err(StdError::generic_err("Invalid address"));
     }
 
-    if validated_addr.unwrap().0 != prefix {
+    if &validated_addr.unwrap().0 != prefix {
         return Err(StdError::generic_err("Invalid address prefix"));
     }
 
@@ -17,12 +17,12 @@ pub fn validate_address(address: String, prefix: String) -> StdResult<Addr> {
 }
 
 // Validates addresses are valid and unique and returns a vector of validated addresses
-pub fn validate_addresses(addresses: Vec<String>, prefix: String) -> StdResult<Vec<Addr>> {
+pub fn validate_addresses(addresses: Vec<String>, prefix: &str) -> StdResult<Vec<Addr>> {
     let mut validated = Vec::new();
     let mut seen = HashSet::new();
 
     for address in addresses {
-        let validated_addr = validate_address(address.clone(), prefix.clone())?;
+        let validated_addr = validate_address(address.clone(), prefix)?;
 
         if seen.contains(&address) {
             return Err(StdError::generic_err("Duplicate address"));
@@ -109,7 +109,7 @@ mod tests {
             "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         ];
 
-        let result = validate_addresses(addresses, "osmo".to_string()).unwrap();
+        let result = validate_addresses(addresses, &"osmo".to_string()).unwrap();
 
         assert_eq!(2, result.len());
     }
@@ -121,7 +121,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(addresses, "osmo".to_string());
+        let result = validate_addresses(addresses, &"osmo".to_string());
 
         assert!(result.is_err());
     }
@@ -132,7 +132,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(addresses, "osmo".to_string());
+        let result = validate_addresses(addresses, &"osmo".to_string());
 
         assert!(result.is_err());
     }
@@ -144,7 +144,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(addresses, "celestia".to_string());
+        let result = validate_addresses(addresses, &"celestia".to_string());
 
         assert!(result.is_err());
     }
