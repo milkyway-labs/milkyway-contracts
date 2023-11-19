@@ -4,73 +4,74 @@
 
 ```rust
 pub struct InstantiateMsg {
-	/// Denomination of underlying token (IBC denom of TIA)
-    pub native_token_denom: Denom, 
+    /// Denomination of underlying token (IBC denom of TIA)
+    pub native_token_denom: Denom,
 
-	/// Denomination of the liquid staking token (stTIA)
+    /// Denomination of the liquid staking token (stTIA)
     pub liquid_stake_token_denom: Denom,
 
-	/// Treasury contract address
-	pub treasury_address: String, 
+    /// Treasury contract address
+    pub treasury_address: String,
 
-	/// Set of operators who will operate the protocol
+    /// Set of operators who will operate the protocol
     pub operators: Vec<String>,
 
-	/// Set of validators who will receive the delegations
-	pub validators: Vec<String>, 
+    /// Set of validators who will receive the delegations
+    pub validators: Vec<String>,
 
-	/// How often the unbonding queue is to be executed in seconds
+    /// How often the unbonding queue is to be executed in seconds
     pub batch_period: u64,
 
-	/// The staking module's unbonding period for Celestia in seconds
+    /// The staking module's unbonding period for Celestia in seconds
     pub unbonding_period: u64,
 
-	/// Protocol fee configuration
-    pub protocol_fee_config: ProtocolFeeConfig, 
+    /// Protocol fee configuration
+    pub protocol_fee_config: ProtocolFeeConfig,
 
-	/// Multisig address configuration
-    pub multisig_address_config: MultisigAddressConfig, 
-	
-	/// Minimum amount to liquid stake
-	pub minimum_liquid_stake_amount: Uint128,
+    /// Multisig address configuration
+    pub multisig_address_config: MultisigAddressConfig,
+
+    /// Minimum amount to liquid stake
+    pub minimum_liquid_stake_amount: Uint128,
 }
+
 ```
 
 ## ExecuteMsg
 
 ```rust
 pub enum ExecuteMsg {
-	/// Call to initiate bonding process for a user
-    LiquidStake {}, 
-	
-	/// Call to initiate unbonding process for a user
-	LiquidUnstake {},
+    /// Call to initiate bonding process for a user
+    LiquidStake {},
 
-	SubmitBatch {
-		batch_id u64,
-	},
-	
-	/// Add a validator from the validator set; callable by the owner
-	AddValidator { 
-		new_validator: String,
-	},
+    /// Call to initiate unbonding process for a user
+    LiquidUnstake {},
 
-	/// Remove a validator from the validator set; callable by the owner
-	RemoveValidator {
-		validator: String,
-	},
+    SubmitBatch {
+      batch_id u64,
+    },
 
-	/// Transfer ownership to another account; callable by the owner
-	/// This will require the new owner to accept to take effect.
-	TransferOwnership {
-		new_owner: String,
-	}
+    /// Add a validator from the validator set; callable by the owner
+    AddValidator {
+      new_validator: String,
+    },
 
-	/// Accept an ownership transfer; callable by the new owner
-	AcceptOwnership {},
+    /// Remove a validator from the validator set; callable by the owner
+    RemoveValidator {
+      validator: String,
+    },
 
-	/// Revoke an ownership transfer; callable by the owner
-	RevokeOwnershipTransfer {},
+    /// Transfer ownership to another account; callable by the owner
+    /// This will require the new owner to accept to take effect.
+    TransferOwnership {
+      new_owner: String,
+    }
+
+    /// Accept an ownership transfer; callable by the new owner
+    AcceptOwnership {},
+
+    /// Revoke an ownership transfer; callable by the owner
+    RevokeOwnershipTransfer {},
 }
 ```
 
@@ -94,39 +95,35 @@ pub enum QueryMsg {
 1. Get Config
 
 ```json
-{ 
-	// Denomination of underlying token (IBC denom of TIA)
-	"native_token_denom": "NATIVE_TOKEN_DENOM",
-	// Denomination of the liquid staking token (stTIA)
-	"liquid_stake_token_denom": "LIQUID_STAKE_TOKEN_DENOM", 
-	// Treasury contract address
-	"treasury_address": "TREASURY_ADDR", 
-	// Treasury contract address
-	"operators": ["OPERATOR_ADDR_1", "OPERATOR_ADDR_2"], 
-	//Set of validators who will receive the delegations
-	"validators": ["VALIDATOR_ADDR_1", "VALIDATOR_ADDR_2"], 
-	// How often the unbonding queue is to be executed in seconds
-	"batch_period": 86400, 
-	// The staking module's unbonding period for Celestia in seconds
-	"unbonding_period": 1209600, 
-	// Minimum amount to liquid stake
-	"minimum_liquid_stake_amount": 100 
-} 
+{
+    "native_token_denom": "NATIVE_TOKEN_DENOM",
+    "liquid_stake_token_denom": "LIQUID_STAKE_TOKEN_DENOM",
+    "treasury_address": "TREASURY_ADDR",
+    "operators": ["OPERATOR_ADDR_1", "OPERATOR_ADDR_2"],
+    "validators": ["VALIDATOR_ADDR_1", "VALIDATOR_ADDR_2"],
+    "batch_period": 86400,
+    "unbonding_period": 1209600,
+    "minimum_liquid_stake_amount": 100
+}
 ```
 
 2. Get State
 
 ```json
-{ 
-	"total_native_token": 1000000000, 
-	"total_liquid_stake_token": 1000000000,
-	"rate": 1,
-	"pending_owner": "", 
-	"total_reward_amount": 100000
+{
+    "total_native_token": 1000000000,
+    "total_liquid_stake_token": 1000000000,
+    "rate": 1,
+    "pending_owner": "",
+    "total_reward_amount": 100000
 }
 ```
 
 3. Get Batch
+
+| Param  | Type   |                     |
+|--------|--------|---------------------|
+| id     | number | The batch id to get |
 
 ```json
 {
