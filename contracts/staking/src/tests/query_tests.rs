@@ -163,7 +163,7 @@ mod query_tests {
         // 1. total_liquid_stake_token < unstake amount
         // 2. total_liquid_stake_token == 0
         let mut state = STATE.load(&deps.storage).unwrap();
-        state.total_liquid_stake_token = Uint128::from(100u128);
+        state.total_liquid_stake_token = Uint128::from(100_000_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         match result {

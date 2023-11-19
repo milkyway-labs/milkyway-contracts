@@ -78,6 +78,12 @@ pub enum ContractError {
         expected: BatchStatus,
     },
 
+    #[error("Minimum liquid stake amount not met")]
+    InvalidUnstakeAmount {
+        total_liquid_stake_token: Uint128,
+        amount_to_unstake: Uint128,
+    },
+
     #[error("contract was intentionally halted")]
     Halted {},
 
