@@ -44,6 +44,7 @@ sed -i -E 's|tcp://127.0.0.1:26657|tcp://0.0.0.0:26661|g' $VALIDATOR1_CONFIG
 sed -i -E 's|tcp://0.0.0.0:26656|tcp://0.0.0.0:26660|g' $VALIDATOR1_CONFIG
 sed -i -E 's|allow_duplicate_ip = false|allow_duplicate_ip = true|g' $VALIDATOR1_CONFIG
 sed -i -E 's#"null"#"kv"#g' $VALIDATOR1_CONFIG
+sed -i -E 's|discard_abci_responses = true|discard_abci_responses = false|g' $VALIDATOR1_CONFIG
 # validator2
 sed -i -E 's|tcp://127.0.0.1:26658|tcp://0.0.0.0:26655|g' $VALIDATOR2_CONFIG
 sed -i -E 's|tcp://127.0.0.1:26657|tcp://0.0.0.0:26654|g' $VALIDATOR2_CONFIG
