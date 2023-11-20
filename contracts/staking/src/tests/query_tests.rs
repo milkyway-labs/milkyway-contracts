@@ -205,16 +205,6 @@ mod query_tests {
         // check the state
         bin = query(deps.as_ref(), env.clone(), msg).unwrap();
         result = from_binary::<BatchesResponse>(&bin);
-        // println!("result: {:?}", result);
-        // match result {
-        //     Ok(data) => {
-        //         let json_string = serde_json::to_string_pretty(&data).unwrap(); // Assuming data implements Serialize
-        //         println!("result in JSON format: {}", json_string);
-        //     },
-        //     Err(e) => {
-        //         println!("error: {}", e);
-        //     },
-        // }
         match result {
             Ok(res) => {
                 assert_eq!(res.batches.len(), 2);
