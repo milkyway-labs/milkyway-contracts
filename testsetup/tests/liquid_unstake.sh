@@ -18,3 +18,11 @@ BATCH_ID=$(osmosisd tx wasm execute $CONTRACT '{"liquid_unstake":{}}' \
 
 # check liquid unstake request
 osmosisd query wasm contract-state smart $CONTRACT '{"batch":{"id":1}}'
+
+# unstake on celestia
+CELESTIA_VALIDATOR_1=$(celestia-appd query staking validators --node http://localhost:26661 --output json | jq -r '.validators[] | select(.description.moniker == "validator1") | .operator_address')
+CELESTIA_VALIDATOR_2=$(celestia-appd query staking validators --node http://localhost:26661 --output json | jq -r '.validators[] | select(.description.moniker == "validator2") | .operator_address')
+CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node http://localhost:26661 --output json | jq -r '.validators[] | select(.description.moniker == "validator3") | .operator_address')
+CELESTIA_VALIDATOR_2_OPERATOR=$(celestia-appd keys show validator2 --keyring-backend=test --home=$HOME/.celestia-app/validator2 --output json | jq -r '.address')
+celestia-appd tx staking unbond $CELESTIA_VALIDATOR_2 10utia --from validator2 --chain-id="celestia-dev-1" --broadcast-mode block --node http://localhost:26661 --yes --keyring-backend=test --home=$HOME/.celestia-app/validator2 --fees 21000utia
+celestia-appd query staking --node http://localhost:26661 unbonding-delegation $CELESTIA_VALIDATOR_2_OPERATOR $CELESTIA_VALIDATOR_2
