@@ -65,7 +65,7 @@ pub fn execute_liquid_stake(
 
     let mut state = STATE.load(deps.storage)?;
     ensure!(
-        amount > config.minimum_liquid_stake_amount,
+        amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)
@@ -127,7 +127,7 @@ pub fn execute_liquid_unstake(
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
     ensure!(
-        amount > config.minimum_liquid_stake_amount,
+        amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)
@@ -253,6 +253,16 @@ pub fn execute_submit_batch(
         }),
         burn_from_address: env.contract.address.to_string(),
     };
+
+    // TODO: Circuit break?
+    // Need to add a test for this
+    ensure!(
+        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
+        ContractError::InvalidUnstakeAmount {
+            total_liquid_stake_token: (state.total_liquid_stake_token),
+            amount_to_unstake: (batch.batch_total_liquid_stake)
+        }
+    );
 
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,
@@ -494,7 +504,6 @@ pub fn update_config(
     batch_period: Option<u64>,
     unbonding_period: Option<u64>,
     minimum_liquid_stake_amount: Option<Uint128>,
-    minimum_rewards_to_collect: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
     reserve_token: Option<String>,
@@ -512,9 +521,6 @@ pub fn update_config(
     }
     if let Some(minimum_liquid_stake_amount) = minimum_liquid_stake_amount {
         config.minimum_liquid_stake_amount = minimum_liquid_stake_amount;
-    }
-    if let Some(minimum_rewards_to_collect) = minimum_rewards_to_collect {
-        config.minimum_rewards_to_collect = minimum_rewards_to_collect;
     }
     if let Some(multisig_address_config) = multisig_address_config {
         config.multisig_address_config = multisig_address_config;
@@ -686,7 +692,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if !config.node_operators.iter().any(|v| *v == sender) {
+    if !config.operators.iter().any(|v| *v == sender) {
         return Err(ContractError::Unauthorized { sender });
     }
 

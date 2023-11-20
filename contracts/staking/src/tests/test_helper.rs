@@ -25,7 +25,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         native_token_denom: NATIVE_TOKEN.to_string(),
         liquid_stake_token_denom: "stTIA".to_string(),
         treasury_address: OSMO1.to_string(),
-        node_operators: vec![OSMO2.to_string(), OSMO3.to_string()],
+        operators: vec![OSMO2.to_string(), OSMO3.to_string()],
         validators: vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()],
         batch_period: 86400,
         unbonding_period: 1209600,
@@ -38,7 +38,6 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
             reward_collector_address: Addr::unchecked(CELESTIA2),
         },
         minimum_liquid_stake_amount: Uint128::from(100u128),
-        minimum_rewards_to_collect: Uint128::from(10u128),
         ibc_channel_id: CHANNEL_ID.to_string(),
     };
     let info = mock_info("creator", &coins(1000, "uosmo"));

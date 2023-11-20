@@ -31,7 +31,7 @@ mod tests {
                 native_token_denom: NATIVE_TOKEN.to_string(),
                 liquid_stake_token_denom: "stTIA".to_string(),
                 treasury_address: OSMO1.to_string(),
-                node_operators: vec![OSMO2.to_string(), OSMO3.to_string()],
+                operators: vec![OSMO2.to_string(), OSMO3.to_string()],
                 validators: vec![CELESTIA1.to_string(), CELESTIA2.to_string()],
                 batch_period: 86400,
                 unbonding_period: 1209600,
@@ -44,7 +44,6 @@ mod tests {
                     reward_collector_address: Addr::unchecked(CELESTIA2),
                 },
                 minimum_liquid_stake_amount: Uint128::from(100u128),
-                minimum_rewards_to_collect: Uint128::from(10u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
             }
         }
@@ -82,7 +81,7 @@ mod tests {
         assert!(res.is_err());
 
         let mut msg = get_msg();
-        msg.node_operators[1] = "".to_string();
+        msg.operators[1] = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -92,7 +91,7 @@ mod tests {
         assert!(res.is_err());
 
         let mut msg = get_msg();
-        msg.node_operators[1] = CELESTIA1.to_string();
+        msg.operators[1] = CELESTIA1.to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -160,7 +159,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
             reserve_token: Some(
                 "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA".to_string(),
             ),
@@ -187,7 +185,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
             reserve_token: Some("".to_string()),
             channel_id: Some("channel-0".to_string()),
         };
@@ -211,7 +208,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
             reserve_token: Some("ibc/abc".to_string()),
             channel_id: Some("".to_string()),
         };
@@ -235,7 +231,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_rewards_to_collect: Some(Uint128::from(10u128)),
             reserve_token: Some("".to_string()),
             channel_id: Some("".to_string()),
         };

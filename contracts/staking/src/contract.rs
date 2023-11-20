@@ -44,7 +44,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let node_operators = validate_addresses(msg.node_operators, OSMOSIS_ACCOUNT_PREFIX)?;
+    let operators = validate_addresses(msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
     let validators = validate_addresses(msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
@@ -81,14 +81,13 @@ pub fn instantiate(
             env.contract.address, msg.liquid_stake_token_denom
         ), //TODO determine the format to save in
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
-        node_operators,
+        operators,
         validators,
         batch_period: msg.batch_period,
         unbonding_period: msg.unbonding_period,
         protocol_fee_config: msg.protocol_fee_config,
         multisig_address_config: msg.multisig_address_config,
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
-        minimum_rewards_to_collect: msg.minimum_rewards_to_collect,
         ibc_channel_id: msg.ibc_channel_id.clone(),
         stopped: false,
     };
@@ -175,7 +174,6 @@ pub fn execute(
             batch_period,
             unbonding_period,
             minimum_liquid_stake_amount,
-            minimum_rewards_to_collect,
             multisig_address_config,
             protocol_fee_config,
             reserve_token,
@@ -187,7 +185,6 @@ pub fn execute(
             batch_period,
             unbonding_period,
             minimum_liquid_stake_amount,
-            minimum_rewards_to_collect,
             multisig_address_config,
             protocol_fee_config,
             reserve_token,
