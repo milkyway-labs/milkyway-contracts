@@ -159,9 +159,6 @@ mod staking_tests {
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        // CHK
-        // If minimum == 100, shouldn't we allow 100?
-        // amount >= minimum
         let info = mock_info("bob", &coins(100, "factory/cosmos2contract/stTIA"));
         let msg = ExecuteMsg::LiquidUnstake {};
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
