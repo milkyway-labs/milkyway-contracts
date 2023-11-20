@@ -19,7 +19,7 @@ mod submit_batch_tests {
 
         // print!("{:?}", msgs);
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
 
         let contract = env.contract.address.clone().to_string();
 
@@ -42,7 +42,7 @@ mod submit_batch_tests {
 
         // batch isnt ready
         env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
 
         let contract = env.contract.address.clone().to_string();
 

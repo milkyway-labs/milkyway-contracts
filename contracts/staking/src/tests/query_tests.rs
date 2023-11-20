@@ -2,12 +2,12 @@
 mod query_tests {
     // use serde_json;
     use crate::contract::{execute, query};
-    use crate::error::ContractError;
     use crate::msg::{
         BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, LiquidUnstakeRequestResponse,
         QueryMsg, StateResponse,
     };
-    use crate::state::{Config, CONFIG, STATE};
+    use crate::query::query_pending_batch;
+    use crate::state::{CONFIG, STATE};
     use crate::tests::test_helper::{
         init, CELESTIAVAL1, CELESTIAVAL2, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
@@ -191,7 +191,7 @@ mod query_tests {
         // submit batch
         let config = CONFIG.load(&deps.storage).unwrap();
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let submit_batch_msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let submit_batch_msg = ExecuteMsg::SubmitBatch {};
         let contract = env.contract.address.clone().to_string();
         let submit_info = mock_info(&contract, &[]);
         let res = execute(deps.as_mut(), env.clone(), submit_info, submit_batch_msg);
@@ -247,5 +247,40 @@ mod query_tests {
                 _ => panic!("Unexpected error: {:?}", e),
             },
         }
+    }
+
+    #[test]
+    fn get_pending_batch() {
+        let mut deps = init();
+        let mut env = mock_env();
+
+        let pending_batch_id = query_pending_batch(deps.as_ref());
+        assert!(pending_batch_id.unwrap().id == 1);
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+        let msg = ExecuteMsg::LiquidUnstake {};
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+
+        env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
+        let submit_batch_msg = ExecuteMsg::SubmitBatch {};
+        let contract = env.contract.address.clone().to_string();
+        let submit_info = mock_info(&contract, &[]);
+        let res = execute(deps.as_mut(), env.clone(), submit_info, submit_batch_msg);
+        if res.is_err() {
+            // print error
+            let err = res.err().unwrap();
+            panic!("Error: {:?}", err);
+        }
+        assert!(res.is_ok());
+
+        let pending_batch_id = query_pending_batch(deps.as_ref());
+        assert!(pending_batch_id.unwrap().id == 2);
     }
 }
