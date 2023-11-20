@@ -255,7 +255,6 @@ mod staking_tests {
         assert_eq!(attrs[2].value, "1"); // batch id
         assert_eq!(attrs[3].value, "1000000000");
 
-        // CHK: Is that possible unstaking large amount than total_liquid_stake_token?
         // total_liquid_stake_token = 100_000
         // unstake = 1_000_000_000
         let batch = BATCHES.load(&deps.storage, 1).unwrap();
