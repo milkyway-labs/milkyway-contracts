@@ -257,7 +257,7 @@ pub fn execute_submit_batch(
     // TODO: Circuit break?
     // Need to add a test for this
     ensure!(
-        state.total_liquid_stake_token > batch.batch_total_liquid_stake,
+        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
         ContractError::InvalidUnstakeAmount {
             total_liquid_stake_token: (state.total_liquid_stake_token),
             amount_to_unstake: (batch.batch_total_liquid_stake)
