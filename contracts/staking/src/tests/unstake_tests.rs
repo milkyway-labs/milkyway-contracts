@@ -167,9 +167,6 @@ mod staking_tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
         assert!(res.is_ok());
 
-        // CHK
-        // If minimum == 100, shouldn't we allow 100?
-        // amount >= minimum
         let info = mock_info("bob", &coins(99, "factory/cosmos2contract/stTIA"));
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
