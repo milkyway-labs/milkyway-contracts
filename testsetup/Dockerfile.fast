@@ -41,6 +41,13 @@ COPY ./local-hermes-new-fast.sh ./local-hermes-new.sh
 COPY ./local-account.sh ./local-account.sh
 COPY ./hermes-config-fast.toml ./hermes-config.toml
 COPY ./local-hermes-clear-packets.sh ./local-hermes-clear-packets.sh
+
+EXPOSE 26661
+EXPOSE 26657
+EXPOSE 1317
+EXPOSE 1314
+EXPOSE 9090
+
 CMD sh ./local-celestia-testnet-multi-continue.sh && \
     sh ./local-osmosis-testnet-continue.sh && \
     sh ./check-node-running.sh osmosis1 && \

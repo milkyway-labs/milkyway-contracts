@@ -11,7 +11,7 @@ docker build ./testsetup --tag mw-testnet
 Now you can always boot into the clean config
 
 ```
-docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 docker.io/library/mw-testnet
+docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 -p 9090:9090 docker.io/library/mw-testnet
 ```
 
 Test accounts are funded, check out `./local-accounts.sh`
@@ -49,7 +49,7 @@ This will stop working after an hour as the bridge will be out of sync
 ```
 cd testsetup
 docker build . --file Dockerfile.fast --tag mw-testnet:fast
-docker run --name mw-testnet-fast -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 docker.io/library/mw-testnet:fast
+docker run --name mw-testnet-fast -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 -p 9090:9090 docker.io/library/mw-testnet:fast
 ```
 
 Check Docker logs to see when the bridge is ready ("--- HERMES READY ---")

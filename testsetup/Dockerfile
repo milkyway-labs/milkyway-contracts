@@ -52,6 +52,7 @@ EXPOSE 26661
 EXPOSE 26657
 EXPOSE 1317
 EXPOSE 1314
+EXPOSE 9090
 
 # last command needs to be persistant to keep container running
 CMD sh ./local-celestia-testnet-multi-continue.sh && \
