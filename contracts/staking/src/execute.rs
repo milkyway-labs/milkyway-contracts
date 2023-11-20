@@ -225,15 +225,6 @@ pub fn execute_submit_batch(
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
-    // Update batch status
-    batch.update_status(
-        BatchStatus::Submitted,
-        Some(env.block.time.seconds() + config.unbonding_period),
-    );
-
-    // Move pending batch to batches
-    BATCHES.save(deps.storage, batch.id, &batch)?;
-
     // Create new pending batch
     let new_pending_batch = Batch::new(
         batch.id + 1,
@@ -286,11 +277,21 @@ pub fn execute_submit_batch(
 
     STATE.save(deps.storage, &state)?;
 
+    // Update batch status
+    batch.expected_native_unstaked = Some(unbond_amount);
+    batch.update_status(
+        BatchStatus::Submitted,
+        Some(env.block.time.seconds() + config.unbonding_period),
+    );
+
+    BATCHES.save(deps.storage, batch.id, &batch)?;
+
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", batch.id.to_string())
-        .add_attribute("batch_total", batch.batch_total_liquid_stake))
+        .add_attribute("batch_total", batch.batch_total_liquid_stake)
+        .add_attribute("expected_native_unstaked", unbond_amount))
 }
 
 // doing a "push over pool" pattern for now
