@@ -136,12 +136,14 @@ mod query_tests {
                     vec![
                         LiquidUnstakeRequestResponse {
                             user: "alice".to_string(),
-                            amount: Uint128::from(1500u128)
+                            amount: Uint128::from(1500u128),
+                            redeemed: false,
                         },
                         LiquidUnstakeRequestResponse {
                             user: "bob".to_string(),
-                            amount: Uint128::from(500u128)
-                        }
+                            amount: Uint128::from(500u128),
+                            redeemed: false,
+                        },
                     ]
                 )
             }
@@ -217,7 +219,8 @@ mod query_tests {
                         first_batch.requests,
                         vec![LiquidUnstakeRequestResponse {
                             user: "bob".to_string(),
-                            amount: Uint128::from(500u128)
+                            amount: Uint128::from(500u128),
+                            redeemed: false,
                         }]
                     )
                 } else {
@@ -236,7 +239,8 @@ mod query_tests {
                         first_batch.requests,
                         vec![LiquidUnstakeRequestResponse {
                             user: "alice".to_string(),
-                            amount: Uint128::from(1500u128)
+                            amount: Uint128::from(1500u128),
+                            redeemed: false,
                         }]
                     )
                 } else {
