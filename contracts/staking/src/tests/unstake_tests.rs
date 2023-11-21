@@ -41,7 +41,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
         res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
         let attrs = res.unwrap().attributes;
@@ -117,7 +117,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
 
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
         res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         let resp = res.unwrap();
         let attrs = resp.attributes;
@@ -264,7 +264,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         resp = res.unwrap();
 
@@ -294,7 +294,10 @@ mod staking_tests {
 
         // check the state
         state = STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.total_liquid_stake_token, Uint128::from(99000000000u128));
+        assert_eq!(
+            state.total_liquid_stake_token,
+            Uint128::from(99000000000u128)
+        );
         assert_eq!(state.total_native_token, Uint128::from(0u128));
 
         // check the batch

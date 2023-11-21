@@ -34,9 +34,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {},
     LiquidUnstake {},
-    SubmitBatch {
-        batch_id: u64,
-    },
+    SubmitBatch {},
     Withdraw {
         batch_id: u64,
     },
@@ -93,6 +91,7 @@ pub struct LiquidUnstakeRequestResponse {
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchResponse {
+    pub id: u64,
     pub batch_total_liquid_stake: Uint128,
     pub expected_native_unstaked: Uint128,
     pub next_batch_action_time: Timestamp,
@@ -115,6 +114,8 @@ pub enum QueryMsg {
     Batch { id: u64 },
     #[returns(BatchesResponse)]
     Batches {},
+    #[returns(BatchResponse)]
+    PendingBatch {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
