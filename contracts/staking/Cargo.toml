@@ -27,6 +27,7 @@ cw2 = { workspace = true }
 # cw20 = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
+serde_json = "1.0"
 thiserror = { workspace = true }
 osmosis-std = { workspace = true }
 # osmo-bindings = "0.6.0"
@@ -37,6 +38,7 @@ milky_way = { path = "../../packages/milky_way" }
 bech32 = "0.9.1"
 bech32-no_std = "0.7.3"
 sha2 = "0.10.8"
+regex = "1.10.2"
 
 [dev-dependencies]
 cw-multi-test = "0.17.0"

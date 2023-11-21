@@ -73,7 +73,6 @@ make install
 cd ..
 git clone https://github.com/informalsystems/hermes
 cd hermes
-make install
 pr `cargo install ibc-relayer-cli --bin hermes --locked`
 
 ```

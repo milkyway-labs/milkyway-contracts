@@ -1,10 +1,13 @@
+use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
-use crate::helpers::{compute_mint_amount, compute_unbond_amount, derive_intermediate_sender};
+use crate::helpers::{
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
+};
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE,
 };
 use cosmwasm_std::{
-    ensure, Addr, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
     Uint128,
 };
 use cw_utils::PaymentError;
@@ -62,7 +65,7 @@ pub fn execute_liquid_stake(
 
     let mut state = STATE.load(deps.storage)?;
     ensure!(
-        amount > config.minimum_liquid_stake_amount,
+        amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)
@@ -124,7 +127,7 @@ pub fn execute_liquid_unstake(
     // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
     // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
     ensure!(
-        amount > config.minimum_liquid_stake_amount,
+        amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
             minimum_stake_amount: (config.minimum_liquid_stake_amount),
             sent_amount: (amount)
@@ -251,6 +254,16 @@ pub fn execute_submit_batch(
         burn_from_address: env.contract.address.to_string(),
     };
 
+    // TODO: Circuit break?
+    // Need to add a test for this
+    ensure!(
+        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
+        ContractError::InvalidUnstakeAmount {
+            total_liquid_stake_token: (state.total_liquid_stake_token),
+            amount_to_unstake: (batch.batch_total_liquid_stake)
+        }
+    );
+
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,
         state.total_liquid_stake_token,
@@ -356,10 +369,7 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
-        bech32::decode(&new_validator);
-    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
-    let new_validator_addr = Addr::unchecked(&new_validator);
+    let new_validator_addr = validate_address(new_validator.clone(), CELESTIA_VALIDATOR_PREFIX)?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -368,7 +378,7 @@ pub fn execute_add_validator(
         .any(|validator| *validator == new_validator_addr)
     {
         return Err(ContractError::DuplicateValidator {
-            validator: new_validator,
+            validator: new_validator.clone(),
         });
     }
 
@@ -393,10 +403,8 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validated: Result<(String, Vec<bech32::u5>, bech32::Variant), bech32::Error> =
-        bech32::decode(&validator_to_remove);
-    ensure!(validated.is_ok(), ContractError::InvalidAddress {});
-    let validator_addr_to_remove = Addr::unchecked(&validator_to_remove);
+    let validator_addr_to_remove =
+        validate_address(validator_to_remove.clone(), CELESTIA_VALIDATOR_PREFIX)?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -409,7 +417,7 @@ pub fn execute_remove_validator(
     } else {
         // If the validator is not found, return an error.
         return Err(ContractError::ValidatorNotFound {
-            validator: validator_to_remove,
+            validator: validator_to_remove.clone(),
         });
     }
 
@@ -496,13 +504,14 @@ pub fn update_config(
     batch_period: Option<u64>,
     unbonding_period: Option<u64>,
     minimum_liquid_stake_amount: Option<Uint128>,
-    minimum_rewards_to_collect: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
+    reserve_token: Option<String>,
+    channel_id: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let mut config = CONFIG.load(deps.storage)?;
+    let mut config: Config = CONFIG.load(deps.storage)?;
 
     if let Some(batch_period) = batch_period {
         config.batch_period = batch_period;
@@ -513,14 +522,32 @@ pub fn update_config(
     if let Some(minimum_liquid_stake_amount) = minimum_liquid_stake_amount {
         config.minimum_liquid_stake_amount = minimum_liquid_stake_amount;
     }
-    if let Some(minimum_rewards_to_collect) = minimum_rewards_to_collect {
-        config.minimum_rewards_to_collect = minimum_rewards_to_collect;
-    }
     if let Some(multisig_address_config) = multisig_address_config {
         config.multisig_address_config = multisig_address_config;
     }
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
+    }
+    if channel_id.is_some() && reserve_token.is_none() {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+
+    let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
+    if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
+    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if reserve_token.is_some() && channel_id.is_none()
+        || channel_id.is_some() && reserve_token.is_none()
+    {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if reserve_token.is_some() && channel_id.is_some() {
+        config.ibc_channel_id = channel_id.unwrap();
+        config.native_token_denom = reserve_token.unwrap();
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -561,7 +588,27 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     }
 
     let amount = coin.unwrap().amount;
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
+    let fee = config
+        .protocol_fee_config
+        .dao_treasury_fee
+        .multiply_ratio(amount, 100_000u128);
+    let amount_after_fees = amount.checked_sub(fee);
+    if amount_after_fees.is_err() {
+        return Err(ContractError::FormatError {});
+    }
+    let amount_after_fees = amount_after_fees.unwrap();
+
+    // update the accounting of tokens
+    let mut state = STATE.load(deps.storage)?;
+
+    state.total_native_token += amount_after_fees.clone();
+    state.total_reward_amount += amount.clone();
+    state.total_fees += fee;
+
+    STATE.save(deps.storage, &state)?;
+
+    // transfer the funds to Celestia to be staked
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
 
     Ok(Response::new()
         .add_attribute("method", "receive_rewards")
@@ -645,7 +692,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if !config.node_operators.iter().any(|v| *v == sender) {
+    if !config.operators.iter().any(|v| *v == sender) {
         return Err(ContractError::Unauthorized { sender });
     }
 

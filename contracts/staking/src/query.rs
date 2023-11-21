@@ -12,8 +12,8 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         native_token_denom: config.native_token_denom,
         liquid_stake_token_denom: config.liquid_stake_token_denom,
         treasury_address: config.treasury_address.to_string(),
-        node_operators: config
-            .node_operators
+        operators: config
+            .operators
             .into_iter()
             .map(|v| v.to_string())
             .collect(),
@@ -25,7 +25,6 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         batch_period: config.batch_period,
         unbonding_period: config.unbonding_period,
         minimum_liquid_stake_amount: config.minimum_liquid_stake_amount,
-        minimum_rewards_to_collect: config.minimum_rewards_to_collect,
     };
     Ok(res)
 }
