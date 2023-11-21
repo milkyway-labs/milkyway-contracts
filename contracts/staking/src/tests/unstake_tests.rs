@@ -17,6 +17,7 @@ mod staking_tests {
 
         let mut state = STATE.load(&deps.storage).unwrap();
 
+        state.total_native_token = Uint128::from(10_000u128);
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
@@ -48,6 +49,7 @@ mod staking_tests {
         assert_eq!(attrs[0].value, "submit_batch");
         assert_eq!(attrs[1].value, "1"); // batch id
         assert_eq!(attrs[2].value, "1000");
+        assert_eq!(attrs[3].value, "100"); // expected unbonding amount
     }
 
     #[test]
@@ -56,6 +58,7 @@ mod staking_tests {
 
         let mut state = STATE.load(&deps.storage).unwrap();
 
+        state.total_native_token = Uint128::from(10_000u128);
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
         let msg = ExecuteMsg::LiquidUnstake {};
@@ -124,6 +127,7 @@ mod staking_tests {
         assert_eq!(attrs[0].value, "submit_batch");
         assert_eq!(attrs[1].value, "1");
         assert_eq!(attrs[2].value, "6500");
+        assert_eq!(attrs[3].value, "650");
 
         let messages = resp.messages;
         assert_eq!(messages.len(), 1);
