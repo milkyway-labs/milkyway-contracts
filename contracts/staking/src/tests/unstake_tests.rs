@@ -17,6 +17,7 @@ mod staking_tests {
 
         let mut state = STATE.load(&deps.storage).unwrap();
 
+        state.total_native_token = Uint128::from(10_000u128);
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
@@ -41,13 +42,14 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
         res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
         let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "submit_batch");
         assert_eq!(attrs[1].value, "1"); // batch id
         assert_eq!(attrs[2].value, "1000");
+        assert_eq!(attrs[3].value, "100"); // expected unbonding amount
     }
 
     #[test]
@@ -56,6 +58,7 @@ mod staking_tests {
 
         let mut state = STATE.load(&deps.storage).unwrap();
 
+        state.total_native_token = Uint128::from(10_000u128);
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
         let msg = ExecuteMsg::LiquidUnstake {};
@@ -117,13 +120,14 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
 
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
         res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         let resp = res.unwrap();
         let attrs = resp.attributes;
         assert_eq!(attrs[0].value, "submit_batch");
         assert_eq!(attrs[1].value, "1");
         assert_eq!(attrs[2].value, "6500");
+        assert_eq!(attrs[3].value, "650");
 
         let messages = resp.messages;
         assert_eq!(messages.len(), 1);
@@ -264,7 +268,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
+        let msg = ExecuteMsg::SubmitBatch {};
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         assert!(res.is_err());
 
@@ -328,7 +332,10 @@ mod staking_tests {
 
         // check the state
         state = STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.total_liquid_stake_token, Uint128::from(0u128));
+        assert_eq!(
+            state.total_liquid_stake_token,
+            Uint128::from(99000000000u128)
+        );
         assert_eq!(state.total_native_token, Uint128::from(0u128));
 
         // check the batch

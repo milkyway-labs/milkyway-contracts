@@ -4,7 +4,8 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE,
+    Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
+    PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
     ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
@@ -194,13 +195,13 @@ pub fn execute_submit_batch(
     deps: DepsMut,
     env: Env,
     _info: MessageInfo,
-    id: u64,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
 
-    let mut batch = BATCHES.load(deps.storage, id)?;
+    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
+    let mut batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     if let Some(est_next_batch_time) = batch.next_batch_action_time {
         // Check if the batch has been submitted
@@ -252,6 +253,7 @@ pub fn execute_submit_batch(
 
     // Save new pending batch
     BATCHES.save(deps.storage, new_pending_batch.id, &new_pending_batch)?;
+    PENDING_BATCH_ID.save(deps.storage, &new_pending_batch.id)?;
 
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
@@ -284,11 +286,21 @@ pub fn execute_submit_batch(
 
     STATE.save(deps.storage, &state)?;
 
+    // Update batch status
+    batch.expected_native_unstaked = Some(unbond_amount);
+    batch.update_status(
+        BatchStatus::Submitted,
+        Some(env.block.time.seconds() + config.unbonding_period),
+    );
+
+    BATCHES.save(deps.storage, batch.id, &batch)?;
+
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
-        .add_attribute("batch_id", id.to_string())
-        .add_attribute("batch_total", batch.batch_total_liquid_stake))
+        .add_attribute("batch_id", batch.id.to_string())
+        .add_attribute("batch_total", batch.batch_total_liquid_stake)
+        .add_attribute("expected_native_unstaked", unbond_amount))
 }
 
 // doing a "push over pool" pattern for now

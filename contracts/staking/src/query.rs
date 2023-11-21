@@ -1,7 +1,7 @@
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, LiquidUnstakeRequestResponse, StateResponse,
 };
-use crate::state::{BATCHES, CONFIG, STATE};
+use crate::state::{BATCHES, CONFIG, PENDING_BATCH_ID, STATE};
 use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
 
@@ -51,6 +51,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
 
 fn batch_to_response(batch: Batch) -> BatchResponse {
     BatchResponse {
+        id: batch.id,
         batch_total_liquid_stake: batch.batch_total_liquid_stake,
         expected_native_unstaked: batch.expected_native_unstaked.unwrap_or(Uint128::zero()),
         next_batch_action_time: Timestamp::from_seconds(
@@ -80,4 +81,11 @@ pub fn query_batches(deps: Deps) -> StdResult<BatchesResponse> {
         batches: batches.map(|v| batch_to_response(v.unwrap().1)).collect(),
     };
     Ok(res)
+}
+
+pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
+    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
+    let pending_batch = BATCHES.load(deps.storage, pending_batch_id)?;
+
+    Ok(batch_to_response(pending_batch))
 }
