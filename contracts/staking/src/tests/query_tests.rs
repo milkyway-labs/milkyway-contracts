@@ -2,12 +2,11 @@
 mod query_tests {
     // use serde_json;
     use crate::contract::{execute, query};
-    use crate::error::ContractError;
     use crate::msg::{
         BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, LiquidUnstakeRequestResponse,
         QueryMsg, StateResponse,
     };
-    use crate::state::{Config, CONFIG, STATE};
+    use crate::state::{CONFIG, STATE};
     use crate::tests::test_helper::{
         init, CELESTIAVAL1, CELESTIAVAL2, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
