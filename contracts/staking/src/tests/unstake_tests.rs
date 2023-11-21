@@ -294,7 +294,10 @@ mod staking_tests {
 
         // check the state
         state = STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.total_liquid_stake_token, Uint128::from(99000000000u128));
+        assert_eq!(
+            state.total_liquid_stake_token,
+            Uint128::from(99000000000u128)
+        );
         assert_eq!(state.total_native_token, Uint128::from(0u128));
 
         // check the batch
