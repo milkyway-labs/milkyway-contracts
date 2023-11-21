@@ -94,8 +94,8 @@ mod staking_tests {
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
         assert_eq!(state.total_native_token, Uint128::from(1000u128));
 
-        let info = mock_info(OSMO3, &coins(10000, NATIVE_TOKEN));
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        let info = mock_info("bob", &coins(10000, NATIVE_TOKEN));
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         assert!(res.is_ok());
         let state_for_bob = STATE.load(&deps.storage).unwrap();
         assert_eq!(
@@ -103,6 +103,41 @@ mod staking_tests {
             Uint128::from(11000u128)
         );
         assert_eq!(state_for_bob.total_native_token, Uint128::from(11000u128));
+
+        // set total_liquid_stake_token: 1_000_000_000,
+        // native_token: 1_000_000
+        deps = init();
+        let mut state = STATE.load(&deps.storage).unwrap();
+        state.total_liquid_stake_token = Uint128::from(1_000_000_000u128);
+        state.total_native_token = Uint128::from(1_000_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("bob", &coins(50_000_000, NATIVE_TOKEN));
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+        assert!(res.is_ok());
+
+        let state = STATE.load(&deps.storage).unwrap();
+        assert_eq!(
+            state.total_liquid_stake_token,
+            Uint128::from(51_000_000_000u128)
+        );
+        assert_eq!(state.total_native_token, Uint128::from(51_000_000u128));
+
+        // set total_liquid_stake_token: 1_000_000,
+        // native_token: 1_000_000_000
+        deps = init();
+        let mut state = STATE.load(&deps.storage).unwrap();
+        state.total_liquid_stake_token = Uint128::from(1_000_000u128);
+        state.total_native_token = Uint128::from(1_000_000_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("bob", &coins(50_000_000, NATIVE_TOKEN));
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+
+        let state = STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_liquid_stake_token, Uint128::from(1_050_000u128));
+        assert_eq!(state.total_native_token, Uint128::from(1_050_000_000u128));
     }
 
     #[test]

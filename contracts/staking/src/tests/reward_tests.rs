@@ -18,6 +18,8 @@ mod reward_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(100_000u128);
+        state.total_reward_amount = Uint128::from(0u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let msg = ExecuteMsg::ReceiveRewards {};
@@ -67,5 +69,11 @@ mod reward_tests {
 
         assert!(res.is_ok());
         assert!(res.unwrap().messages.len() == 1); // transfer messages as sub message
+
+        let state = STATE.load(&deps.storage).unwrap();
+
+        assert_eq!(state.total_reward_amount, Uint128::from(100u128));
+        assert_eq!(state.total_native_token, Uint128::from(100_090u128));
+        assert_eq!(state.total_fees, Uint128::from(10u128));
     }
 }
