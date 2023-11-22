@@ -94,6 +94,7 @@ pub struct BatchResponse {
     pub id: u64,
     pub batch_total_liquid_stake: Uint128,
     pub expected_native_unstaked: Uint128,
+    pub received_native_unstaked: Uint128,
     pub next_batch_action_time: Timestamp,
     pub status: String,
     pub requests: Vec<LiquidUnstakeRequestResponse>,

@@ -27,8 +27,9 @@ pub struct Batch {
     pub id: u64,
     /// Total amount of `stTIA` to be burned in this batch
     pub batch_total_liquid_stake: Uint128,
-    // The amount of native tokens that should be received after unbonding
+    /// The amount of native tokens that should be received after unbonding
     pub expected_native_unstaked: Option<Uint128>,
+    /// The amount of native tokens received after unbonding
     pub received_native_unstaked: Option<Uint128>,
 
     pub liquid_unstake_requests: Map<String, LiquidUnstakeRequest>,
