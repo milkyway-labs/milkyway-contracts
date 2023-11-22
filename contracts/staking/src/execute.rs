@@ -313,7 +313,7 @@ pub fn execute_withdraw(
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
-    let batch = _batch.unwrap();
+    let mut batch = _batch.unwrap();
 
     println!("x");
 
@@ -340,6 +340,8 @@ pub fn execute_withdraw(
     }
 
     liquid_unstake_request.redeemed = true;
+    batch.liquid_unstake_requests.insert(info.sender.to_string(), liquid_unstake_request.clone());
+    // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
     // TODO make this a share of total liquid stake? in case of slashes?
