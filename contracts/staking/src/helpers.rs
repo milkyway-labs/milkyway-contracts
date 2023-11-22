@@ -86,6 +86,7 @@ pub fn addess_hash(typ: &str, key: &[u8]) -> [u8; 32] {
 // derives the sender address to be used when calling wasm hooks
 // https://github.com/osmosis-labs/osmosis/blob/master/x/ibc-hooks/keeper/keeper.go#L170 ```
 pub const SENDER_PREFIX: &str = "ibc-wasm-hook-intermediary";
+
 pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
@@ -125,6 +126,7 @@ mod tests {
 
         assert!(result.is_err());
     }
+
     #[test]
     fn validate_addresses_invalid() {
         let addresses = vec![
@@ -136,6 +138,7 @@ mod tests {
 
         assert!(result.is_err());
     }
+
     // TODO: Review this test - currently passing but I think mock_deps has weird deps.api.addr_validate behavior?
     #[test]
     fn validate_addresses_invalid_prefix() {
@@ -148,6 +151,7 @@ mod tests {
 
         assert!(result.is_err());
     }
+
     // Basic test - based on figures from excalidraw
     #[test]
     fn test_compute_mint_amount() {
@@ -162,6 +166,7 @@ mod tests {
 
         assert_eq!(mint_amount, Uint128::from(90_000_000u128));
     }
+
     // Basic test - based on figures from excalidraw
     #[test]
     fn test_compute_unbond_amount() {

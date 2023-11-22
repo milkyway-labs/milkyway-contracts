@@ -7,10 +7,7 @@ use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
     PENDING_BATCH_ID, STATE,
 };
-use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
-    Uint128,
-};
+use cosmwasm_std::{ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp, Uint128};
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
@@ -307,22 +304,20 @@ pub fn execute_withdraw(
 
     check_stopped(&config)?;
 
-    println!("{}", batch_id);
-
     let _batch = BATCHES.load(deps.storage, batch_id);
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
     let batch = _batch.unwrap();
 
-    println!("x");
-
     if batch.status != BatchStatus::Received {
+        // TODO: use different error
         return Err(ContractError::BatchNotReady {
             actual: batch.status as u64,
             expected: BatchStatus::Received as u64,
         });
     }
+    let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
     let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
@@ -341,10 +336,8 @@ pub fn execute_withdraw(
 
     liquid_unstake_request.redeemed = true;
     BATCHES.save(deps.storage, batch.id, &batch)?;
-
-    // TODO make this a share of total liquid stake? in case of slashes?
-    // let total_shares = batch.batch_total_liquid_stake;
-    let amount = liquid_unstake_request.shares;
+    let amount = received_native_unstaked.multiply_ratio(
+        liquid_unstake_request.shares, batch.batch_total_liquid_stake);
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
@@ -597,6 +590,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         .multiply_ratio(amount, 100_000u128);
     let amount_after_fees = amount.checked_sub(fee);
     if amount_after_fees.is_err() {
+        // TODO: use different error
         return Err(ContractError::FormatError {});
     }
     let amount_after_fees = amount_after_fees.unwrap();
@@ -622,7 +616,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
 
 pub fn receive_unstaked_tokens(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
@@ -667,20 +661,7 @@ pub fn receive_unstaked_tokens(
 
     let mut batch = _batch.unwrap();
 
-    if batch.next_batch_action_time.is_none() {
-        return Err(ContractError::BatchNotReady {
-            actual: env.block.time.seconds(),
-            expected: 0,
-        });
-    }
-    let next_batch_action_time = batch.next_batch_action_time.unwrap();
-    if next_batch_action_time > env.block.time.seconds() {
-        return Err(ContractError::BatchNotReady {
-            actual: env.block.time.seconds(),
-            expected: next_batch_action_time,
-        });
-    }
-
+    batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
