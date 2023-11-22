@@ -72,6 +72,9 @@ pub enum ContractError {
     #[error("From wrong port")]
     FromOtherPort { port: String },
 
+    #[error("Invalid reply id")]
+    InvalidReplyID { id: u64 },
+
     #[error("unexpected batch status")]
     UnexpecedBatchStatus {
         actual: BatchStatus,
@@ -92,4 +95,10 @@ pub enum ContractError {
 
     #[error("format error")]
     FormatError {},
+
+    #[error("Failed ibc transfer")]
+    FailedIBCTransfer { msg: String },
+
+    #[error("Contract already locked")]
+    ContractLocked { msg: String },
 }
