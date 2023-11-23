@@ -322,7 +322,7 @@ pub fn execute_withdraw(
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
-    let batch = _batch.unwrap();
+    let mut batch = _batch.unwrap();
 
     println!("x");
 
@@ -333,27 +333,28 @@ pub fn execute_withdraw(
         });
     }
 
-    let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
+    let _liquid_unstake_request: Option<&mut LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender.to_string())
-        .cloned();
+        .get_mut(&info.sender.to_string());
 
     if _liquid_unstake_request.is_none() {
         return Err(ContractError::NoRequestInBatch {});
     }
 
-    let mut liquid_unstake_request = _liquid_unstake_request.unwrap();
+    let liquid_unstake_request = _liquid_unstake_request.unwrap();
 
     if liquid_unstake_request.redeemed {
         return Err(ContractError::AlreadyRedeemed {});
     }
 
-    liquid_unstake_request.redeemed = true;
-    BATCHES.save(deps.storage, batch.id, &batch)?;
-
     // TODO make this a share of total liquid stake? in case of slashes?
     // let total_shares = batch.batch_total_liquid_stake;
     let amount = liquid_unstake_request.shares;
+
+    liquid_unstake_request.redeemed = true;
+
+    // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
+    BATCHES.save(deps.storage, batch.id, &batch)?;
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
