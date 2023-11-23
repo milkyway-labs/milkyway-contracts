@@ -222,8 +222,27 @@ pub fn execute_submit_batch(
         return Err(ContractError::BatchEmpty {});
     }
 
-    let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
+
+    // TODO: Circuit break?
+    // Need to add a test for this
+    ensure!(
+        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
+        ContractError::InvalidUnstakeAmount {
+            total_liquid_stake_token: (state.total_liquid_stake_token),
+            amount_to_unstake: (batch.batch_total_liquid_stake)
+        }
+    );
+
+    let config = CONFIG.load(deps.storage)?;
+    // Update batch status
+    batch.update_status(
+        BatchStatus::Submitted,
+        Some(env.block.time.seconds() + config.unbonding_period),
+    );
+
+    // Move pending batch to batches
+    BATCHES.save(deps.storage, batch.id, &batch)?;
 
     // Create new pending batch
     let new_pending_batch = Batch::new(
@@ -246,16 +265,6 @@ pub fn execute_submit_batch(
         }),
         burn_from_address: env.contract.address.to_string(),
     };
-
-    // TODO: Circuit break?
-    // Need to add a test for this
-    ensure!(
-        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
-        ContractError::InvalidUnstakeAmount {
-            total_liquid_stake_token: (state.total_liquid_stake_token),
-            amount_to_unstake: (batch.batch_total_liquid_stake)
-        }
-    );
 
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,
@@ -311,34 +320,35 @@ pub fn execute_withdraw(
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
-    let batch = _batch.unwrap();
+    let mut batch = _batch.unwrap();
 
     if batch.status != BatchStatus::Received {
         return Err(ContractError::TokensAlreadyClaimed { batch_id: batch.id });
     }
     let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
-    let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
+    let _liquid_unstake_request: Option<&mut LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender.to_string())
-        .cloned();
+        .get_mut(&info.sender.to_string());
 
     if _liquid_unstake_request.is_none() {
         return Err(ContractError::NoRequestInBatch {});
     }
 
-    let mut liquid_unstake_request = _liquid_unstake_request.unwrap();
+    let liquid_unstake_request = _liquid_unstake_request.unwrap();
 
     if liquid_unstake_request.redeemed {
         return Err(ContractError::AlreadyRedeemed {});
     }
 
     liquid_unstake_request.redeemed = true;
-    BATCHES.save(deps.storage, batch.id, &batch)?;
     let amount = received_native_unstaked.multiply_ratio(
         liquid_unstake_request.shares,
         batch.batch_total_liquid_stake,
     );
+
+    // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
+    BATCHES.save(deps.storage, batch.id, &batch)?;
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),

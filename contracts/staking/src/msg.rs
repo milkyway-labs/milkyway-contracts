@@ -88,6 +88,7 @@ pub struct StateResponse {
 pub struct LiquidUnstakeRequestResponse {
     pub user: String,
     pub amount: Uint128,
+    pub redeemed: bool,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchResponse {

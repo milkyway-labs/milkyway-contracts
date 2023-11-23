@@ -65,6 +65,7 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
             .map(|v| LiquidUnstakeRequestResponse {
                 user: v.1.user.to_string(),
                 amount: v.1.shares,
+                redeemed: v.1.redeemed,
             })
             .collect(),
     }

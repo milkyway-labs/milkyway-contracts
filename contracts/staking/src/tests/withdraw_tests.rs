@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod withdraw_tests {
-    use crate::contract::execute;
-    use crate::msg::ExecuteMsg;
+    use crate::contract::{execute, query};
+    use crate::msg::{BatchResponse, ExecuteMsg, QueryMsg};
     use crate::state::{BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
+    use cosmwasm_std::{Addr, CosmosMsg, from_binary, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
     use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -59,7 +59,16 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert!(messages.len() == 1);
+        assert_eq!(messages.len(), 1);
+
+        let msg = QueryMsg::Batch {
+            id: pending_batch.id,
+        };
+        let res = query(deps.as_ref(), env.clone(), msg);
+        assert!(res.is_ok());
+        let resp: BatchResponse = from_binary(res.as_ref().unwrap()).unwrap();
+
+        assert!(resp.requests.get(0).unwrap().redeemed);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
