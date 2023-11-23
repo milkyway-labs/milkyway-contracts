@@ -60,10 +60,7 @@ pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
 
 #[cw_serde]
 pub struct ForwardMsgReplyState {
-    pub channel_id: String,
-    pub to_address: String,
     pub amount: u128,
-    pub denom: String,
 }
 
 pub mod ibc {
@@ -81,17 +78,12 @@ pub mod ibc {
     /// needs to be tracked in case the receive fails or times-out
     #[cw_serde]
     pub struct IBCTransfer {
-        pub recovery_addr: Addr,
-        pub channel_id: String,
         pub sequence: u64,
         pub amount: u128,
-        pub denom: String,
         pub status: PacketLifecycleStatus,
     }
 }
 
 /// In-Flight packets by (source_channel_id, sequence)
-pub const INFLIGHT_PACKETS: Map<(&str, u64), ibc::IBCTransfer> = Map::new("inflight");
-/// Recovery. This tracks any recovery that an addr can execute.
-pub const RECOVERY_STATES: Map<&Addr, Vec<ibc::IBCTransfer>> = Map::new("recovery");
+pub const INFLIGHT_PACKETS: Map<u64, ibc::IBCTransfer> = Map::new("inflight");
 pub const FORWARD_REPLY_STATE: Item<ForwardMsgReplyState> = Item::new("forward_reply_states");

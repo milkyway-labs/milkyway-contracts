@@ -1,33 +1,7 @@
-use cosmwasm_std::{Addr, DepsMut, Response};
+use cosmwasm_std::{DepsMut, Response};
 
-use crate::state;
-use crate::{
-    error::ContractError,
-    state::{INFLIGHT_PACKETS, RECOVERY_STATES},
-};
-
-// Store a RECOVERY_STATE for the failed ibc packet
-fn create_recovery(
-    deps: DepsMut,
-    inflight_packet: state::ibc::IBCTransfer,
-    recovery_reason: state::ibc::PacketLifecycleStatus,
-) -> Result<Addr, ContractError> {
-    let mut recovery = inflight_packet; // Recoveries are just inflight packets ready to be recovered
-    let recovery_addr = recovery.recovery_addr.clone();
-
-    RECOVERY_STATES.update(deps.storage, &recovery_addr, |recoveries| {
-        // Since the recovery state and the in-flight packet store the same
-        // data, we can just modify the status and store the object in the
-        // RECOVERY_STATES map.
-        recovery.status = recovery_reason;
-        let Some(mut recoveries) = recoveries else {
-            return Ok::<_, ContractError>(vec![recovery]);
-        };
-        recoveries.push(recovery);
-        Ok(recoveries)
-    })?;
-    Ok(recovery_addr)
-}
+use crate::state::{self, Config, CONFIG};
+use crate::{error::ContractError, state::INFLIGHT_PACKETS};
 
 /// Called by the chain when the ack for a packet that has configured this contract as its
 /// callback has been received.
@@ -57,34 +31,38 @@ pub fn receive_ack(
     // deps.api.debug(&format!(
     //     "received ack for packet {source_channel:?} {sequence:?}: {ack:?}, {success:?}"
     // ));
+
+    let config: Config = CONFIG.load(deps.storage)?;
+    if source_channel != config.ibc_channel_id {
+        // If the ack is not for this contract, return a success
+        return Ok(Response::new()
+            .add_attribute("action", "receive_ack")
+            .add_attribute("msg", "received ack for different channel"));
+    }
+
     let response = Response::new()
         .add_attribute("contract", "staking")
         .add_attribute("action", "receive_ack");
 
-    // Check if there is an inflight packet for the received (channel, sequence)
-    let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, (&source_channel, sequence))?;
-    let Some(inflight_packet) = sent_packet else {
+    // Check if there is an inflight packet for the received (sequence)
+    let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, sequence)?;
+    let Some(mut inflight_packet) = sent_packet else {
         // If there isn't, continue
         return Ok(response.add_attribute("msg", "received unexpected ack"));
     };
-    // Remove the in-flight packet
-    INFLIGHT_PACKETS.remove(deps.storage, (&source_channel, sequence));
 
     if success {
+        // Remove the in-flight packet
+        INFLIGHT_PACKETS.remove(deps.storage, sequence);
+
         // If the acc is successful, there is nothing else to do and the crosschain swap has been completed
         return Ok(response.add_attribute("msg", "packet successfully delivered"));
     }
 
-    // If the ack is a failure, we create a recovery for the original sender of the packet.
-    let recovery_addr = create_recovery(
-        deps,
-        inflight_packet,
-        state::ibc::PacketLifecycleStatus::AckFailure,
-    )?;
+    inflight_packet.status = state::ibc::PacketLifecycleStatus::AckFailure;
+    INFLIGHT_PACKETS.save(deps.storage, sequence, &inflight_packet)?;
 
-    Ok(response
-        .add_attribute("msg", "recovery stored")
-        .add_attribute("recovery_addr", recovery_addr))
+    Ok(response.add_attribute("msg", "ibc acknowledgement failed"))
 }
 
 // This is very similar to the handling of acks, but it always creates a
@@ -94,27 +72,27 @@ pub fn receive_timeout(
     source_channel: String,
     sequence: u64,
 ) -> Result<Response, ContractError> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if source_channel != config.ibc_channel_id {
+        // If the ack is not for this contract, return a success
+        return Ok(Response::new()
+            .add_attribute("action", "receive_ack")
+            .add_attribute("msg", "received ack for different channel"));
+    }
+
     let response = Response::new()
         .add_attribute("contract", "staking")
         .add_attribute("action", "receive_timeout");
 
-    // Check if there is an inflight packet for the received (channel, sequence)
-    let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, (&source_channel, sequence))?;
-    let Some(inflight_packet) = sent_packet else {
+    // Check if there is an inflight packet for the received (sequence)
+    let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, sequence)?;
+    let Some(mut inflight_packet) = sent_packet else {
         // If there isn't, continue
         return Ok(response.add_attribute("msg", "received unexpected timeout"));
     };
-    // Remove the in-flight packet
-    INFLIGHT_PACKETS.remove(deps.storage, (&source_channel, sequence));
 
-    // create a recovery
-    let recovery_addr = create_recovery(
-        deps,
-        inflight_packet,
-        state::ibc::PacketLifecycleStatus::TimedOut,
-    )?;
+    inflight_packet.status = state::ibc::PacketLifecycleStatus::TimedOut;
+    INFLIGHT_PACKETS.save(deps.storage, sequence, &inflight_packet)?;
 
-    Ok(response
-        .add_attribute("msg", "recovery stored")
-        .add_attribute("recovery_addr", recovery_addr))
+    Ok(response.add_attribute("msg", "ibc packet timed out"))
 }

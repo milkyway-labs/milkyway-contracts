@@ -1,4 +1,4 @@
-use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
+use crate::state::{ibc::IBCTransfer, MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use schemars::JsonSchema;
@@ -103,6 +103,10 @@ pub struct BatchResponse {
 pub struct BatchesResponse {
     pub batches: Vec<BatchResponse>,
 }
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct IBCQueueResponse {
+    pub ibc_queue: Vec<IBCTransfer>,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -117,6 +121,8 @@ pub enum QueryMsg {
     Batches {},
     #[returns(BatchResponse)]
     PendingBatch {},
+    #[returns(IBCQueueResponse)]
+    IbcQueue {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

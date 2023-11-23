@@ -1,25 +1,25 @@
-use crate::ack::{MsgTransferResponse};
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
 };
+use crate::state::IbcConfig;
 use crate::state::{
-    Config, ForwardMsgReplyState, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
-    FORWARD_REPLY_STATE, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE, RECOVERY_STATES, 
     ibc::{IBCTransfer, PacketLifecycleStatus},
+    Config, ForwardMsgReplyState, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
+    FORWARD_REPLY_STATE, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
     ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, SubMsgResponse,
-    SubMsgResult, Timestamp, Uint128, Addr,
+    SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
+use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
-
 
 pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -109,15 +109,10 @@ pub fn execute_liquid_stake(
     state.total_liquid_stake_token += mint_amount;
     STATE.save(deps.storage, &state)?;
 
-    // Ensure the state is properly setup to handle a reply from the ibc_message
-    let ibc_config = IBC_CONFIG.load(deps.storage)?;
     save_forward_reply_state(
         deps,
         ForwardMsgReplyState {
-            channel_id: ibc_config.channel_id,
-            to_address: config.multisig_address_config.staker_address.to_string(),
             amount: Uint128::from(amount).into(),
-            denom: config.native_token_denom,
         },
     )?;
 
@@ -515,21 +510,26 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn recover(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
-    // TODO: retry pending transfers
-    let recoveries = RECOVERY_STATES.load(deps.storage, &info.sender)?;
-    // Remove the recoveries from the store. If the sends fail, the whole tx should be reverted.
-    RECOVERY_STATES.remove(deps.storage, &info.sender);
-    let ibc_config = IBC_CONFIG.load(deps.storage)?;
+pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    // timed out and failed packets
+    let packets = INFLIGHT_PACKETS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter(|r| r.is_ok())
+        .map(|r| r.unwrap().1)
+        .collect::<Vec<IBCTransfer>>();
+
+    let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
         env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    let msgs = recoveries.into_iter().map(|r| IbcMsg::Transfer {
-        channel_id: r.channel_id,
-        to_address: r.recovery_addr.into_string(),
+    let msgs = packets.into_iter().map(|r| IbcMsg::Transfer {
+        channel_id: ibc_config.channel_id.clone(),
+        to_address: config.multisig_address_config.staker_address.to_string(),
         amount: cosmwasm_std::Coin {
-            denom: r.denom,
+            denom: config.native_token_denom.clone(),
             amount: Uint128::from(r.amount),
         },
         timeout: timeout.clone(),
@@ -773,37 +773,21 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
             msg: format!("could not decode response: {b}"),
         })?;
 
-    let ForwardMsgReplyState {
-        channel_id,
-        to_address,
-        amount,
-        denom,
-    } = FORWARD_REPLY_STATE.load(deps.storage)?;
+    let ForwardMsgReplyState { amount } = FORWARD_REPLY_STATE.load(deps.storage)?;
     FORWARD_REPLY_STATE.remove(deps.storage);
 
-    // If a recovery address was provided, store sent IBC transfer so that it
-    // can later be recovered by that addr.
     let recovery = IBCTransfer {
-        recovery_addr: Addr::unchecked(to_address.clone()),
-        channel_id: channel_id.clone(),
         sequence: transfer_response.sequence,
         amount,
-        denom: denom.clone(),
         status: PacketLifecycleStatus::Sent,
     };
 
     // Save as in-flight to be able to manipulate when the ack/timeout is received
-    INFLIGHT_PACKETS.save(
-        deps.storage,
-        (&channel_id, transfer_response.sequence),
-        &recovery,
-    )?;
+    INFLIGHT_PACKETS.save(deps.storage, transfer_response.sequence, &recovery)?;
 
     let response = Response::new()
         .add_attribute("action", "handle_ibc_reply")
         .add_attribute("status", "ibc_message_successfully_submitted")
-        .add_attribute("channel", &channel_id)
-        .add_attribute("receiver", &to_address)
         .add_attribute(
             "packet_sequence",
             format!("{:?}", transfer_response.sequence),

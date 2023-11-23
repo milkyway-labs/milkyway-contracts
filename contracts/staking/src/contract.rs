@@ -1,11 +1,13 @@
 use crate::ack::ReplyId;
 use crate::execute::{
     circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
-    receive_unstaked_tokens, resume_contract, update_config, recover,
+    receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
 use crate::ibc::{receive_ack, receive_timeout};
-use crate::query::{query_batch, query_batches, query_config, query_pending_batch, query_state};
+use crate::query::{
+    query_batch, query_batches, query_config, query_ibc_queue, query_pending_batch, query_state,
+};
 use crate::state::{
     Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH_ID, STATE,
 };
@@ -200,9 +202,7 @@ pub fn execute(
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
-        ExecuteMsg::RecoverPendingIbcTransfers {} => {
-            recover(deps, env, info)
-        }
+        ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
     }
 }
 
@@ -218,6 +218,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
+        QueryMsg::IbcQueue {} => to_binary(&query_ibc_queue(deps)?),
     }
 }
 
