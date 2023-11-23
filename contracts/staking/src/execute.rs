@@ -621,9 +621,9 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
 
     Ok(Response::new()
-        .add_attribute("method", "receive_rewards")
-        .add_attribute("method", "transfer_stake")
+        .add_attribute("action", "receive_rewards")
         .add_attribute("amount", amount)
+        .add_attribute("amount_after_fees", amount_after_fees)
         .add_message(ibc_transfer_msg))
 }
 
@@ -694,7 +694,7 @@ pub fn receive_unstaked_tokens(
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
     Ok(Response::new()
-        .add_attribute("method", "receive_unstaked_tokens")
+        .add_attribute("action", "receive_unstaked_tokens")
         .add_attribute("amount", amount))
 }
 
@@ -710,7 +710,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     config.stopped = true;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("method", "circuit_breaker"))
+    Ok(Response::new().add_attribute("action", "circuit_breaker"))
 }
 
 pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
@@ -721,5 +721,5 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("method", "resume_contract"))
+    Ok(Response::new().add_attribute("action", "resume_contract"))
 }
