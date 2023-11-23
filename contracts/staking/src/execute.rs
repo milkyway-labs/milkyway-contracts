@@ -6,12 +6,12 @@ use crate::helpers::{
 };
 use crate::state::{
     Config, ForwardMsgReplyState, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
-    FORWARD_REPLY_STATE, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    FORWARD_REPLY_STATE, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE, RECOVERY_STATES, 
     ibc::{IBCTransfer, PacketLifecycleStatus},
 };
 use cosmwasm_std::{
     ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, SubMsgResponse,
-    SubMsgResult, Timestamp, Uint128, Addr,
+    SubMsgResult, Timestamp, Uint128, Addr, BankMsg, coins,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -515,8 +515,18 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn execute_retry_pending_ibc_transfers(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn recover(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
     // TODO: retry pending transfers
+    let recoveries = RECOVERY_STATES.load(deps.storage, &info.sender)?;
+    // Remove the recoveries from the store. If the sends fail, the whole tx should be reverted.
+    RECOVERY_STATES.remove(deps.storage, &info.sender);
+    let msgs = recoveries.into_iter().map(|r| BankMsg::Send {
+        to_address: r.recovery_addr.into_string(),
+        amount: coins(r.amount, r.denom),
+    });
+    Ok(Response::new()
+        .add_attribute("action", "recover")
+        .add_messages(msgs))
 }
 
 // Update the config; callable by the owner

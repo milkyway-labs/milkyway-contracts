@@ -1,7 +1,7 @@
 use crate::ack::ReplyId;
 use crate::execute::{
     circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
-    receive_unstaked_tokens, resume_contract, update_config,
+    receive_unstaked_tokens, resume_contract, update_config, recover,
 };
 use crate::helpers::{validate_address, validate_addresses};
 use crate::ibc::{receive_ack, receive_timeout};
@@ -200,8 +200,8 @@ pub fn execute(
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
-        ExecuteMsg::RetryPendingIbcTransfers {} => {
-            execute_retry_pending_ibc_transfers(deps, env, info)
+        ExecuteMsg::RecoverPendingIbcTransfers {} => {
+            recover(deps, env, info)
         }
     }
 }
