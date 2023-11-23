@@ -32,6 +32,7 @@ const handleUpdate = async (network) => {
   let client;
   try {
     client = initRedis();
+    await network.ready;
 
     const state = await network.client.queryContractSmart(network.contract, {
       state: {},
