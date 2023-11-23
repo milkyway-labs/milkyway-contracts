@@ -515,6 +515,10 @@ pub fn execute_accept_ownership(
     }
 }
 
+pub fn execute_retry_pending_ibc_transfers(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+    // TODO: retry pending transfers
+}
+
 // Update the config; callable by the owner
 pub fn update_config(
     deps: DepsMut,
