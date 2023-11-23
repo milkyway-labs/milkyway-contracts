@@ -11,6 +11,7 @@ check_and_pull() {
     echo "Checking for updates..."
     git fetch
 
+
     LOCAL=$(git rev-parse @)
     REMOTE=$(git rev-parse "@{u}")
     
