@@ -11,30 +11,36 @@ client.on("error", function (err) {
 });
 await client.connect();
 
-let lastHeight = 0;
-const network = networks["osmo-test-5"];
-subscribe(network, async (height) => {
-  try {
-    if (height > lastHeight) {
-      await network.ready;
-      const state = await network.client.queryContractSmart(network.contract, {
-        state: {},
-      });
-      await client.set("state", JSON.stringify(state));
+const handleUpdate = (network) => {
+  let lastHeight = 0;
+  subscribe(network, async (height) => {
+    try {
+      if (height > lastHeight) {
+        await network.ready;
+        const state = await network.client.queryContractSmart(
+          network.contract,
+          {
+            state: {},
+          }
+        );
+        await client.set(network.id + "-state", JSON.stringify(state));
 
-      const batches = await network.client.queryContractSmart(
-        network.contract,
-        {
-          batches: {},
-        }
-      );
-      await client.set("batches", JSON.stringify(batches));
+        const batches = await network.client.queryContractSmart(
+          network.contract,
+          {
+            batches: {},
+          }
+        );
+        await client.set(network.id + "-batches", JSON.stringify(batches));
 
-      lastHeight = height;
+        lastHeight = height;
 
-      console.log("Updated", network.id);
+        console.log("Updated", network.id);
+      }
+    } catch (err) {
+      console.error(err);
     }
-  } catch (err) {
-    console.error(err);
-  }
-});
+  });
+};
+
+Object.values(networks).forEach(handleUpdate);
