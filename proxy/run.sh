@@ -10,9 +10,12 @@ REMOTE_BRANCH="fabo/proxy" # adjust the remote branch name as needed
 check_and_pull() {
     echo "Checking for updates..."
     git fetch
+
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse "@{u}")
     
     # Compare the local branch with the remote branch for the specific folder
-    if ! git diff --quiet HEAD "$REMOTE_BRANCH"; then
+    if [ "$LOCAL" != "$REMOTE" ]; then
         echo "Changes detected in $SPECIFIC_FOLDER."
         # Optionally, pull the changes
         git pull
