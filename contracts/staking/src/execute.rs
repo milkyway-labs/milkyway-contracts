@@ -316,22 +316,16 @@ pub fn execute_withdraw(
 
     check_stopped(&config)?;
 
-    println!("{}", batch_id);
-
     let _batch = BATCHES.load(deps.storage, batch_id);
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
     let mut batch = _batch.unwrap();
 
-    println!("x");
-
     if batch.status != BatchStatus::Received {
-        return Err(ContractError::BatchNotReady {
-            actual: batch.status as u64,
-            expected: BatchStatus::Received as u64,
-        });
+        return Err(ContractError::TokensAlreadyClaimed { batch_id: batch.id });
     }
+    let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
     let _liquid_unstake_request: Option<&mut LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
@@ -347,11 +341,11 @@ pub fn execute_withdraw(
         return Err(ContractError::AlreadyRedeemed {});
     }
 
-    // TODO make this a share of total liquid stake? in case of slashes?
-    // let total_shares = batch.batch_total_liquid_stake;
-    let amount = liquid_unstake_request.shares;
-
     liquid_unstake_request.redeemed = true;
+    let amount = received_native_unstaked.multiply_ratio(
+        liquid_unstake_request.shares,
+        batch.batch_total_liquid_stake,
+    );
 
     // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
     BATCHES.save(deps.storage, batch.id, &batch)?;
@@ -607,7 +601,10 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         .multiply_ratio(amount, 100_000u128);
     let amount_after_fees = amount.checked_sub(fee);
     if amount_after_fees.is_err() {
-        return Err(ContractError::FormatError {});
+        return Err(ContractError::ReceiveRewardsTooSmall {
+            amount,
+            minimum: fee,
+        });
     }
     let amount_after_fees = amount_after_fees.unwrap();
 
@@ -678,9 +675,9 @@ pub fn receive_unstaked_tokens(
     let mut batch = _batch.unwrap();
 
     if batch.next_batch_action_time.is_none() {
-        return Err(ContractError::BatchNotReady {
-            actual: env.block.time.seconds(),
-            expected: 0,
+        return Err(ContractError::BatchNotClaimable {
+            batch_id: batch.id,
+            status: batch.status,
         });
     }
     let next_batch_action_time = batch.next_batch_action_time.unwrap();
@@ -691,6 +688,7 @@ pub fn receive_unstaked_tokens(
         });
     }
 
+    batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
 
     BATCHES.save(deps.storage, batch.id, &batch)?;

@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
+    use crate::helpers::{compute_mint_amount, compute_unbond_amount, validate_addresses};
     use cosmwasm_std::testing::mock_dependencies;
-    use crate::helpers::{validate_addresses, compute_mint_amount, compute_unbond_amount};
-    use cosmwasm_std::{Uint128, StdError};
+    use cosmwasm_std::{StdError, Uint128};
 
     #[test]
     fn validate_addresses_success() {
@@ -33,7 +33,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // TODO: Review this test - currently passing but I think mock_deps has weird deps.api.addr_validate behavior?
     #[test]
     fn validate_addresses_invalid_prefix() {
         let addresses = vec![
