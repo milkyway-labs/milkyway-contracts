@@ -518,6 +518,10 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
         .range(deps.storage, None, None, Order::Ascending)
         .filter(|r| r.is_ok())
         .map(|r| r.unwrap().1)
+        .filter(|p| {
+            p.status == PacketLifecycleStatus::AckFailure
+                || p.status == PacketLifecycleStatus::TimedOut
+        })
         .collect::<Vec<IBCTransfer>>();
 
     let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
