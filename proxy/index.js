@@ -36,6 +36,8 @@ const handleUpdate = (network) => {
         lastHeight = height;
 
         console.log("Updated", network.id);
+
+        await client.set(network.id + "-updated", Date.now().toString());
       }
     } catch (err) {
       console.error(err);
