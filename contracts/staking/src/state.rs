@@ -53,7 +53,6 @@ pub struct IbcConfig {
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
-// TODO: Finalize and discuss batch structure
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");

@@ -152,7 +152,7 @@ mod query_tests {
     }
 
     #[test]
-    fn get_baches() {
+    fn get_batches() {
         let mut deps = init();
         let mut env = mock_env();
         let msg = QueryMsg::Batches {};

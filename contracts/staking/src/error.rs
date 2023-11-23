@@ -57,6 +57,9 @@ pub enum ContractError {
     #[error("No liquid unstake requests in batch")]
     BatchEmpty {},
 
+    #[error("The tokens in this batch have already been claimed")]
+    TokensAlreadyClaimed { batch_id: u64 },
+
     #[error("Batch provided doesn't have a request for the user")]
     NoRequestInBatch {},
 
@@ -92,4 +95,7 @@ pub enum ContractError {
 
     #[error("format error")]
     FormatError {},
+
+    #[error("Receive rewards are smaller then the fee")]
+    ReceiveRewardsTooSmall { amount: Uint128, minimum: Uint128 },
 }

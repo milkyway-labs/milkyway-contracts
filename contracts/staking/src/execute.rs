@@ -7,7 +7,10 @@ use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
     PENDING_BATCH_ID, STATE,
 };
-use cosmwasm_std::{ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp, Uint128};
+use cosmwasm_std::{
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
+    Uint128,
+};
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
@@ -311,11 +314,7 @@ pub fn execute_withdraw(
     let batch = _batch.unwrap();
 
     if batch.status != BatchStatus::Received {
-        // TODO: use different error
-        return Err(ContractError::BatchNotReady {
-            actual: batch.status as u64,
-            expected: BatchStatus::Received as u64,
-        });
+        return Err(ContractError::TokensAlreadyClaimed { batch_id: batch.id });
     }
     let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
@@ -337,7 +336,9 @@ pub fn execute_withdraw(
     liquid_unstake_request.redeemed = true;
     BATCHES.save(deps.storage, batch.id, &batch)?;
     let amount = received_native_unstaked.multiply_ratio(
-        liquid_unstake_request.shares, batch.batch_total_liquid_stake);
+        liquid_unstake_request.shares,
+        batch.batch_total_liquid_stake,
+    );
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
@@ -590,8 +591,10 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         .multiply_ratio(amount, 100_000u128);
     let amount_after_fees = amount.checked_sub(fee);
     if amount_after_fees.is_err() {
-        // TODO: use different error
-        return Err(ContractError::FormatError {});
+        return Err(ContractError::ReceiveRewardsTooSmall {
+            amount,
+            minimum: fee,
+        });
     }
     let amount_after_fees = amount_after_fees.unwrap();
 

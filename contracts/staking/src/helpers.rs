@@ -139,7 +139,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // TODO: Review this test - currently passing but I think mock_deps has weird deps.api.addr_validate behavior?
     #[test]
     fn validate_addresses_invalid_prefix() {
         let addresses = vec![
