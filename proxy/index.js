@@ -2,14 +2,14 @@ import Redis from "ioredis";
 import { subscribe } from "./websocket.js";
 import networks from "./networks.js";
 
-const client = new Redis(process.env.REDIS);
-
 const handleUpdate = (network) => {
   let lastHeight = 0;
   subscribe(network, async (height) => {
     try {
       if (height > lastHeight) {
         await network.ready;
+        const client = new Redis(process.env.REDIS);
+
         const state = await network.client.queryContractSmart(
           network.contract,
           {
