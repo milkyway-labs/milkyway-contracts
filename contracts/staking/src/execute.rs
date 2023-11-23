@@ -622,6 +622,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
+        .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
         .add_message(ibc_transfer_msg))
