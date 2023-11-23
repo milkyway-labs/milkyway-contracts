@@ -3,8 +3,10 @@ use crate::execute::{
     resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
-use crate::query::{query_batch, query_batches, query_config, query_state};
-use crate::state::{Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
+use crate::query::{query_batch, query_batches, query_config, query_pending_batch, query_state};
+use crate::state::{
+    Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH_ID, STATE,
+};
 use crate::{
     error::ContractError,
     execute::{
@@ -120,6 +122,7 @@ pub fn instantiate(
 
     // Set pending batch and batches
     BATCHES.save(deps.storage, 1, &pending_batch)?;
+    PENDING_BATCH_ID.save(deps.storage, &1)?;
 
     let ibc_config = IbcConfig {
         channel_id: msg.ibc_channel_id.clone(),
@@ -155,7 +158,7 @@ pub fn execute(
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
             execute_liquid_unstake(deps, env, info, payment)
         }
-        ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
+        ExecuteMsg::SubmitBatch {} => execute_submit_batch(deps, env, info),
         ExecuteMsg::Withdraw { batch_id } => execute_withdraw(deps, env, info, batch_id),
         ExecuteMsg::AddValidator { new_validator } => {
             execute_add_validator(deps, env, info, new_validator)
@@ -208,6 +211,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
+        QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
     }
 }
 

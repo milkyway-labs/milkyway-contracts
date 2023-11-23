@@ -4,7 +4,8 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE,
+    Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
+    PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
     ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
@@ -194,13 +195,13 @@ pub fn execute_submit_batch(
     deps: DepsMut,
     env: Env,
     _info: MessageInfo,
-    id: u64,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
 
-    let mut batch = BATCHES.load(deps.storage, id)?;
+    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
+    let mut batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     if let Some(est_next_batch_time) = batch.next_batch_action_time {
         // Check if the batch has been submitted
@@ -221,9 +222,19 @@ pub fn execute_submit_batch(
         return Err(ContractError::BatchEmpty {});
     }
 
-    let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
 
+    // TODO: Circuit break?
+    // Need to add a test for this
+    ensure!(
+        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
+        ContractError::InvalidUnstakeAmount {
+            total_liquid_stake_token: (state.total_liquid_stake_token),
+            amount_to_unstake: (batch.batch_total_liquid_stake)
+        }
+    );
+
+    let config = CONFIG.load(deps.storage)?;
     // Update batch status
     batch.update_status(
         BatchStatus::Submitted,
@@ -242,6 +253,7 @@ pub fn execute_submit_batch(
 
     // Save new pending batch
     BATCHES.save(deps.storage, new_pending_batch.id, &new_pending_batch)?;
+    PENDING_BATCH_ID.save(deps.storage, &new_pending_batch.id)?;
 
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
@@ -253,16 +265,6 @@ pub fn execute_submit_batch(
         }),
         burn_from_address: env.contract.address.to_string(),
     };
-
-    // TODO: Circuit break?
-    // Need to add a test for this
-    ensure!(
-        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
-        ContractError::InvalidUnstakeAmount {
-            total_liquid_stake_token: (state.total_liquid_stake_token),
-            amount_to_unstake: (batch.batch_total_liquid_stake)
-        }
-    );
 
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,
@@ -284,11 +286,21 @@ pub fn execute_submit_batch(
 
     STATE.save(deps.storage, &state)?;
 
+    // Update batch status
+    batch.expected_native_unstaked = Some(unbond_amount);
+    batch.update_status(
+        BatchStatus::Submitted,
+        Some(env.block.time.seconds() + config.unbonding_period),
+    );
+
+    BATCHES.save(deps.storage, batch.id, &batch)?;
+
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
         .add_attribute("action", "submit_batch")
-        .add_attribute("batch_id", id.to_string())
-        .add_attribute("batch_total", batch.batch_total_liquid_stake))
+        .add_attribute("batch_id", batch.id.to_string())
+        .add_attribute("batch_total", batch.batch_total_liquid_stake)
+        .add_attribute("expected_native_unstaked", unbond_amount))
 }
 
 // doing a "push over pool" pattern for now
@@ -310,7 +322,7 @@ pub fn execute_withdraw(
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
-    let batch = _batch.unwrap();
+    let mut batch = _batch.unwrap();
 
     println!("x");
 
@@ -321,27 +333,28 @@ pub fn execute_withdraw(
         });
     }
 
-    let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
+    let _liquid_unstake_request: Option<&mut LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender.to_string())
-        .cloned();
+        .get_mut(&info.sender.to_string());
 
     if _liquid_unstake_request.is_none() {
         return Err(ContractError::NoRequestInBatch {});
     }
 
-    let mut liquid_unstake_request = _liquid_unstake_request.unwrap();
+    let liquid_unstake_request = _liquid_unstake_request.unwrap();
 
     if liquid_unstake_request.redeemed {
         return Err(ContractError::AlreadyRedeemed {});
     }
 
-    liquid_unstake_request.redeemed = true;
-    BATCHES.save(deps.storage, batch.id, &batch)?;
-
     // TODO make this a share of total liquid stake? in case of slashes?
     // let total_shares = batch.batch_total_liquid_stake;
     let amount = liquid_unstake_request.shares;
+
+    liquid_unstake_request.redeemed = true;
+
+    // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
+    BATCHES.save(deps.storage, batch.id, &batch)?;
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
