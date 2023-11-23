@@ -28,43 +28,40 @@ const initRedis = () => {
   return client;
 };
 
-const handleUpdate = (network) => {
+const handleUpdate = async (network) => {
+  let client;
+  try {
+    client = initRedis();
+
+    const state = await network.client.queryContractSmart(network.contract, {
+      state: {},
+    });
+    await client.set(network.id + "-state", JSON.stringify(state));
+
+    const batches = await network.client.queryContractSmart(network.contract, {
+      batches: {},
+    });
+    await client.set(network.id + "-batches", JSON.stringify(batches));
+
+    console.log("Updated", network.id);
+
+    await client.set(network.id + "-updated", Date.now().toString());
+  } catch (err) {
+    console.error(err);
+  } finally {
+    client?.quit();
+  }
+};
+
+const handleUpdates = (network) => {
   let lastHeight = 0;
   subscribe(network, async (height) => {
-    let client;
-    try {
-      if (height > lastHeight) {
-        await network.ready;
-        client = initRedis();
-
-        const state = await network.client.queryContractSmart(
-          network.contract,
-          {
-            state: {},
-          }
-        );
-        await client.set(network.id + "-state", JSON.stringify(state));
-
-        const batches = await network.client.queryContractSmart(
-          network.contract,
-          {
-            batches: {},
-          }
-        );
-        await client.set(network.id + "-batches", JSON.stringify(batches));
-
-        lastHeight = height;
-
-        console.log("Updated", network.id);
-
-        await client.set(network.id + "-updated", Date.now().toString());
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      client?.quit();
+    if (height > lastHeight) {
+      lastHeight = height;
+      await handleUpdate(network);
     }
   });
 };
 
+Object.values(networks).forEach(handleUpdates);
 Object.values(networks).forEach(handleUpdate);
