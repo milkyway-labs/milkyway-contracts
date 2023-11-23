@@ -4,7 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
+    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
     PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
@@ -564,8 +564,13 @@ pub fn update_config(
 
 pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let mut state: State = STATE.load(deps.storage)?;
 
     check_stopped(&config)?;
+
+    if state.total_liquid_stake_token.is_zero() {
+        return Err(ContractError::NoLiquidStake {});
+    }
 
     let expected_sender = derive_intermediate_sender(
         &config.ibc_channel_id,
@@ -609,8 +614,6 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     let amount_after_fees = amount_after_fees.unwrap();
 
     // update the accounting of tokens
-    let mut state = STATE.load(deps.storage)?;
-
     state.total_native_token += amount_after_fees.clone();
     state.total_reward_amount += amount.clone();
     state.total_fees += fee;

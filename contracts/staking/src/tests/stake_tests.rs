@@ -2,10 +2,10 @@
 mod staking_tests {
     use crate::contract::{execute, IBC_TIMEOUT};
     use crate::error::ContractError;
-    use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, CONFIG, PENDING_BATCH_ID, STATE};
-    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use crate::helpers::derive_intermediate_sender;
+    use crate::msg::ExecuteMsg;
+    use crate::state::{BATCHES, CONFIG, STATE};
+    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
         attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, ReplyOn, SubMsg, Timestamp,
@@ -163,9 +163,9 @@ mod staking_tests {
     }
 
     #[test]
-    fn initial_stake_rewards_already_there() {
+    fn receive_rewards_before_minting() {
         let mut deps = init();
-        let mut env = mock_env();
+        let env = mock_env();
 
         let config = CONFIG.load(&deps.storage).unwrap();
 
@@ -174,65 +174,18 @@ mod staking_tests {
             &config.ibc_channel_id,
             &config
                 .multisig_address_config
-                .reward_collector_address.to_string(),
+                .reward_collector_address
+                .to_string(),
             "osmo",
-        ).unwrap();
+        )
+        .unwrap();
         let resp = execute(
             deps.as_mut(),
             env.clone(),
             mock_info(&sender, &coins(1_000, NATIVE_TOKEN)),
             ExecuteMsg::ReceiveRewards {},
-        ).unwrap();
-        let amount = resp
-            .attributes
-            .iter()
-            .find(|a| a.key == "amount_after_fees")
-            .unwrap()
-            .value.as_str();
-        assert_eq!(amount, "900"); // 10% fees
+        );
 
-        // now a user stakes, which should not fail
-        let resp = execute(
-            deps.as_mut(),
-            env.clone(),
-            mock_info("staker", &coins(100_000, NATIVE_TOKEN)),
-            ExecuteMsg::LiquidStake {},
-        ).unwrap();
-
-        // the user receives the same amount of stake token as the native token
-        // it staked
-        let amount = resp
-            .attributes
-            .iter()
-            .find(|a| a.key == "amount")
-            .unwrap()
-            .value.as_str();
-        assert_eq!(amount, "100000");
-
-        // the user unstakes
-        execute(
-            deps.as_mut(),
-            env.clone(),
-            mock_info("staker", &coins(100_000, config.liquid_stake_token_denom)),
-            ExecuteMsg::LiquidUnstake {},
-        ).unwrap();
-        let batch_id = PENDING_BATCH_ID.load(&deps.storage).unwrap();
-        assert_eq!(batch_id, 1);
-
-        // after batch period, pending batch submitted
-        env.block.time = env.block.time.plus_seconds(config.batch_period);
-        let resp = execute(
-            deps.as_mut(),
-            env.clone(),
-            mock_info("anyone", &[]),
-            ExecuteMsg::SubmitBatch {},
-        ).unwrap();
-        let unbond_amount = resp
-            .attributes
-            .iter()
-            .find(|a| a.key == "expected_native_unstaked")
-            .unwrap()
-            .value.as_str();
-        assert_eq!(unbond_amount, "100900"); // 100000 + 900
+        assert!(resp.is_err());
     }
 }
