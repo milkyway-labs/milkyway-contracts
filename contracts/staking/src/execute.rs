@@ -11,7 +11,7 @@ use crate::state::{
 };
 use cosmwasm_std::{
     ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, SubMsgResponse,
-    SubMsgResult, Timestamp, Uint128, Addr, BankMsg, coins,
+    SubMsgResult, Timestamp, Uint128, Addr,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -515,17 +515,28 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn recover(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn recover(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     // TODO: retry pending transfers
     let recoveries = RECOVERY_STATES.load(deps.storage, &info.sender)?;
     // Remove the recoveries from the store. If the sends fail, the whole tx should be reverted.
     RECOVERY_STATES.remove(deps.storage, &info.sender);
-    let msgs = recoveries.into_iter().map(|r| BankMsg::Send {
+    let ibc_config = IBC_CONFIG.load(deps.storage)?;
+    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
+        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
+    ));
+
+    let msgs = recoveries.into_iter().map(|r| IbcMsg::Transfer {
+        channel_id: r.channel_id,
         to_address: r.recovery_addr.into_string(),
-        amount: coins(r.amount, r.denom),
+        amount: cosmwasm_std::Coin {
+            denom: r.denom,
+            amount: Uint128::from(r.amount),
+        },
+        timeout: timeout.clone(),
     });
+
     Ok(Response::new()
-        .add_attribute("action", "recover")
+        .add_attribute("action", "recover") // TODO: is that ok setting the action name 'recover' ?
         .add_messages(msgs))
 }
 
