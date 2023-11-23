@@ -12,7 +12,7 @@ check_and_pull() {
     git fetch
     
     # Compare the local branch with the remote branch for the specific folder
-    if ! git diff --quiet HEAD "$REMOTE_BRANCH" -- "$SPECIFIC_FOLDER"; then
+    if ! git diff --quiet HEAD "$REMOTE_BRANCH"; then
         echo "Changes detected in $SPECIFIC_FOLDER."
         # Optionally, pull the changes
         git pull
