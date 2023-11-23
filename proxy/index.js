@@ -42,10 +42,10 @@ const handleUpdate = async (network) => {
     const batches = await network.client.queryContractSmart(network.contract, {
       batches: {},
     });
-    await client.set(network.id + "-batches", JSON.stringify(batches));
+    await client.set(network.id + "-batches", JSON.stringify(batches.batches));
 
     let users = {};
-    batches.forEach((batch) => {
+    batches.batches.forEach((batch) => {
       batch.requests.forEach((request) => {
         if (!request.redeemed) {
           const user = request.user;
