@@ -4,6 +4,8 @@ Purpose is to use a proper data separation for the frontend and not query nodes 
 
 This listenes to the node and persists the data in Upstash (Redis).
 
+This script listens on github and pulls if new content. Nodemon will restart the node instance if any change detected.
+
 ## Keys
 
 NETWORK=osmosis-testnet,canary
@@ -14,9 +16,11 @@ NETWORK-batches
 NETWORK-claimable-ADDRESS
 NETWORK-updated
 
+Check also in the browser: `https://console.upstash.com/redis/b2de01b9-b4f5-47ec-aa56-9d6c73554bc3?tab=data-browser`
+
 ## Run
 
-Go to console of server
+Go to console of the server
 Make sure to have ssh rights for Github
 Checkout repo
 

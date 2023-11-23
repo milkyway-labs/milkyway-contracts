@@ -44,6 +44,23 @@ const handleUpdate = async (network) => {
     });
     await client.set(network.id + "-batches", JSON.stringify(batches));
 
+    let users = {};
+    batches.forEach((batch) => {
+      batch.requests.forEach((request) => {
+        if (!request.redeemed) {
+          const user = request.user;
+          if (!users[user]) {
+            users[user] = [];
+          }
+          users[user].push(batch.id);
+        }
+      });
+    });
+    // TODO optimize
+    Object.entries(users).forEach(([user, batches]) => {
+      client.set(network.id + "-claimable-" + user, JSON.stringify(batches));
+    });
+
     console.log("Updated", network.id);
 
     await client.set(network.id + "-updated", Date.now().toString());
