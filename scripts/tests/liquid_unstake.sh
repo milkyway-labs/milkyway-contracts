@@ -26,3 +26,9 @@ CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node http://loca
 CELESTIA_VALIDATOR_2_OPERATOR=$(celestia-appd keys show validator2 --keyring-backend=test --home=$HOME/.celestia-app/validator2 --output json | jq -r '.address')
 celestia-appd tx staking unbond $CELESTIA_VALIDATOR_2 10utia --from validator2 --chain-id="celestia-dev-1" --broadcast-mode block --node http://localhost:26661 --yes --keyring-backend=test --home=$HOME/.celestia-app/validator2 --fees 21000utia
 celestia-appd query staking --node http://localhost:26661 unbonding-delegation $CELESTIA_VALIDATOR_2_OPERATOR $CELESTIA_VALIDATOR_2
+
+osmosisd tx wasm execute $CONTRACT '{"submit_batch":{}}' \
+    --from test_master -y \
+    --node http://localhost:26657 -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1
