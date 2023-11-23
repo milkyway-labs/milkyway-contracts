@@ -65,4 +65,6 @@ const handleUpdates = (network) => {
 };
 
 Object.values(networks).forEach(handleUpdates);
-Object.values(networks).forEach(handleUpdate);
+setTimeout(() => {
+  Object.values(networks).forEach(handleUpdate);
+}, 200);
