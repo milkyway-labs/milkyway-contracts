@@ -45,7 +45,7 @@ pub fn compute_mint_amount(
     // Initial very large total_native_token would cause round to 0 and block minting
     // Mint at a 1:1 ratio if there is no total native token or total liquid stake token
     // Amount = Total stTIA * (Amount of native token / Total native token)
-    if total_native_token.is_zero() {
+    if total_liquid_stake_token.is_zero() || total_native_token.is_zero() {
         native_to_stake
     } else {
         total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
