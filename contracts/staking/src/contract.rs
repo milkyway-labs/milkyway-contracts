@@ -103,6 +103,7 @@ pub fn instantiate(
         pending_owner: None,
         total_reward_amount: Uint128::zero(),
         total_fees: Uint128::zero(),
+        rate: 1u128.into(),
     };
     STATE.save(deps.storage, &state)?;
 

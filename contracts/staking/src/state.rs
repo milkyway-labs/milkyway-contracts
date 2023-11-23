@@ -27,6 +27,7 @@ pub struct State {
     pub total_liquid_stake_token: Uint128,
     pub pending_owner: Option<Addr>,
     pub total_reward_amount: Uint128,
+    pub rate: Uint128,
     pub total_fees: Uint128,
 }
 
