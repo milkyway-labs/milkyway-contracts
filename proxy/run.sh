@@ -32,6 +32,6 @@ while true; do
     # Check for updates
     check_and_pull
 
-    # Wait for a specified interval before checking again (e.g., 10 minutes)
-    sleep 600
+    # Wait for a specified interval before checking again (e.g., 1 minutes)
+    sleep 60
 done
