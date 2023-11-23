@@ -57,6 +57,9 @@ pub enum ContractError {
     #[error("No liquid unstake requests in batch")]
     BatchEmpty {},
 
+    #[error("Batch is either already closed or is in an error state")]
+    BatchNotClaimable { batch_id: u64, status: BatchStatus },
+
     #[error("The tokens in this batch have already been claimed")]
     TokensAlreadyClaimed { batch_id: u64 },
 

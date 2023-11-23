@@ -629,7 +629,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
 
 pub fn receive_unstaked_tokens(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
@@ -673,6 +673,20 @@ pub fn receive_unstaked_tokens(
     }
 
     let mut batch = _batch.unwrap();
+
+    if batch.next_batch_action_time.is_none() {
+        return Err(ContractError::BatchNotClaimable {
+            batch_id: batch.id,
+            status: batch.status,
+        });
+    }
+    let next_batch_action_time = batch.next_batch_action_time.unwrap();
+    if next_batch_action_time > env.block.time.seconds() {
+        return Err(ContractError::BatchNotReady {
+            actual: env.block.time.seconds(),
+            expected: next_batch_action_time,
+        });
+    }
 
     batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
