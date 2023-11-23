@@ -1,15 +1,8 @@
-import { createClient } from "redis";
+import Redis from "ioredis";
 import { subscribe } from "./websocket.js";
 import networks from "./networks.js";
 
-const client = createClient({
-  url: process.env.REDIS,
-});
-
-client.on("error", function (err) {
-  console.error(err);
-});
-await client.connect();
+const client = new Redis(process.env.REDIS);
 
 const handleUpdate = (network) => {
   let lastHeight = 0;
