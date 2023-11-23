@@ -7,8 +7,9 @@ SPECIFIC_FOLDER="proxy" # relative to the repository root
 REMOTE_BRANCH="fabo/proxy" # adjust the remote branch name as needed
 
 # sudo npm i nodemon -g 
+# sudo npm i env-cmd -g 
 
-nodemon --watch "." --exec "node $NODE_SCRIPT"
+tmux new -s env-cmd nodemon -d nodemon --watch "." --exec "node $NODE_SCRIPT"
 
 # Function to check for updates and pull
 check_and_pull() {

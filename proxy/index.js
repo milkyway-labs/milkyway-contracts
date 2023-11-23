@@ -7,7 +7,7 @@ const client = createClient({
 });
 
 client.on("error", function (err) {
-  throw err;
+  console.error(err);
 });
 await client.connect();
 
