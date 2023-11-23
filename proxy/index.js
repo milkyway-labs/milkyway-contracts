@@ -2,13 +2,40 @@ import Redis from "ioredis";
 import { subscribe } from "./websocket.js";
 import networks from "./networks.js";
 
+const initRedis = () => {
+  let client = new Redis(process.env.REDIS);
+
+  // Listen to 'reconnecting' event to Redis
+  client.on("reconnecting", (err) => {
+    if (client.status === "reconnecting")
+      console.log("Reconnecting to Redis Session Store...");
+    else console.log("Error reconnecting to Redis Session Store.");
+  });
+
+  // Listen to 'error' events to the Redis connection
+  client.on("error", (error) => {
+    if (error.code === "ECONNRESET") {
+      console.log("Connection to Redis Session Store timed out.");
+    } else if (error.code === "ECONNREFUSED") {
+      console.log("Connection to Redis Session Store refused!");
+    } else console.log(error);
+  });
+
+  // Listen to the 'connect' event to Redis
+  client.on("connect", (err) => {
+    if (!err) console.log("Connected to Redis Session Store!");
+  });
+  return client;
+};
+
 const handleUpdate = (network) => {
   let lastHeight = 0;
   subscribe(network, async (height) => {
+    let client;
     try {
       if (height > lastHeight) {
         await network.ready;
-        const client = new Redis(process.env.REDIS);
+        client = initRedis();
 
         const state = await network.client.queryContractSmart(
           network.contract,
@@ -34,6 +61,8 @@ const handleUpdate = (network) => {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      client?.quit();
     }
   });
 };
