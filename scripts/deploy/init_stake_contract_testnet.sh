@@ -19,9 +19,9 @@ celestia-appd tx ibc-transfer transfer transfer $CHANNEL_CELESTIA --from test_ma
 osmosisd query bank balances osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge --node https://rpc.testnet.osmosis.zone:443
 
 RESERVE_TOKEN="ibc/0E22FFB61DB307FE01D3D0DFF4A8EBEB6CC4997DCF9E901AE0751A2FFF4B90DD"
-CELESTIA_VALIDATOR_1=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f1 | bech32 --decode | bech32 --prefix celestia)
-CELESTIA_VALIDATOR_2=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f2 | bech32 --decode | bech32 --prefix celestia)
-CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f3 | bech32 --decode | bech32 --prefix celestia)
+CELESTIA_VALIDATOR_1=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f1 | bech32 --decode | bech32 --prefix celestiavaloper)
+CELESTIA_VALIDATOR_2=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f2 | bech32 --decode | bech32 --prefix celestiavaloper)
+CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f3 | bech32 --decode | bech32 --prefix celestiavaloper)
 INIT={\"native_token_denom\":\"$RESERVE_TOKEN\",\"liquid_stake_token_denom\":\"stTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":1209600,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"controller_address\":\"$ADMIN_CELESTIA\",\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"$CHANNEL\"}
 RES=$(osmosisd tx wasm instantiate $CODE_ID $INIT \
     --from test_master --label "milkyway test" -y \
@@ -32,4 +32,4 @@ CONTRACT=$(echo $RES | jq -r '.raw_log | fromjson | .[0].events[] | select(.type
 echo $CONTRACT
 
 # current deployment
-# osmo1tcmdquceeen0wzye5y5mmctye70gx7mkr6027drzg4xdaphf98ps9rlrw0
+# osmo1h3s40qhqztppucdfggzwykz7xgwhcnps952y86xc73eupqfu9jmqcaghze
