@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, Binary};
+use cosmwasm_std::{to_binary, Binary};
 use enum_repr::EnumRepr;
 /// IBC ACK. See:
 /// https://github.com/cosmos/cosmos-sdk/blob/f999b1ff05a4db4a338a855713864497bedd4396/proto/ibc/core/channel/v1/channel.proto#L141-L147

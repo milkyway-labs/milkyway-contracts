@@ -55,7 +55,7 @@ pub fn receive_ack(
         INFLIGHT_PACKETS.remove(deps.storage, sequence);
 
         // If the acc is successful, there is nothing else to do and the crosschain swap has been completed
-        return Ok(response.add_attribute("success", true));
+        return Ok(response.add_attribute("msg", "success"));
     }
 
     inflight_packet.status = state::ibc::PacketLifecycleStatus::AckFailure;
