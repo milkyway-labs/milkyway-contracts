@@ -778,7 +778,6 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
-    println!("INFLIGHT_PACKETS {:?}", INFLIGHT_PACKETS);
     // Parse the result from the underlying chain call (IBC send)
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
         return Err(ContractError::FailedIBCTransfer {
@@ -822,7 +821,7 @@ fn save_ibc_waiting_for_reply(
     id: u64,
     ibc_msg: IbcWaitingForReply,
 ) -> Result<(), ContractError> {
-    // Check that there isn't anything stored in FORWARD_REPLY_STATES. If there
+    // Check that there isn't anything stored in IBC_WAITING_FOR_REPLY. If there
     // is, it means that the contract is already waiting for a reply and should
     // not override the stored state. This should never happen here, but adding
     // the check for safety. If this happens there is likely a malicious attempt
