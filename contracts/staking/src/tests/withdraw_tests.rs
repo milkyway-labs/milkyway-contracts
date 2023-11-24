@@ -77,7 +77,7 @@ mod withdraw_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
             denom: config.native_token_denom.clone(),
-            amount: "40000".to_string(), //304615.384... = 304615
+            amount: "40000".to_string(), 
         };
         
         // check the MsgSend
