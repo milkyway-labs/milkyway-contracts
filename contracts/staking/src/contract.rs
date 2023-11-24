@@ -1,13 +1,13 @@
-use crate::ack::ReplyId;
 use crate::execute::{
     circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
-    receive_unstaked_tokens, resume_contract, update_config, recover,
+    receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{query_batch, query_batches, query_config, query_pending_batch, query_state};
 use crate::state::{
-    Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH_ID, STATE,
+    Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY,
+    PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -106,7 +106,9 @@ pub fn instantiate(
         pending_owner: None,
         total_reward_amount: Uint128::zero(),
         total_fees: Uint128::zero(),
+        ibc_id_counter: 0,
     };
+
     STATE.save(deps.storage, &state)?;
 
     // Create liquid stake token denom
@@ -200,9 +202,7 @@ pub fn execute(
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
-        ExecuteMsg::RecoverPendingIbcTransfers {} => {
-            recover(deps, env, info)
-        }
+        ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
     }
 }
 
@@ -256,10 +256,11 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
-    deps.api
-        .debug(&format!("executing crosschain reply: {reply:?}"));
-    match ReplyId::from_repr(reply.id) {
-        Some(ReplyId::IbcTransfer) => handle_ibc_reply(deps, reply),
-        None => Err(ContractError::InvalidReplyID { id: reply.id }),
+    println!("executing crosschain reply: {reply:?}");
+    let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
+
+    match ibc_waiting_result {
+        Ok(_ibc_waiting_for_reply) => handle_ibc_reply(deps, reply),
+        Err(_) => Err(ContractError::InvalidReplyID { id: reply.id }),
     }
 }

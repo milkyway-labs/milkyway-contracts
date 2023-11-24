@@ -1,17 +1,17 @@
-use crate::ack::{MsgTransferResponse};
+use crate::ack::MsgTransferResponse;
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
 };
 use crate::state::{
-    Config, ForwardMsgReplyState, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
-    FORWARD_REPLY_STATE, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE, RECOVERY_STATES, 
     ibc::{IBCTransfer, PacketLifecycleStatus},
+    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
+    IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, RECOVERY_STATES, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, SubMsgResponse,
-    SubMsgResult, Timestamp, Uint128, Addr,
+    ensure, Addr, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
+    SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -19,7 +19,6 @@ use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
-
 
 pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -107,13 +106,16 @@ pub fn execute_liquid_stake(
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
+    let sub_msg_id = state.ibc_id_counter;
+    state.ibc_id_counter += 1;
     STATE.save(deps.storage, &state)?;
 
     // Ensure the state is properly setup to handle a reply from the ibc_message
     let ibc_config = IBC_CONFIG.load(deps.storage)?;
-    save_forward_reply_state(
+    save_ibc_waiting_for_reply(
         deps,
-        ForwardMsgReplyState {
+        sub_msg_id,
+        IbcWaitingForReply {
             channel_id: ibc_config.channel_id,
             to_address: config.multisig_address_config.staker_address.to_string(),
             amount: Uint128::from(amount).into(),
@@ -123,7 +125,12 @@ pub fn execute_liquid_stake(
 
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_message(ibc_msg)
+        .add_submessage(SubMsg {
+            msg: ibc_msg.into(),
+            id: sub_msg_id,
+            reply_on: ReplyOn::Always,
+            gas_limit: None,
+        })
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("amount", amount))
@@ -758,6 +765,7 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
+    println!("INFLIGHT_PACKETS {:?}", INFLIGHT_PACKETS);
     // Parse the result from the underlying chain call (IBC send)
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
         return Err(ContractError::FailedIBCTransfer {
@@ -773,13 +781,14 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
             msg: format!("could not decode response: {b}"),
         })?;
 
-    let ForwardMsgReplyState {
+    let id: u64 = msg.id;
+    let IbcWaitingForReply {
         channel_id,
         to_address,
         amount,
         denom,
-    } = FORWARD_REPLY_STATE.load(deps.storage)?;
-    FORWARD_REPLY_STATE.remove(deps.storage);
+    } = IBC_WAITING_FOR_REPLY.load(deps.storage, id.clone())?;
+    IBC_WAITING_FOR_REPLY.remove(deps.storage, id);
 
     // If a recovery address was provided, store sent IBC transfer so that it
     // can later be recovered by that addr.
@@ -812,22 +821,23 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
     Ok(response)
 }
 
-fn save_forward_reply_state(
+fn save_ibc_waiting_for_reply(
     deps: DepsMut,
-    forward_reply_state: ForwardMsgReplyState,
+    id: u64,
+    ibc_msg: IbcWaitingForReply,
 ) -> Result<(), ContractError> {
     // Check that there isn't anything stored in FORWARD_REPLY_STATES. If there
     // is, it means that the contract is already waiting for a reply and should
     // not override the stored state. This should never happen here, but adding
     // the check for safety. If this happens there is likely a malicious attempt
     // modify the contract's state before it has replied.
-    if FORWARD_REPLY_STATE.may_load(deps.storage)?.is_some() {
+    if IBC_WAITING_FOR_REPLY.may_load(deps.storage, id)?.is_some() {
         return Err(ContractError::ContractLocked {
             msg: "Already waiting for a reply".to_string(),
         });
     }
     // Store the ibc send information and the user's failed delivery preference
     // so that it can be handled by the response
-    FORWARD_REPLY_STATE.save(deps.storage, &forward_reply_state)?;
+    IBC_WAITING_FOR_REPLY.save(deps.storage, id, &ibc_msg)?;
     Ok(())
 }

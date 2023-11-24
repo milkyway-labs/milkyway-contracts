@@ -28,6 +28,7 @@ pub struct State {
     pub pending_owner: Option<Addr>,
     pub total_reward_amount: Uint128,
     pub total_fees: Uint128,
+    pub ibc_id_counter: u64,
 }
 
 #[cw_serde]
@@ -59,7 +60,7 @@ pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
 
 #[cw_serde]
-pub struct ForwardMsgReplyState {
+pub struct IbcWaitingForReply {
     pub channel_id: String,
     pub to_address: String,
     pub amount: u128,
@@ -94,4 +95,4 @@ pub mod ibc {
 pub const INFLIGHT_PACKETS: Map<(&str, u64), ibc::IBCTransfer> = Map::new("inflight");
 /// Recovery. This tracks any recovery that an addr can execute.
 pub const RECOVERY_STATES: Map<&Addr, Vec<ibc::IBCTransfer>> = Map::new("recovery");
-pub const FORWARD_REPLY_STATE: Item<ForwardMsgReplyState> = Item::new("forward_reply_states");
+pub const IBC_WAITING_FOR_REPLY: Map<u64, IbcWaitingForReply> = Map::new("ibc_waiting_for_reply");
