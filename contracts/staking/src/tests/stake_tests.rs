@@ -3,7 +3,7 @@ mod staking_tests {
     use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, STATE};
+    use crate::state::{BATCHES, FORWARD_REPLY_STATE, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
@@ -79,6 +79,8 @@ mod staking_tests {
             }
         }
 
+        // need to do this or we can't send more ibc messages
+        // IBC_WAITING_FOR_REPLY.remove(deps.as_mut().storage);
         let _ = reply(
             deps.as_mut(),
             mock_env(),
@@ -92,7 +94,7 @@ mod staking_tests {
         );
 
         let pending_batch = BATCHES
-            .range(&deps.storage, None, None, Order::Descending)
+            .range(deps.as_ref().storage, None, None, Order::Descending)
             .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
             .unwrap()
             .unwrap()
@@ -100,7 +102,7 @@ mod staking_tests {
         assert!(pending_batch.id == 1);
 
         // Use the previously unwrapped value
-        let state = STATE.load(&deps.storage).unwrap();
+        let state = STATE.load(deps.as_ref().storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
         assert_eq!(state.total_native_token, Uint128::from(1000u128));
 
@@ -109,7 +111,7 @@ mod staking_tests {
         println!("res {:?}", res);
 
         assert!(res.is_ok());
-        let state_for_bob = STATE.load(&deps.storage).unwrap();
+        let state_for_bob = STATE.load(deps.as_ref().storage).unwrap();
         assert_eq!(
             state_for_bob.total_liquid_stake_token,
             Uint128::from(11000u128)

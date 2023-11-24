@@ -61,10 +61,7 @@ pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
 
 #[cw_serde]
 pub struct IbcWaitingForReply {
-    pub channel_id: String,
-    pub to_address: String,
     pub amount: u128,
-    pub denom: String,
 }
 
 pub mod ibc {
@@ -82,17 +79,13 @@ pub mod ibc {
     /// needs to be tracked in case the receive fails or times-out
     #[cw_serde]
     pub struct IBCTransfer {
-        pub recovery_addr: Addr,
-        pub channel_id: String,
         pub sequence: u64,
         pub amount: u128,
-        pub denom: String,
         pub status: PacketLifecycleStatus,
     }
 }
 
 /// In-Flight packets by (source_channel_id, sequence)
-pub const INFLIGHT_PACKETS: Map<(&str, u64), ibc::IBCTransfer> = Map::new("inflight");
-/// Recovery. This tracks any recovery that an addr can execute.
-pub const RECOVERY_STATES: Map<&Addr, Vec<ibc::IBCTransfer>> = Map::new("recovery");
-pub const IBC_WAITING_FOR_REPLY: Map<u64, IbcWaitingForReply> = Map::new("ibc_waiting_for_reply");
+pub const INFLIGHT_PACKETS: Map<u64, ibc::IBCTransfer> = Map::new("inflight");
+pub const IBC_WAITING_FOR_REPLY: Item<IbcWaitingForReply> = Item::new("ibc_waiting_for_reply");
+
