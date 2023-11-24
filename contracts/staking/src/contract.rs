@@ -260,9 +260,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 
 #[cfg_attr(not(feature = "imported"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
-    println!("executing crosschain reply: {reply:?}");
     let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
-
     match ibc_waiting_result {
         Ok(_ibc_waiting_for_reply) => handle_ibc_reply(deps, reply),
         Err(_) => Err(ContractError::InvalidReplyID { id: reply.id }),

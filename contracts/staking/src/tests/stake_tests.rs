@@ -108,7 +108,6 @@ mod staking_tests {
 
         let info = mock_info("bob", &coins(10000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
-        println!("res {:?}", res);
 
         assert!(res.is_ok());
         let state_for_bob = STATE.load(deps.as_ref().storage).unwrap();
