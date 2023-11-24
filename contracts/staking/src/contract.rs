@@ -107,6 +107,7 @@ pub fn instantiate(
         total_reward_amount: Uint128::zero(),
         total_fees: Uint128::zero(),
         ibc_id_counter: 0,
+        rate: 1u128.into(),
     };
 
     STATE.save(deps.storage, &state)?;

@@ -27,6 +27,7 @@ pub struct State {
     pub total_liquid_stake_token: Uint128,
     pub pending_owner: Option<Addr>,
     pub total_reward_amount: Uint128,
+    pub rate: Uint128,
     pub total_fees: Uint128,
     pub ibc_id_counter: u64,
 }
@@ -54,7 +55,6 @@ pub struct IbcConfig {
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
-// TODO: Finalize and discuss batch structure
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");

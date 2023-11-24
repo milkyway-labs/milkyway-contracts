@@ -29,7 +29,6 @@ osmosisd collect-gentxs --home=$HOME/.osmosisd/validator1
 # change config.toml values
 sed -i -E 's|allow_duplicate_ip = false|allow_duplicate_ip = true|g' $HOME/.osmosisd/validator1/config/config.toml
 
-# start all three validators
 tmux new -s osmosis1 -d osmosisd start --home=$HOME/.osmosisd/validator1
 sh ./check-node-running.sh osmosis1
 
