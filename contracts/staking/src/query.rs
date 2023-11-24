@@ -56,6 +56,7 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
         id: batch.id,
         batch_total_liquid_stake: batch.batch_total_liquid_stake,
         expected_native_unstaked: batch.expected_native_unstaked.unwrap_or(Uint128::zero()),
+        received_native_unstaked: batch.received_native_unstaked.unwrap_or(Uint128::zero()),
         next_batch_action_time: Timestamp::from_seconds(
             batch.next_batch_action_time.unwrap_or(0u64),
         ),
@@ -66,6 +67,7 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
             .map(|v| LiquidUnstakeRequestResponse {
                 user: v.1.user.to_string(),
                 amount: v.1.shares,
+                redeemed: v.1.redeemed,
             })
             .collect(),
     }

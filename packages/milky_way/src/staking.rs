@@ -9,6 +9,7 @@ pub enum BatchStatus {
     Received,
     Failed,
 }
+
 impl BatchStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -26,8 +27,10 @@ pub struct Batch {
     pub id: u64,
     /// Total amount of `stTIA` to be burned in this batch
     pub batch_total_liquid_stake: Uint128,
-    // The amount of native tokens that should be received after unbonding
+    /// The amount of native tokens that should be received after unbonding
     pub expected_native_unstaked: Option<Uint128>,
+    /// The amount of native tokens received after unbonding
+    pub received_native_unstaked: Option<Uint128>,
 
     pub liquid_unstake_requests: Map<String, LiquidUnstakeRequest>,
 
@@ -36,6 +39,7 @@ pub struct Batch {
 
     pub status: BatchStatus,
 }
+
 // Batch should always be constructed with a pending status
 // Contract: Caller determines batch data
 impl Batch {
@@ -47,6 +51,7 @@ impl Batch {
             next_batch_action_time: Some(est_next_batch_action),
             status: BatchStatus::Pending,
             expected_native_unstaked: None,
+            received_native_unstaked: None,
         }
     }
     pub fn update_status(&mut self, new_status: BatchStatus, next_action: Option<u64>) {
@@ -81,6 +86,7 @@ pub struct LiquidUnstakeRequest {
     pub shares: Uint128,
     pub redeemed: bool,
 }
+
 impl LiquidUnstakeRequest {
     pub fn new(user: Addr, shares: Uint128) -> Self {
         Self {

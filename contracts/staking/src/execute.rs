@@ -6,12 +6,12 @@ use crate::helpers::{
 use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
-    Config, ForwardMsgReplyState, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
-    FORWARD_REPLY_STATE, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
+    IBC_WAITING_FOR_REPLY, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, SubMsgResponse,
-    SubMsgResult, Timestamp, Uint128,
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, ReplyOn, Response, 
+    SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -107,9 +107,11 @@ pub fn execute_liquid_stake(
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
+    let sub_msg_id = state.ibc_id_counter;
+    state.ibc_id_counter += 1;
     STATE.save(deps.storage, &state)?;
 
-    save_forward_reply_state(
+    save_ibc_waiting_for_reply(
         deps,
         ForwardMsgReplyState {
             amount: Uint128::from(amount).into(),
@@ -118,7 +120,12 @@ pub fn execute_liquid_stake(
 
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_message(ibc_msg)
+        .add_submessage(SubMsg {
+            msg: ibc_msg.into(),
+            id: sub_msg_id,
+            reply_on: ReplyOn::Always,
+            gas_limit: None,
+        })
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("amount", amount))
@@ -233,8 +240,27 @@ pub fn execute_submit_batch(
         return Err(ContractError::BatchEmpty {});
     }
 
-    let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
+
+    // TODO: Circuit break?
+    // Need to add a test for this
+    ensure!(
+        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
+        ContractError::InvalidUnstakeAmount {
+            total_liquid_stake_token: (state.total_liquid_stake_token),
+            amount_to_unstake: (batch.batch_total_liquid_stake)
+        }
+    );
+
+    let config = CONFIG.load(deps.storage)?;
+    // Update batch status
+    batch.update_status(
+        BatchStatus::Submitted,
+        Some(env.block.time.seconds() + config.unbonding_period),
+    );
+
+    // Move pending batch to batches
+    BATCHES.save(deps.storage, batch.id, &batch)?;
 
     // Create new pending batch
     let new_pending_batch = Batch::new(
@@ -257,16 +283,6 @@ pub fn execute_submit_batch(
         }),
         burn_from_address: env.contract.address.to_string(),
     };
-
-    // TODO: Circuit break?
-    // Need to add a test for this
-    ensure!(
-        state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
-        ContractError::InvalidUnstakeAmount {
-            total_liquid_stake_token: (state.total_liquid_stake_token),
-            amount_to_unstake: (batch.batch_total_liquid_stake)
-        }
-    );
 
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,
@@ -318,44 +334,39 @@ pub fn execute_withdraw(
 
     check_stopped(&config)?;
 
-    println!("{}", batch_id);
-
     let _batch = BATCHES.load(deps.storage, batch_id);
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
-    let batch = _batch.unwrap();
-
-    println!("x");
+    let mut batch = _batch.unwrap();
 
     if batch.status != BatchStatus::Received {
-        return Err(ContractError::BatchNotReady {
-            actual: batch.status as u64,
-            expected: BatchStatus::Received as u64,
-        });
+        return Err(ContractError::TokensAlreadyClaimed { batch_id: batch.id });
     }
+    let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
-    let _liquid_unstake_request: Option<LiquidUnstakeRequest> = batch
+    let _liquid_unstake_request: Option<&mut LiquidUnstakeRequest> = batch
         .liquid_unstake_requests
-        .get(&info.sender.to_string())
-        .cloned();
+        .get_mut(&info.sender.to_string());
 
     if _liquid_unstake_request.is_none() {
         return Err(ContractError::NoRequestInBatch {});
     }
 
-    let mut liquid_unstake_request = _liquid_unstake_request.unwrap();
+    let liquid_unstake_request = _liquid_unstake_request.unwrap();
 
     if liquid_unstake_request.redeemed {
         return Err(ContractError::AlreadyRedeemed {});
     }
 
     liquid_unstake_request.redeemed = true;
-    BATCHES.save(deps.storage, batch.id, &batch)?;
+    let amount = received_native_unstaked.multiply_ratio(
+        liquid_unstake_request.shares,
+        batch.batch_total_liquid_stake,
+    );
 
-    // TODO make this a share of total liquid stake? in case of slashes?
-    // let total_shares = batch.batch_total_liquid_stake;
-    let amount = liquid_unstake_request.shares;
+    // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
+    BATCHES.save(deps.storage, batch.id, &batch)?;
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
@@ -642,7 +653,10 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         .multiply_ratio(amount, 100_000u128);
     let amount_after_fees = amount.checked_sub(fee);
     if amount_after_fees.is_err() {
-        return Err(ContractError::FormatError {});
+        return Err(ContractError::ReceiveRewardsTooSmall {
+            amount,
+            minimum: fee,
+        });
     }
     let amount_after_fees = amount_after_fees.unwrap();
 
@@ -713,9 +727,9 @@ pub fn receive_unstaked_tokens(
     let mut batch = _batch.unwrap();
 
     if batch.next_batch_action_time.is_none() {
-        return Err(ContractError::BatchNotReady {
-            actual: env.block.time.seconds(),
-            expected: 0,
+        return Err(ContractError::BatchNotClaimable {
+            batch_id: batch.id,
+            status: batch.status,
         });
     }
     let next_batch_action_time = batch.next_batch_action_time.unwrap();
@@ -726,6 +740,7 @@ pub fn receive_unstaked_tokens(
         });
     }
 
+    batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
@@ -762,6 +777,7 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
+    println!("INFLIGHT_PACKETS {:?}", INFLIGHT_PACKETS);
     // Parse the result from the underlying chain call (IBC send)
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
         return Err(ContractError::FailedIBCTransfer {
@@ -777,8 +793,8 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
             msg: format!("could not decode response: {b}"),
         })?;
 
-    let ForwardMsgReplyState { amount } = FORWARD_REPLY_STATE.load(deps.storage)?;
-    FORWARD_REPLY_STATE.remove(deps.storage);
+    let IbcWaitingForReply { amount } = IBC_WAITING_FOR_REPLY.load(deps.storage)?;
+    IBC_WAITING_FOR_REPLY.remove(deps.storage);
 
     let recovery = IBCTransfer {
         sequence: transfer_response.sequence,
@@ -800,22 +816,23 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
     Ok(response)
 }
 
-fn save_forward_reply_state(
+fn save_ibc_waiting_for_reply(
     deps: DepsMut,
-    forward_reply_state: ForwardMsgReplyState,
+    id: u64,
+    ibc_msg: IbcWaitingForReply,
 ) -> Result<(), ContractError> {
     // Check that there isn't anything stored in FORWARD_REPLY_STATES. If there
     // is, it means that the contract is already waiting for a reply and should
     // not override the stored state. This should never happen here, but adding
     // the check for safety. If this happens there is likely a malicious attempt
     // modify the contract's state before it has replied.
-    if FORWARD_REPLY_STATE.may_load(deps.storage)?.is_some() {
+    if IBC_WAITING_FOR_REPLY.may_load(deps.storage, id)?.is_some() {
         return Err(ContractError::ContractLocked {
             msg: "Already waiting for a reply".to_string(),
         });
     }
     // Store the ibc send information and the user's failed delivery preference
     // so that it can be handled by the response
-    FORWARD_REPLY_STATE.save(deps.storage, &forward_reply_state)?;
+    IBC_WAITING_FOR_REPLY.save(deps.storage, id, &ibc_msg)?;
     Ok(())
 }

@@ -1,18 +1,19 @@
 #[cfg(test)]
 mod staking_tests {
-    use crate::contract::{execute, IBC_TIMEOUT};
+    use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
     use crate::msg::ExecuteMsg;
     use crate::state::{BATCHES, FORWARD_REPLY_STATE, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
-        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, ReplyOn, SubMsg, Timestamp,
-        Uint128,
+        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
+        SubMsgResponse, SubMsgResult, Timestamp, Uint128,
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
+    use std::vec::Vec;
 
     #[test]
     fn proper_liquid_stake() {
@@ -53,7 +54,7 @@ mod staking_tests {
                             timeout,
                         }),
                         gas_limit: None,
-                        reply_on: ReplyOn::Never,
+                        reply_on: ReplyOn::Always,
                     }
                 );
                 assert_eq!(
@@ -79,7 +80,18 @@ mod staking_tests {
         }
 
         // need to do this or we can't send more ibc messages
-        FORWARD_REPLY_STATE.remove(deps.as_mut().storage);
+        // IBC_WAITING_FOR_REPLY.remove(deps.as_mut().storage);
+        let _ = reply(
+            deps.as_mut(),
+            mock_env(),
+            Reply {
+                id: 0,
+                result: SubMsgResult::Ok(SubMsgResponse {
+                    data: None,         // No data returned
+                    events: Vec::new(), // No events
+                }),
+            },
+        );
 
         let pending_batch = BATCHES
             .range(deps.as_ref().storage, None, None, Order::Descending)
@@ -97,6 +109,7 @@ mod staking_tests {
         let info = mock_info("bob", &coins(10000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         println!("res {:?}", res);
+
         assert!(res.is_ok());
         let state_for_bob = STATE.load(deps.as_ref().storage).unwrap();
         assert_eq!(

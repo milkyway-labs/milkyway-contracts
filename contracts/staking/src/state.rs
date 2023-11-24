@@ -27,7 +27,9 @@ pub struct State {
     pub total_liquid_stake_token: Uint128,
     pub pending_owner: Option<Addr>,
     pub total_reward_amount: Uint128,
+    pub rate: Uint128,
     pub total_fees: Uint128,
+    pub ibc_id_counter: u64,
 }
 
 #[cw_serde]
@@ -53,13 +55,12 @@ pub struct IbcConfig {
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
-// TODO: Finalize and discuss batch structure
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
 
 #[cw_serde]
-pub struct ForwardMsgReplyState {
+pub struct IbcWaitingForReply {
     pub amount: u128,
 }
 
@@ -86,4 +87,5 @@ pub mod ibc {
 
 /// In-Flight packets by (source_channel_id, sequence)
 pub const INFLIGHT_PACKETS: Map<u64, ibc::IBCTransfer> = Map::new("inflight");
-pub const FORWARD_REPLY_STATE: Item<ForwardMsgReplyState> = Item::new("forward_reply_states");
+pub const IBC_WAITING_FOR_REPLY: Item<IbcWaitingForReply> = Item::new("ibc_waiting_for_reply");
+

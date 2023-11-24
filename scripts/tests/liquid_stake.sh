@@ -25,3 +25,4 @@ celestia-appd query bank balances $ADMIN_CELESTIA --node http://localhost:26661
 
 # check packets (inside docker)
 hermes query packet pending --chain osmosis-dev-1 --port transfer --channel channel-0
+
