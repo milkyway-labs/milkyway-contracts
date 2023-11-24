@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use cosmwasm_std::Uint128;
     use crate::helpers::{compute_mint_amount, compute_unbond_amount, validate_addresses};
-    use cosmwasm_std::testing::mock_dependencies;
-    use cosmwasm_std::{StdError, Uint128};
 
     #[test]
     fn validate_addresses_success() {
@@ -10,12 +9,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
             "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         ];
-        let result = validate_addresses(
-            mock_dependencies().as_ref().api,
-            addresses,
-            "osmo".to_string(),
-        )
-        .unwrap();
+        let result = validate_addresses(addresses, "osmo").unwrap();
         assert_eq!(2, result.len());
     }
 
@@ -25,11 +19,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
-        let result = validate_addresses(
-            mock_dependencies().as_ref().api,
-            addresses,
-            "osmo".to_string(),
-        );
+        let result = validate_addresses(addresses, "osmo");
         assert!(result.is_err());
     }
 
@@ -39,11 +29,7 @@ mod tests {
             "a".to_string(),
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
-        let result = validate_addresses(
-            mock_dependencies().as_ref().api,
-            addresses,
-            "celestia".to_string(),
-        );
+        let result = validate_addresses(addresses, "celestia");
         assert!(result.is_err());
     }
 
@@ -61,6 +47,7 @@ mod tests {
 
         assert_eq!(mint_amount, Uint128::from(90_000_000u128));
     }
+
     // Basic test - based on figures from excalidraw
     #[test]
     fn test_compute_unbond_amount() {

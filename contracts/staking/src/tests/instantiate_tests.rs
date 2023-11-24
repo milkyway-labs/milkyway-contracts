@@ -3,11 +3,12 @@ mod tests {
     use crate::msg::InstantiateMsg;
     use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, BATCHES};
     use crate::tests::test_helper::{
-        init, CELESTIA1, CELESTIA2, CELESTIA3, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
+        init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
 
     use cosmwasm_std::{Addr, Order, Uint128};
     use milky_way::staking::BatchStatus;
+
     #[test]
     fn proper_instantiation() {
         let deps = init();
@@ -39,7 +40,6 @@ mod tests {
                     dao_treasury_fee: Uint128::from(10u128),
                 },
                 multisig_address_config: MultisigAddressConfig {
-                    controller_address: Addr::unchecked(CELESTIA3),
                     staker_address: Addr::unchecked(CELESTIA1),
                     reward_collector_address: Addr::unchecked(CELESTIA2),
                 },
@@ -111,16 +111,6 @@ mod tests {
         assert!(res.is_err());
 
         let mut msg = get_msg();
-        msg.multisig_address_config.controller_address = Addr::unchecked(OSMO1.to_string());
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
-
-        let mut msg = get_msg();
         msg.multisig_address_config.staker_address = Addr::unchecked(OSMO1.to_string());
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -154,7 +144,6 @@ mod tests {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
             multisig_address_config: Some(MultisigAddressConfig {
-                controller_address: Addr::unchecked(CELESTIA3),
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
@@ -180,7 +169,6 @@ mod tests {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
             multisig_address_config: Some(MultisigAddressConfig {
-                controller_address: Addr::unchecked(CELESTIA3),
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
@@ -203,7 +191,6 @@ mod tests {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
             multisig_address_config: Some(MultisigAddressConfig {
-                controller_address: Addr::unchecked(CELESTIA3),
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
@@ -226,7 +213,6 @@ mod tests {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
             multisig_address_config: Some(MultisigAddressConfig {
-                controller_address: Addr::unchecked(CELESTIA3),
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),

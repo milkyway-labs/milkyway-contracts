@@ -2,8 +2,9 @@
 mod staking_tests {
     use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
+    use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, STATE};
+    use crate::state::{BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
@@ -47,7 +48,7 @@ mod staking_tests {
                     result.messages[1],
                     SubMsg {
                         id: 0,
-                        msg: <cosmwasm_std::IbcMsg as Into<CosmosMsg>>::into(IbcMsg::Transfer {
+                        msg: <IbcMsg as Into<CosmosMsg>>::into(IbcMsg::Transfer {
                             channel_id: CHANNEL_ID.to_string(),
                             to_address: Addr::unchecked(CELESTIA1).to_string(),
                             amount: ibc_coin,
@@ -175,5 +176,32 @@ mod staking_tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn receive_rewards_before_minting() {
+        let mut deps = init();
+        let env = mock_env();
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+
+        // received rewards in advance of any liquid stake requests
+        let sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            &config
+                .multisig_address_config
+                .reward_collector_address
+                .to_string(),
+            "osmo",
+        )
+        .unwrap();
+        let resp = execute(
+            deps.as_mut(),
+            env.clone(),
+            mock_info(&sender, &coins(1_000, NATIVE_TOKEN)),
+            ExecuteMsg::ReceiveRewards {},
+        );
+
+        assert!(resp.is_err());
     }
 }

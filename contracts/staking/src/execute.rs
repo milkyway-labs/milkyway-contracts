@@ -6,7 +6,7 @@ use crate::helpers::{
 use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
-    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, ADMIN, BATCHES, CONFIG,
+    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
     IBC_WAITING_FOR_REPLY, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
@@ -617,8 +617,13 @@ pub fn update_config(
 
 pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
+    let mut state: State = STATE.load(deps.storage)?;
 
     check_stopped(&config)?;
+
+    if state.total_liquid_stake_token.is_zero() {
+        return Err(ContractError::NoLiquidStake {});
+    }
 
     let expected_sender = derive_intermediate_sender(
         &config.ibc_channel_id,
@@ -662,8 +667,6 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     let amount_after_fees = amount_after_fees.unwrap();
 
     // update the accounting of tokens
-    let mut state = STATE.load(deps.storage)?;
-
     state.total_native_token += amount_after_fees.clone();
     state.total_reward_amount += amount.clone();
     state.total_fees += fee;
@@ -674,9 +677,10 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
 
     Ok(Response::new()
-        .add_attribute("method", "receive_rewards")
-        .add_attribute("method", "transfer_stake")
+        .add_attribute("action", "receive_rewards")
+        .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
+        .add_attribute("amount_after_fees", amount_after_fees)
         .add_message(ibc_transfer_msg))
 }
 
@@ -747,7 +751,7 @@ pub fn receive_unstaked_tokens(
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
     Ok(Response::new()
-        .add_attribute("method", "receive_unstaked_tokens")
+        .add_attribute("action", "receive_unstaked_tokens")
         .add_attribute("amount", amount))
 }
 
@@ -763,7 +767,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     config.stopped = true;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("method", "circuit_breaker"))
+    Ok(Response::new().add_attribute("action", "circuit_breaker"))
 }
 
 pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
@@ -774,7 +778,7 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("method", "resume_contract"))
+    Ok(Response::new().add_attribute("action", "resume_contract"))
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
