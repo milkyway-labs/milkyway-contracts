@@ -1,4 +1,4 @@
-use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
+use crate::state::{ibc::IBCTransfer, MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Timestamp, Uint128};
 use schemars::JsonSchema;
@@ -62,6 +62,7 @@ pub enum ExecuteMsg {
     ReceiveUnstakedTokens {},
     CircuitBreaker {},
     ResumeContract {},
+    RecoverPendingIbcTransfers {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -104,6 +105,10 @@ pub struct BatchResponse {
 pub struct BatchesResponse {
     pub batches: Vec<BatchResponse>,
 }
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct IBCQueueResponse {
+    pub ibc_queue: Vec<IBCTransfer>,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -118,7 +123,38 @@ pub enum QueryMsg {
     Batches {},
     #[returns(BatchResponse)]
     PendingBatch {},
+    #[returns(IBCQueueResponse)]
+    IbcQueue {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct MigrateMsg {}
+
+#[cw_serde]
+pub enum IBCLifecycleComplete {
+    #[serde(rename = "ibc_ack")]
+    IBCAck {
+        /// The source channel (osmosis side) of the IBC packet
+        channel: String,
+        /// The sequence number that the packet was sent with
+        sequence: u64,
+        /// String encoded version of the ack as seen by OnAcknowledgementPacket(..)
+        ack: String,
+        /// Weather an ack is a success of failure according to the transfer spec
+        success: bool,
+    },
+    #[serde(rename = "ibc_timeout")]
+    IBCTimeout {
+        /// The source channel (osmosis side) of the IBC packet
+        channel: String,
+        /// The sequence number that the packet was sent with
+        sequence: u64,
+    },
+}
+
+/// Message type for `sudo` entry_point
+#[cw_serde]
+pub enum SudoMsg {
+    #[serde(rename = "ibc_lifecycle_complete")]
+    IBCLifecycleComplete(IBCLifecycleComplete),
+}

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod staking_tests {
-    use crate::contract::{execute, IBC_TIMEOUT};
+    use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
@@ -8,12 +8,13 @@ mod staking_tests {
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
-        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, ReplyOn, SubMsg, Timestamp,
-        Uint128,
+        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
+        SubMsgResponse, SubMsgResult, Timestamp, Uint128,
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
+    use std::vec::Vec;
 
     #[test]
     fn proper_liquid_stake() {
@@ -54,7 +55,7 @@ mod staking_tests {
                             timeout,
                         }),
                         gas_limit: None,
-                        reply_on: ReplyOn::Never,
+                        reply_on: ReplyOn::Always,
                     }
                 );
                 assert_eq!(
@@ -79,8 +80,22 @@ mod staking_tests {
             }
         }
 
+        // need to do this or we can't send more ibc messages
+        // IBC_WAITING_FOR_REPLY.remove(deps.as_mut().storage);
+        let _ = reply(
+            deps.as_mut(),
+            mock_env(),
+            Reply {
+                id: 0,
+                result: SubMsgResult::Ok(SubMsgResponse {
+                    data: None,         // No data returned
+                    events: Vec::new(), // No events
+                }),
+            },
+        );
+
         let pending_batch = BATCHES
-            .range(&deps.storage, None, None, Order::Descending)
+            .range(deps.as_ref().storage, None, None, Order::Descending)
             .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
             .unwrap()
             .unwrap()
@@ -88,14 +103,15 @@ mod staking_tests {
         assert!(pending_batch.id == 1);
 
         // Use the previously unwrapped value
-        let state = STATE.load(&deps.storage).unwrap();
+        let state = STATE.load(deps.as_ref().storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
         assert_eq!(state.total_native_token, Uint128::from(1000u128));
 
         let info = mock_info("bob", &coins(10000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+
         assert!(res.is_ok());
-        let state_for_bob = STATE.load(&deps.storage).unwrap();
+        let state_for_bob = STATE.load(deps.as_ref().storage).unwrap();
         assert_eq!(
             state_for_bob.total_liquid_stake_token,
             Uint128::from(11000u128)

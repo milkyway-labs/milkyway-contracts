@@ -1,7 +1,9 @@
 use crate::msg::{
-    BatchResponse, BatchesResponse, ConfigResponse, LiquidUnstakeRequestResponse, StateResponse,
+    BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, LiquidUnstakeRequestResponse,
+    StateResponse,
 };
-use crate::state::{BATCHES, CONFIG, PENDING_BATCH_ID, STATE};
+use crate::state::ibc::IBCTransfer;
+use crate::state::{BATCHES, CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE};
 use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
 
@@ -90,4 +92,16 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     let pending_batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     Ok(batch_to_response(pending_batch))
+}
+
+pub fn query_ibc_queue(deps: Deps) -> StdResult<IBCQueueResponse> {
+    let inflight_packets: Vec<IBCTransfer> = INFLIGHT_PACKETS
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|v| v.unwrap().1)
+        .collect();
+    let res = IBCQueueResponse {
+        ibc_queue: inflight_packets,
+    };
+
+    Ok(res)
 }

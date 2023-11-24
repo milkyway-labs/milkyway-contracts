@@ -29,6 +29,7 @@ pub struct State {
     pub total_reward_amount: Uint128,
     pub rate: Uint128,
     pub total_fees: Uint128,
+    pub ibc_id_counter: u64,
 }
 
 #[cw_serde]
@@ -56,3 +57,34 @@ pub const STATE: Item<State> = Item::new("state");
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
+
+#[cw_serde]
+pub struct IbcWaitingForReply {
+    pub amount: u128,
+}
+
+pub mod ibc {
+    use super::*;
+
+    #[cw_serde]
+    pub enum PacketLifecycleStatus {
+        Sent,
+        AckSuccess,
+        AckFailure,
+        TimedOut,
+    }
+
+    /// A transfer packet sent by this contract that is expected to be received but
+    /// needs to be tracked in case the receive fails or times-out
+    #[cw_serde]
+    pub struct IBCTransfer {
+        pub sequence: u64,
+        pub amount: u128,
+        pub status: PacketLifecycleStatus,
+    }
+}
+
+/// In-Flight packets by (source_channel_id, sequence)
+pub const INFLIGHT_PACKETS: Map<u64, ibc::IBCTransfer> = Map::new("inflight");
+pub const IBC_WAITING_FOR_REPLY: Map<u64, IbcWaitingForReply> = Map::new("ibc_waiting_for_reply");
+
