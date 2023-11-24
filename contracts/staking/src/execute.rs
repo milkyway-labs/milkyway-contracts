@@ -113,7 +113,8 @@ pub fn execute_liquid_stake(
 
     save_ibc_waiting_for_reply(
         deps,
-        ForwardMsgReplyState {
+        sub_msg_id,
+        IbcWaitingForReply {
             amount: Uint128::from(amount).into(),
         },
     )?;
@@ -793,8 +794,8 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
             msg: format!("could not decode response: {b}"),
         })?;
 
-    let IbcWaitingForReply { amount } = IBC_WAITING_FOR_REPLY.load(deps.storage)?;
-    IBC_WAITING_FOR_REPLY.remove(deps.storage);
+    let IbcWaitingForReply { amount } = IBC_WAITING_FOR_REPLY.load(deps.storage, msg.id)?;
+    IBC_WAITING_FOR_REPLY.remove(deps.storage, msg.id);
 
     let recovery = IBCTransfer {
         sequence: transfer_response.sequence,

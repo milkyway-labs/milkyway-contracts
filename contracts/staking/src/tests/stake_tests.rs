@@ -3,7 +3,7 @@ mod staking_tests {
     use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, FORWARD_REPLY_STATE, STATE};
+    use crate::state::{BATCHES, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
