@@ -16,14 +16,18 @@ mod withdraw_tests {
         let env = mock_env();
         let mut state = STATE.load(&deps.storage).unwrap();
 
-        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_liquid_stake_token = Uint128::from(130_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let mut pending_batch: Batch =
-            Batch::new(1, Uint128::new(100_000), env.block.time.seconds() + 10000);
+            Batch::new(1, Uint128::new(130000), env.block.time.seconds() + 10000);
         pending_batch.liquid_unstake_requests.insert(
             "bob".to_string(),
-            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(100_000u128)),
+            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(40_000u128)),
+        );
+        pending_batch.liquid_unstake_requests.insert(
+            "tom".to_string(),
+            LiquidUnstakeRequest::new(Addr::unchecked("tom"), Uint128::from(90_000u128)),
         );
         let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
         assert!(res.is_ok());
@@ -73,9 +77,10 @@ mod withdraw_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
             denom: config.native_token_denom.clone(),
-            amount: "990000".to_string(),
+            amount: "304615".to_string(), //304615.384... = 304615
         };
-
+        
+        
         // check the MsgSend
         let mut coins = Vec::new();
         coins.push(coin);
@@ -86,6 +91,48 @@ mod withdraw_tests {
                 msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                     from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
                     to_address: "bob".to_string(),
+                    amount: coins,
+                }),
+                gas_limit: None,
+                reply_on: ReplyOn::Never,
+            }
+        );
+
+        // Tom withdraw
+        let msg = ExecuteMsg::Withdraw {
+            batch_id: pending_batch.id,
+        };
+        let info = mock_info("tom", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_ok());
+        let messages = res.unwrap().messages;
+        assert_eq!(messages.len(), 1);
+
+        let msg = QueryMsg::Batch {
+            id: pending_batch.id,
+        };
+        let res = query(deps.as_ref(), env.clone(), msg);
+        assert!(res.is_ok());
+        let resp: BatchResponse = from_binary(&res.unwrap()).unwrap();
+
+        assert!(resp.requests.get(0).unwrap().redeemed);
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+        let coin = Coin {
+            denom: config.native_token_denom.clone(),
+            amount: "685384".to_string(), //685,384.615... = 685384
+        };
+        
+        // check the MsgSend
+        let mut coins = Vec::new();
+        coins.push(coin);
+        assert_eq!(
+            messages[0],
+            SubMsg {
+                id: 0,
+                msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
+                    from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                    to_address: "tom".to_string(),
                     amount: coins,
                 }),
                 gas_limit: None,
