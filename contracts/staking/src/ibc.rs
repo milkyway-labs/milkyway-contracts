@@ -37,11 +37,10 @@ pub fn receive_ack(
         // If the ack is not for this contract, return a success
         return Ok(Response::new()
             .add_attribute("action", "receive_ack")
-            .add_attribute("msg", "received ack for different channel"));
+            .add_attribute("error", "received ack for different channel"));
     }
 
     let response = Response::new()
-        .add_attribute("contract", "staking")
         .add_attribute("action", "receive_ack");
 
     // Check if there is an inflight packet for the received (sequence)
@@ -56,13 +55,13 @@ pub fn receive_ack(
         INFLIGHT_PACKETS.remove(deps.storage, sequence);
 
         // If the acc is successful, there is nothing else to do and the crosschain swap has been completed
-        return Ok(response.add_attribute("msg", "packet successfully delivered"));
+        return Ok(response.add_attribute("success", true));
     }
 
     inflight_packet.status = state::ibc::PacketLifecycleStatus::AckFailure;
     INFLIGHT_PACKETS.save(deps.storage, sequence, &inflight_packet)?;
 
-    Ok(response.add_attribute("msg", "ibc acknowledgement failed"))
+    Ok(response.add_attribute("error", "ibc acknowledgement failed"))
 }
 
 // This is very similar to the handling of acks, but it always creates a
@@ -77,22 +76,21 @@ pub fn receive_timeout(
         // If the ack is not for this contract, return a success
         return Ok(Response::new()
             .add_attribute("action", "receive_ack")
-            .add_attribute("msg", "received ack for different channel"));
+            .add_attribute("error", "received ack for different channel"));
     }
 
     let response = Response::new()
-        .add_attribute("contract", "staking")
         .add_attribute("action", "receive_timeout");
 
     // Check if there is an inflight packet for the received (sequence)
     let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, sequence)?;
     let Some(mut inflight_packet) = sent_packet else {
         // If there isn't, continue
-        return Ok(response.add_attribute("msg", "received unexpected timeout"));
+        return Ok(response.add_attribute("error", "received unexpected timeout"));
     };
 
     inflight_packet.status = state::ibc::PacketLifecycleStatus::TimedOut;
     INFLIGHT_PACKETS.save(deps.storage, sequence, &inflight_packet)?;
 
-    Ok(response.add_attribute("msg", "ibc packet timed out"))
+    Ok(response.add_attribute("error", "ibc packet timed out"))
 }

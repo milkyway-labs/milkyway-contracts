@@ -552,7 +552,7 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
     });
 
     Ok(Response::new()
-        .add_attribute("action", "recover") // TODO: is that ok setting the action name 'recover' ?
+        .add_attribute("action", "recover")
         .add_messages(msgs))
 }
 

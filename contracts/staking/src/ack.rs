@@ -32,8 +32,3 @@ pub struct MsgTransferResponse {
     pub sequence: u64,
 }
 
-#[cw_serde]
-pub enum FailedDeliveryAction {
-    DoNothing,
-    LocalRecoveryAddr(Addr),
-}
