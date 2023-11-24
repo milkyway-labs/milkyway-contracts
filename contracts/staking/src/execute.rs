@@ -6,12 +6,12 @@ use crate::helpers::{
 use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
-    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_WAITING_FOR_REPLY, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
+    CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, ReplyOn, Response, 
-    SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
+    SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -21,7 +21,7 @@ use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
-pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
+pub fn transfer_stake_msg(deps: Deps, env: &Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let ibc_config = IBC_CONFIG.load(deps.storage)?;
 
@@ -103,12 +103,17 @@ pub fn execute_liquid_stake(
     };
 
     // Transfer native token to multisig address
-    let ibc_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
+    let ibc_msg = transfer_stake_msg(deps.as_ref(), &env, amount)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
-    let sub_msg_id = state.ibc_id_counter;
-    state.ibc_id_counter += 1;
+    // message id will be dependendent on block and transaction index, and will therefor always be unique
+    let sub_msg_id = if env.transaction.is_none() {
+        env.block.time.nanos()
+    } else {
+        env.block.time.nanos() + env.transaction.unwrap().index as u64
+    };
+
     STATE.save(deps.storage, &state)?;
 
     save_ibc_waiting_for_reply(
@@ -674,7 +679,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), &env, amount_after_fees.clone())?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
