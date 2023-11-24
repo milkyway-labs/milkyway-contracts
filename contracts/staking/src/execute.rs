@@ -8,14 +8,19 @@ use crate::state::{
     PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, Timestamp,
-    Uint128,
+    ensure, Env, IbcMsg, IbcTimeout, MessageInfo, Order, QueryRequest, Response, StdResult, SubMsg,
+    Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
+use osmo_bindings::Swap;
+use osmo_bindings::{OsmosisMsg, OsmosisQuery, SwapAmount, SwapResponse};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
+
+pub type Deps<'a> = cosmwasm_std::Deps<'a, OsmosisQuery>;
+pub type DepsMut<'a> = cosmwasm_std::DepsMut<'a, OsmosisQuery>;
 
 pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -635,7 +640,7 @@ pub fn receive_unstaked_tokens(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-) -> ContractResult<Response> {
+) -> ContractResult<Response<MsgSend>> {
     let config: Config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
@@ -697,9 +702,113 @@ pub fn receive_unstaked_tokens(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
+    let sub_msgs = auto_claim(deps, env, config, batch);
+
     Ok(Response::new()
         .add_attribute("action", "receive_unstaked_tokens")
-        .add_attribute("amount", amount))
+        .add_attribute("amount", amount)
+        .add_submessages(sub_msgs))
+}
+
+fn auto_claim(deps: DepsMut, env: Env, config: Config, batch: Batch) -> Vec<SubMsg<MsgSend>> {
+    let gas_per_claim = 20000u64;
+    let gas_price = Uint128::from(2500u128); // per 100000
+    let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
+    // amount of osmo we need to pay for gas
+    // TODO check safe math
+    let amount_for_gas =
+        Uint128::from(gas_per_claim).multiply_ratio(gas_price * claims, 100000u128);
+    // get value of TIA in Osmo from querier
+    let swap_res = query_swap_cost(&deps.as_ref(), env, amount_for_gas)?;
+    let tia_to_swap = swap_res.amount.as_in();
+    let swap_msg = swap(&deps.as_ref(), env, tia_to_swap, amount_for_gas);
+
+    // TODO multiply_ratio is floor, we want ceil
+    let fee_per_user = tia_to_swap.multiply_ratio(Uint128::one(), claims);
+    let send_msgs = batch
+        .liquid_unstake_requests
+        .into_iter()
+        .map(|r| r.1)
+        .map(|r| {
+            let withdraw_amount = batch
+                .received_native_unstaked
+                .unwrap()
+                .multiply_ratio(r.shares, batch.batch_total_liquid_stake)
+                .checked_sub(fee_per_user);
+            // TODO handle error
+            if withdraw_amount.is_err() {
+                panic!(
+                    "Couldn't process withdraw to users: {:?}",
+                    withdraw_amount.err()
+                )
+            }
+            let msg = MsgSend {
+                from_address: env.contract.address.to_string(),
+                to_address: r.user.to_string(),
+                amount: vec![Coin {
+                    denom: config.native_token_denom,
+                    amount: withdraw_amount.unwrap().to_string(),
+                }],
+            };
+            msg
+        });
+    // TODO is this continueing or per tx?
+    let mut sub_msg_id_counter = 0;
+    let sub_msgs: Vec<SubMsg<MsgSend>> = send_msgs
+        .map(|m| {
+            let id = sub_msg_id_counter.clone();
+            sub_msg_id_counter += 1;
+            SubMsg {
+                id,
+                msg: cosmwasm_std::CosmosMsg::Custom(m),
+                gas_limit: Some(gas_per_claim),
+                reply_on: cosmwasm_std::ReplyOn::Error,
+            }
+        })
+        .collect();
+
+    sub_msgs
+}
+
+// TODO use better swapping estimation like TWAP https://github.com/osmosis-labs/bindings/blob/main/packages/bindings/src/query.rs
+fn query_swap_cost(deps: &Deps, env: Env, amount: Uint128) -> StdResult<SwapResponse> {
+    // TODO change values
+    let pool_id = 314;
+    let denom_out = "usdc".to_string();
+    let denom_in = "osmo".to_string();
+    let pool_query = OsmosisQuery::EstimateSwap {
+        sender: env.contract.address.to_string(),
+        first: Swap {
+            pool_id,
+            denom_in,
+            denom_out,
+        },
+        route: vec![],
+        amount: SwapAmount::Out(amount),
+    };
+    let query = QueryRequest::from(pool_query);
+    let swap_res: SwapResponse = deps.querier.query(&query)?;
+    Ok(swap_res)
+}
+
+fn swap(deps: &Deps, env: Env, amount_in: Uint128, amount_out: Uint128) -> OsmosisMsg {
+    // TODO change values
+    let pool_id = 314;
+    let denom_out = "usdc".to_string();
+    let denom_in = "osmo".to_string();
+    let swap_msg = OsmosisMsg::Swap {
+        first: Swap {
+            pool_id,
+            denom_in,
+            denom_out,
+        },
+        route: vec![],
+        amount: osmo_bindings::SwapAmountWithLimit::ExactOut {
+            output: amount_out,
+            max_input: amount_in,
+        },
+    };
+    return swap_msg;
 }
 
 pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
