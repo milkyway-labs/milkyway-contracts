@@ -101,4 +101,7 @@ pub enum ContractError {
 
     #[error("Receive rewards are smaller then the fee")]
     ReceiveRewardsTooSmall { amount: Uint128, minimum: Uint128 },
+
+    #[error("No liquid stake to distribute rewards to")]
+    NoLiquidStake {},
 }

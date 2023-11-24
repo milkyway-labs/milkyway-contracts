@@ -7,7 +7,6 @@ pub enum BatchStatus {
     Pending,
     Submitted,
     Received,
-    Failed,
 }
 
 impl BatchStatus {
@@ -16,7 +15,6 @@ impl BatchStatus {
             BatchStatus::Pending => "pending",
             BatchStatus::Submitted => "submitted",
             BatchStatus::Received => "received",
-            BatchStatus::Failed => "failed",
         }
     }
 }
@@ -67,10 +65,6 @@ impl Batch {
                 self.next_batch_action_time = next_action;
             }
             BatchStatus::Received => {
-                self.status = new_status;
-                self.next_batch_action_time = None;
-            }
-            BatchStatus::Failed => {
                 self.status = new_status;
                 self.next_batch_action_time = None;
             }

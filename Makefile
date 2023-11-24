@@ -2,7 +2,7 @@ check:
 	cargo check --target wasm32-unknown-unknown
 
 build:
-  cargo build
+	cargo build
 
 test:
 	cargo test --locked --workspace

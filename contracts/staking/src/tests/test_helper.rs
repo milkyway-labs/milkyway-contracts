@@ -12,7 +12,6 @@ pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
 pub static OSMO3: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
 pub static CELESTIA1: &str = "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx";
 pub static CELESTIA2: &str = "celestia1ztrhpdznu2xlwakd4yp3hg9lwyr3d46ayd30u2";
-pub static CELESTIA3: &str = "celestia1kgm42ek36k07cn3e8fqw23sszrky22769vsnha";
 pub static CELESTIAVAL1: &str = "celestiavaloper1463wx5xkus5hyugyecvlhv9qpxklz62kyhwcts";
 pub static CELESTIAVAL2: &str = "celestiavaloper1amxp3ah9anq4pmpnsknls7sql3kras9hs8pu0g";
 pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rtsdn9tz3";
@@ -33,7 +32,6 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
             dao_treasury_fee: Uint128::from(10000u128),
         },
         multisig_address_config: MultisigAddressConfig {
-            controller_address: Addr::unchecked(CELESTIA3),
             staker_address: Addr::unchecked(CELESTIA1),
             reward_collector_address: Addr::unchecked(CELESTIA2),
         },

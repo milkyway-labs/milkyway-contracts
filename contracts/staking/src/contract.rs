@@ -61,10 +61,6 @@ pub fn instantiate(
     }
 
     validate_address(
-        msg.multisig_address_config.controller_address.to_string(),
-        &CELESTIA_ACCOUNT_PREFIX.to_string(),
-    )?;
-    validate_address(
         msg.multisig_address_config
             .reward_collector_address
             .to_string(),

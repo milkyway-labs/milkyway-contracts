@@ -38,7 +38,6 @@ pub struct ProtocolFeeConfig {
 
 #[cw_serde]
 pub struct MultisigAddressConfig {
-    pub controller_address: Addr,
     pub staker_address: Addr,
     pub reward_collector_address: Addr,
 }

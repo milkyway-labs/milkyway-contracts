@@ -66,7 +66,7 @@ mod withdraw_tests {
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchResponse = from_binary(res.as_ref().unwrap()).unwrap();
+        let resp: BatchResponse = from_binary(&res.unwrap()).unwrap();
 
         assert!(resp.requests.get(0).unwrap().redeemed);
 
