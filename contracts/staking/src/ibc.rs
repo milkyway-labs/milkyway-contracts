@@ -40,8 +40,7 @@ pub fn receive_ack(
             .add_attribute("error", "received ack for different channel"));
     }
 
-    let response = Response::new()
-        .add_attribute("action", "receive_ack");
+    let response = Response::new().add_attribute("action", "receive_ack");
 
     // Check if there is an inflight packet for the received (sequence)
     let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, sequence)?;
@@ -79,8 +78,7 @@ pub fn receive_timeout(
             .add_attribute("error", "received ack for different channel"));
     }
 
-    let response = Response::new()
-        .add_attribute("action", "receive_timeout");
+    let response = Response::new().add_attribute("action", "receive_timeout");
 
     // Check if there is an inflight packet for the received (sequence)
     let sent_packet = INFLIGHT_PACKETS.may_load(deps.storage, sequence)?;

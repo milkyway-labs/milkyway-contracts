@@ -10,18 +10,23 @@ use crate::state::{
     CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
+    ensure, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
     SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
+use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
-pub fn transfer_stake_msg(deps: Deps, env: &Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
+pub fn transfer_stake_msg(
+    deps: Deps,
+    env: &Env,
+    amount: Uint128,
+) -> Result<MsgTransfer, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let ibc_config = IBC_CONFIG.load(deps.storage)?;
 
@@ -29,9 +34,9 @@ pub fn transfer_stake_msg(deps: Deps, env: &Env, amount: Uint128) -> Result<IbcM
         return Err(ContractError::IbcChannelNotFound {});
     }
 
-    let ibc_coin = cosmwasm_std::Coin {
+    let ibc_coin = Coin {
         denom: config.native_token_denom,
-        amount,
+        amount: amount.to_string(),
     };
 
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
@@ -39,11 +44,18 @@ pub fn transfer_stake_msg(deps: Deps, env: &Env, amount: Uint128) -> Result<IbcM
     ));
 
     let to_address = config.multisig_address_config.staker_address.to_string();
-    let ibc_msg = IbcMsg::Transfer {
-        channel_id: ibc_config.channel_id,
-        to_address: to_address.clone(),
-        amount: ibc_coin.clone(),
-        timeout,
+    let ibc_msg = MsgTransfer {
+        source_channel: ibc_config.channel_id,
+        source_port: "transfer".to_string(),
+        token: Some(ibc_coin),
+        receiver: to_address.clone(),
+        sender: env.contract.address.to_string(),
+        timeout_height: None,
+        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+        memo: format!(
+            "{{\"ibc_callback\":\"{}\"}}",
+            env.contract.address.to_string()
+        ),
     };
 
     Ok(ibc_msg)
@@ -531,10 +543,11 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
     let config: Config = CONFIG.load(deps.storage)?;
 
     // timed out and failed packets
-    let packets = INFLIGHT_PACKETS
+    let all_packages = INFLIGHT_PACKETS
         .range(deps.storage, None, None, Order::Ascending)
         .filter(|r| r.is_ok())
-        .map(|r| r.unwrap().1)
+        .map(|r| r.unwrap().1);
+    let packets = all_packages
         .filter(|p| {
             p.status == PacketLifecycleStatus::AckFailure
                 || p.status == PacketLifecycleStatus::TimedOut
@@ -546,14 +559,21 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
         env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    let msgs = packets.into_iter().map(|r| IbcMsg::Transfer {
-        channel_id: ibc_config.channel_id.clone(),
-        to_address: config.multisig_address_config.staker_address.to_string(),
-        amount: cosmwasm_std::Coin {
+    let msgs = packets.into_iter().map(|r| MsgTransfer {
+        source_channel: ibc_config.channel_id.clone(),
+        source_port: "transfer".to_string(),
+        token: Some(Coin {
             denom: config.native_token_denom.clone(),
-            amount: Uint128::from(r.amount),
-        },
-        timeout: timeout.clone(),
+            amount: r.amount.to_string(),
+        }),
+        receiver: config.multisig_address_config.staker_address.to_string(),
+        sender: env.contract.address.to_string(),
+        timeout_height: None,
+        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+        memo: format!(
+            "{{\"ibc_callback\":\"{}\"}}",
+            env.contract.address.to_string()
+        ),
     });
 
     Ok(Response::new()
