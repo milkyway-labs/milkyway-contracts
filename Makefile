@@ -15,9 +15,16 @@ optimize:
 		--mount type=volume,source="$(notdir $(CURDIR))_cache",target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		--platform linux/arm64 \
-		cosmwasm/workspace-optimizer-arm64:0.13.0; else \
+		cosmwasm/workspace-optimizer-arm64:0.14.0; else \
 	docker run --rm -v "$(CURDIR)":/code \
 		--mount type=volume,source="$(notdir $(CURDIR))_cache",target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		--platform linux/amd64 \
-		cosmwasm/workspace-optimizer:0.13.0; fi
+		cosmwasm/workspace-optimizer:0.14.0; fi
+
+initlocal: optimize _initlocal
+_initlocal:
+	bash scripts/testnet/init_stake_contract.sh
+migratelocal: optimize _migratelocal
+_migratelocal:
+	bash scripts/testnet/migrate_stake_contract.sh
