@@ -2,8 +2,12 @@ use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, LiquidUnstakeRequestResponse, StateResponse,
 };
 use crate::state::{BATCHES, CONFIG, PENDING_BATCH_ID, STATE};
-use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Decimal, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
+use osmo_bindings::OsmosisQuery;
+
+pub type Deps<'a> = cosmwasm_std::Deps<'a, OsmosisQuery>;
+pub type DepsMut<'a> = cosmwasm_std::DepsMut<'a, OsmosisQuery>;
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
