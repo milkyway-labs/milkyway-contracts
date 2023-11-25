@@ -1,14 +1,11 @@
-use std::marker::PhantomData;
-
 use crate::contract::{instantiate, IBC_TIMEOUT};
 use crate::msg::InstantiateMsg;
 use crate::state::{IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
 use cosmwasm_std::testing::{
-    mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
+    mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{coins, Addr, OwnedDeps, SystemError, SystemResult, Uint128};
-use osmo_bindings::OsmosisQuery;
+use cosmwasm_std::{coins, Addr, OwnedDeps, Uint128};
 
 pub static OSMO1: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
 pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
@@ -21,27 +18,7 @@ pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rt
 pub static CHANNEL_ID: &str = "channel-123";
 pub static NATIVE_TOKEN: &str = "osmoTIA";
 
-pub type Deps<'a> = cosmwasm_std::Deps<'a, OsmosisQuery>;
-pub type DepsMut<'a> = cosmwasm_std::DepsMut<'a, OsmosisQuery>;
-
-pub fn mock_dependencies(
-) -> OwnedDeps<MockStorage, MockApi, MockQuerier<OsmosisQuery>, OsmosisQuery> {
-    let custom_querier: MockQuerier<OsmosisQuery> =
-        MockQuerier::new(&[(MOCK_CONTRACT_ADDR, &vec![])]).with_custom_handler(|_| {
-            SystemResult::Err(SystemError::InvalidRequest {
-                error: "not implemented".to_string(),
-                request: Default::default(),
-            })
-        });
-    OwnedDeps {
-        storage: MockStorage::default(),
-        api: MockApi::default(),
-        querier: custom_querier,
-        custom_query_type: PhantomData,
-    }
-}
-
-pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier<OsmosisQuery>, OsmosisQuery> {
+pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
     let msg = InstantiateMsg {
         native_token_denom: NATIVE_TOKEN.to_string(),
@@ -63,7 +40,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier<OsmosisQuery>, Osmo
     };
     let info = mock_info("creator", &coins(1000, "uosmo"));
 
-    let res = instantiate(DepsMut::from(deps.as_mut()), mock_env(), info, msg);
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 
     assert!(res.is_ok());
 

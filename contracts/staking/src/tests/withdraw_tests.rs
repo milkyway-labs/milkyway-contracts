@@ -5,7 +5,7 @@ mod withdraw_tests {
     use crate::state::{BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{Addr, CosmosMsg, from_binary, ReplyOn, SubMsg, Uint128};
+    use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
     use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;

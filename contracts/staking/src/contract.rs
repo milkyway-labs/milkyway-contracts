@@ -17,17 +17,13 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Env, MessageInfo, Response, StdResult, Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
-use osmo_bindings::OsmosisQuery;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
-
-pub type Deps<'a> = cosmwasm_std::Deps<'a, OsmosisQuery>;
-pub type DepsMut<'a> = cosmwasm_std::DepsMut<'a, OsmosisQuery>;
 
 // Version information for migration
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");

@@ -1,6 +1,8 @@
-use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Env, QuerierWrapper, StdError, StdResult, Uint128};
+use osmosis_std::shim::Timestamp;
+use osmosis_std::types::osmosis::twap::v1beta1::TwapQuerier;
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
 pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
@@ -97,6 +99,49 @@ pub fn derive_intermediate_sender(
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32.to_base32();
     bech32_no_std::encode(bech32_prefix, sender)
+}
+
+pub fn sub_msg_id(env: &Env) -> u64 {
+    if env.transaction.is_none() {
+        env.block.time.nanos()
+    } else {
+        env.block.time.nanos() + env.transaction.clone().unwrap().index as u64
+    }
+}
+
+pub fn multiply_ratio_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 {
+    let quotient = numerator.u128() / denominator.u128();
+    let remainder = numerator.u128() % denominator.u128();
+
+    let result = if remainder > 0 {
+        quotient + 1
+    } else {
+        quotient
+    };
+
+    Uint128::from(result)
+}
+
+/// Query arithmetic twap price of a coin, denominated in OSMO.
+/// `start_time` must be within 48 hours of current block time.
+pub fn query_arithmetic_twap_price(
+    querier: &QuerierWrapper,
+    pool_id: u64,
+    base_denom: &str,
+    quote_denom: &str,
+    start_time: u64,
+) -> StdResult<Decimal> {
+    let twap_res = TwapQuerier::new(querier).arithmetic_twap_to_now(
+        pool_id,
+        base_denom.to_string(),
+        quote_denom.to_string(),
+        Some(Timestamp {
+            seconds: start_time as i64,
+            nanos: 0,
+        }),
+    )?;
+    let price = Decimal::from_str(&twap_res.arithmetic_twap)?;
+    Ok(price)
 }
 
 #[cfg(test)]

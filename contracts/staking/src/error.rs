@@ -30,6 +30,9 @@ pub enum ContractError {
         sent_amount: Uint128,
     },
 
+    #[error("Rewards are smaller then fees to distribute")]
+    RewardsSmallerThenFees { fees: Uint128, rewards: Uint128 },
+
     #[error("Unable to mint liquid staking token")]
     MintError {},
 
