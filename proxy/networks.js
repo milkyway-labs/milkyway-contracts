@@ -8,7 +8,7 @@ const networks = {
   },
   ["canary"]: {
     id: "canary",
-    contract: "osmo1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqvlx82r",
+    contract: "osmo17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgs5yczr8",
     rpc: "https://osmosis-rpc.milkyway.hanjun.kim",
   },
   // ["local"]: {
