@@ -23,6 +23,7 @@ export const subscribe = (network, cb) => {
     };
     // When the WebSocket connection is established, send the subscription request.
     websocket.on("open", () => {
+      console.log("Connected to", network.id);
       websocket.send(JSON.stringify(wsQuery));
     });
     // When a message (i.e., a matching transaction) is received, log the transaction and close the WebSocket connection.
