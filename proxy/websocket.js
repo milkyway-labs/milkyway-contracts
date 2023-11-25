@@ -18,7 +18,7 @@ export const subscribe = (network, cb) => {
       method: "subscribe",
       id: uuidv4().toString(),
       params: {
-        query: `tm.event = 'Tx' AND execute._contract_address = '${network.contract}'`,
+        query: `wasm._contract_address = '${network.contract}'`,
       },
     };
     // When the WebSocket connection is established, send the subscription request.
