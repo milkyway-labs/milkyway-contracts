@@ -1,5 +1,6 @@
 import Redis from "ioredis";
-import { subscribe } from "./websocket.js";
+// import { subscribe } from "./websocket.js";
+import { subscribe } from "./polling.js";
 import networks from "./networks.js";
 
 console.log("Starting proxy...", new Date().toISOString());

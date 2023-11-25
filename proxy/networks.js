@@ -1,15 +1,20 @@
 import { CosmWasmClient } from "cosmwasm";
 
 const networks = {
-  ["osmosis-testnet"]: {
-    id: "osmosis-testnet",
-    contract: "osmo1h6d53zdzp4dwqr742qvzlucafghuhus7653su0f8cfdfzzkww4as9389xs",
-    rpc: "https://rpc.testnet.osmosis.zone:443",
-  },
-  ["canary"]: {
-    id: "canary",
-    contract: "osmo1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqvlx82r",
-    rpc: "https://osmosis-rpc.milkyway.hanjun.kim",
+  // ["osmosis-testnet"]: {
+  //   id: "osmosis-testnet",
+  //   contract: "osmo1h6d53zdzp4dwqr742qvzlucafghuhus7653su0f8cfdfzzkww4as9389xs",
+  //   rpc: "https://rpc.testnet.osmosis.zone:443",
+  // },
+  // ["canary"]: {
+  //   id: "canary",
+  //   contract: "osmo1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqvlx82r",
+  //   rpc: "https://osmosis-rpc.milkyway.hanjun.kim",
+  // },
+  ["local"]: {
+    id: "local",
+    contract: "osmo153r9tg33had5c5s54sqzn879xww2q2egektyqnpj6nwxt8wls70qxukxqg",
+    rpc: "http://localhost:26657",
   },
 };
 
