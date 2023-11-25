@@ -3,7 +3,7 @@ import { CosmWasmClient } from "cosmwasm";
 const networks = {
   ["osmosis-testnet"]: {
     id: "osmosis-testnet",
-    contract: "osmo1ql4s7l8shevqf77guzh7q5qh54hplrhmjnn29kvcfw4ypyuanlzq0p47ys",
+    contract: "osmo1h6d53zdzp4dwqr742qvzlucafghuhus7653su0f8cfdfzzkww4as9389xs",
     rpc: "https://rpc.testnet.osmosis.zone:443",
   },
   ["canary"]: {
