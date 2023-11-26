@@ -3,9 +3,11 @@ use crate::msg::InstantiateMsg;
 use crate::state::{IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
 use cosmwasm_std::testing::{
-    mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+    mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
-use cosmwasm_std::{coins, Addr, OwnedDeps, Uint128};
+use cosmwasm_std::{coins, Addr, Coin, OwnedDeps, Uint128};
+
+use super::milkyway_mock_querier::MilkywayMockQuerier;
 
 pub static OSMO1: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
 pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
@@ -18,8 +20,29 @@ pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rt
 pub static CHANNEL_ID: &str = "channel-123";
 pub static NATIVE_TOKEN: &str = "osmoTIA";
 
-pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
-    let mut deps = mock_dependencies();
+pub static RESERVE_TOKEN: &str =
+    "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA";
+
+/// mock_dependencies replacement for cosmwasm_std::testing::mock_dependencies
+pub fn mock_dependencies(
+    contract_balance: &[Coin],
+) -> OwnedDeps<MockStorage, MockApi, MilkywayMockQuerier> {
+    let contract_addr = Addr::unchecked(MOCK_CONTRACT_ADDR);
+    let custom_querier: MilkywayMockQuerier = MilkywayMockQuerier::new(MockQuerier::new(&[(
+        contract_addr.as_ref(),
+        contract_balance,
+    )]));
+
+    OwnedDeps {
+        storage: MockStorage::default(),
+        api: MockApi::default(),
+        querier: custom_querier,
+        custom_query_type: Default::default(),
+    }
+}
+
+pub fn init() -> OwnedDeps<MockStorage, MockApi, MilkywayMockQuerier> {
+    let mut deps = mock_dependencies(&vec![]);
     let msg = InstantiateMsg {
         native_token_denom: NATIVE_TOKEN.to_string(),
         liquid_stake_token_denom: "stTIA".to_string(),

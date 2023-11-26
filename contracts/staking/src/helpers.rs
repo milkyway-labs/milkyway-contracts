@@ -110,6 +110,10 @@ pub fn sub_msg_id(env: &Env) -> u64 {
 }
 
 pub fn multiply_ratio_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 {
+    if denominator.is_zero() {
+        return Uint128::zero();
+    }
+
     let quotient = numerator.u128() / denominator.u128();
     let remainder = numerator.u128() % denominator.u128();
 

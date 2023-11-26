@@ -9,15 +9,14 @@ use crate::state::{
     PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order,
-    QueryRequest, Response, StdResult, SubMsg, Timestamp, Uint128,
+    ensure, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdResult, SubMsg, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
-use osmo_bindings::{OsmosisQuery, Swap, SwapAmount, SwapResponse};
+
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
-use osmosis_std::types::osmosis::gamm::v1beta1::GammQuerier;
+
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
 
@@ -703,11 +702,15 @@ pub fn receive_unstaked_tokens(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let (distribute_msgs, fee_swap_msg) = auto_claim(&deps, &env, &config, batch)?;
+    let (distribute_msgs, fee_swap_msg, distribution_gas, fees_in_tia, rate) =
+        auto_claim(&deps, &env, &config, batch)?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_unstaked_tokens")
         .add_attribute("amount", amount)
+        .add_attribute("distribution_gas", distribution_gas)
+        .add_attribute("fees_in_tia", fees_in_tia)
+        .add_attribute("rate", rate.to_string())
         .add_message(fee_swap_msg)
         .add_submessages(distribute_msgs))
 }
@@ -717,31 +720,27 @@ fn auto_claim(
     env: &Env,
     config: &Config,
     batch: Batch,
-) -> Result<(Vec<SubMsg>, CosmosMsg), ContractError> {
+) -> Result<(Vec<SubMsg>, CosmosMsg, Uint128, Uint128, Decimal), ContractError> {
     let gas_per_claim = 20000u64;
     let gas_price = Uint128::from(2500u128); // per 100000
     let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
-    // amount of osmo we need to pay for gas
+    // amount of uosmo we need to pay for gas
     // TODO check safe math, overflow?
     let amount_for_gas = multiply_ratio_ceil(
         Uint128::from(gas_per_claim) * gas_price * claims,
         Uint128::from(100000u128),
     );
-    // get value of TIA in Osmo from querier
-    let swap_ratio = query_swap_cost(
-        &deps.as_ref(),
-        env,
-        batch.received_native_unstaked.unwrap(),
-        amount_for_gas,
-    )?;
-    let tia_to_swap = batch.received_native_unstaked.unwrap().mul_ceil(swap_ratio);
-    let swap_msg: CosmosMsg = swap(
+    // get value of "TIA to Osmo" from querier
+    let swap_ratio = query_swap_cost(&deps.as_ref(), env, config)?;
+    let tia_to_swap = amount_for_gas.mul_ceil(swap_ratio);
+
+    let swap_msg = swap(
         &deps.as_ref(),
         &env,
+        config,
         batch.received_native_unstaked.unwrap(),
         amount_for_gas,
-    )
-    .into();
+    );
 
     let fee_per_user = multiply_ratio_ceil(tia_to_swap, claims);
 
@@ -763,14 +762,23 @@ fn auto_claim(
                 // };
                 return;
             }
+            let withdraw_amount = withdraw_amount.unwrap();
             let msg = MsgSend {
                 from_address: env.contract.address.to_string(),
                 to_address: r.user.to_string(),
                 amount: vec![Coin {
                     denom: config.native_token_denom.to_string(),
-                    amount: withdraw_amount.unwrap().to_string(),
+                    amount: withdraw_amount.to_string(),
                 }],
             };
+            // panic!(
+            //     "received amount {}, withdraw_amount {}, amount_for_gas {}, swap_ratio {}, tia_to_swap {}",
+            //     batch.received_native_unstaked.unwrap().to_string(),
+            //     withdraw_amount.to_string(),
+            //     amount_for_gas.to_string(),
+            //     swap_ratio.to_string(),
+            //     tia_to_swap.to_string()
+            // );
             send_msgs.push(msg.into());
         });
     let sub_msg_id = sub_msg_id(&env);
@@ -787,38 +795,37 @@ fn auto_claim(
             }
         })
         .collect::<Vec<SubMsg>>();
-    Ok((sub_msgs, swap_msg))
+    Ok((sub_msgs, swap_msg, amount_for_gas, tia_to_swap, swap_ratio))
 }
 
+const POOL_ID: u64 = 1;
+
 // TODO use better swapping estimation like TWAP https://github.com/osmosis-labs/bindings/blob/main/packages/bindings/src/query.rs
-fn query_swap_cost(
-    deps: &Deps,
-    env: &Env,
-    amount_in: Uint128,
-    amount_out: Uint128,
-) -> StdResult<Decimal> {
-    // TODO change values
-    let pool_id = 314;
-    let denom_out = "usdc".to_string();
-    let denom_in = "osmo".to_string();
+fn query_swap_cost(deps: &Deps, env: &Env, config: &Config) -> StdResult<Decimal> {
+    let denom_out = "osmo".to_string();
+    let denom_in = config.native_token_denom.to_string();
     let res = query_arithmetic_twap_price(
         &deps.querier,
-        pool_id,
+        POOL_ID,
         &denom_in,
         &denom_out,
         env.block.time.minus_hours(1).seconds() as u64,
     )?;
     Ok(res)
 }
-fn swap(_deps: &Deps, env: &Env, amount_in: Uint128, amount_out: Uint128) -> CosmosMsg {
-    // TODO change values
-    let pool_id = 314;
-    let denom_out = "usdc".to_string();
-    let denom_in = "osmo".to_string();
+fn swap(
+    _deps: &Deps,
+    env: &Env,
+    config: &Config,
+    amount_in: Uint128,
+    amount_out: Uint128,
+) -> CosmosMsg {
+    let denom_out = "uosmo".to_string();
+    let denom_in = config.native_token_denom.to_string();
     let swap_msg: CosmosMsg = MsgSwapExactAmountOut {
         sender: env.contract.address.to_string(),
         routes: vec![SwapAmountOutRoute {
-            pool_id,
+            pool_id: POOL_ID,
             token_in_denom: denom_in,
         }],
         token_in_max_amount: amount_in.to_string(),
@@ -828,7 +835,7 @@ fn swap(_deps: &Deps, env: &Env, amount_in: Uint128, amount_out: Uint128) -> Cos
         }),
     }
     .into();
-    return swap_msg;
+    swap_msg
 }
 
 pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
