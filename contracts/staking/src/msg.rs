@@ -2,7 +2,7 @@ use crate::state::{
     ibc::IBCTransfer, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -129,6 +129,8 @@ pub enum QueryMsg {
     Batches {},
     #[returns(BatchResponse)]
     PendingBatch {},
+    #[returns(BatchesResponse)]
+    ClaimableBatches { user: Addr },
     #[returns(IBCQueueResponse)]
     IbcQueue {},
     #[returns(IBCReplyQueueResponse)]

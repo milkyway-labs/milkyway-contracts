@@ -26,7 +26,6 @@ osmosisd query wasm contract-state smart $CONTRACT '{"ibc_queue":{}}'
 
 # check packets (inside docker)
 hermes query packet pending --chain osmosis-dev-1 --port transfer --channel channel-0
-osmosisd query txs --events 'wasm.action=receive_ack' --output json | jq -r '.txs[-1] | .raw_log | fromjson | .[-1].events'
 
 # recover packets
 osmosisd tx wasm execute $CONTRACT '{"recover_pending_ibc_transfers":{}}' \
