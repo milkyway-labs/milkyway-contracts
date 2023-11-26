@@ -4,7 +4,7 @@ use crate::msg::{
 };
 use crate::state::ibc::IBCTransfer;
 use crate::state::{BATCHES, CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE};
-use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
@@ -102,6 +102,27 @@ pub fn query_ibc_queue(deps: Deps) -> StdResult<IBCQueueResponse> {
     let res = IBCQueueResponse {
         ibc_queue: inflight_packets,
     };
+
+    Ok(res)
+}
+
+pub fn query_claimable(deps: Deps, user: Addr) -> StdResult<BatchesResponse> {
+    deps.api.addr_validate(&user.to_string())?;
+
+    let batches = BATCHES
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|v| v.unwrap().1)
+        .filter(|v| v.status == milky_way::staking::BatchStatus::Received)
+        .filter(|v| {
+            !v.liquid_unstake_requests
+                .get(&user.to_string())
+                .unwrap()
+                .redeemed
+        })
+        .map(|v| batch_to_response(v))
+        .collect();
+
+    let res = BatchesResponse { batches };
 
     Ok(res)
 }

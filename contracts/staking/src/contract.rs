@@ -5,7 +5,8 @@ use crate::execute::{
 use crate::helpers::{validate_address, validate_addresses};
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
-    query_batch, query_batches, query_config, query_ibc_queue, query_pending_batch, query_state,
+    query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
+    query_pending_batch, query_state,
 };
 use crate::state::{
     Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY,
@@ -217,6 +218,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
+        QueryMsg::ClaimableBatches { user } => to_binary(&query_claimable(deps, user)?),
         QueryMsg::IbcQueue {} => to_binary(&query_ibc_queue(deps)?),
     }
 }
