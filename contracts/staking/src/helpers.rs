@@ -1,18 +1,20 @@
 use cosmwasm_std::{
-    Addr, Decimal, Env, QuerierWrapper, QueryRequest, StdError, StdResult, Uint128,
+    to_vec, Addr, ContractResult, Decimal, Env, QuerierWrapper,
+    QueryRequest, StdError, StdResult, SystemResult, Uint128,
 };
-use osmo_bindings::{OsmosisQuery, Swap};
-use osmosis_std::types::osmosis::poolmanager::v1beta1::EstimateSwapExactAmountOutResponse;
+use cosmwasm_std::{Binary, CustomQuery};
+
+
+
+
 use osmosis_std::types::osmosis::poolmanager::v1beta1::PoolmanagerQuerier;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
-use osmosis_std::types::osmosis::twap::v1beta1::TwapQuerier;
-use osmosis_std::types::osmosis::{
-    cosmwasmpool::v1beta1::SpotPrice, poolmanager::v2::SpotPriceResponse,
-};
+
+
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, str::FromStr};
 
-use crate::state::Config;
+
 
 pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
@@ -152,19 +154,45 @@ fn extract_decimal(input: &str) -> Result<Decimal, &str> {
     Err("No decimal found")
 }
 
-pub fn estimate_token_conversion(
+pub fn raw_query_bin<C: CustomQuery>(
+    querier: &QuerierWrapper,
+    req: &QueryRequest<C>,
+) -> StdResult<Binary> {
+    let raw = to_vec(req).map_err(|serialize_err| {
+        StdError::generic_err(format!("Serializing QueryRequest: {serialize_err}"))
+    })?;
+    match querier.raw_query(&raw) {
+        SystemResult::Err(system_err) => Err(StdError::generic_err(format!(
+            "Querier system error: {system_err}"
+        ))),
+        SystemResult::Ok(ContractResult::Err(contract_err)) => Err(StdError::generic_err(format!(
+            "Querier contract error: {contract_err}"
+        ))),
+        SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
+    }
+}
+
+pub fn estimate_swap_exact_amount_out(
     querier: &QuerierWrapper,
     pool_id: u64,
-    base_denom: &str,
-    quote_denom: &str,
+    token_in_denom: &str,
+    token_out_denom: &str,
+    amount: Uint128,
 ) -> StdResult<Uint128> {
-    let spot_price_res = PoolmanagerQuerier::new(querier).spot_price(
+    let pm_querier = PoolmanagerQuerier::new(querier);
+
+    let pool_route = SwapAmountOutRoute {
         pool_id,
-        base_denom.to_string(),
-        quote_denom.to_string(),
+        token_in_denom: token_in_denom.to_string(),
+    };
+
+    let result = pm_querier.estimate_swap_exact_amount_out(
+        pool_id,
+        vec![pool_route],
+        amount.to_string() + token_out_denom,
     )?;
-    let price = Decimal::from_str(&spot_price_res.spot_price)?;
-    Ok(Uint128::zero())
+
+    Uint128::from_str(&result.token_in_amount)
 }
 
 #[cfg(test)]

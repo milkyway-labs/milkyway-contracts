@@ -28,10 +28,10 @@ osmosisd query wasm contract-state smart $CONTRACT '{"batch":{"id":1}}'
 # celestia-appd query staking --node http://localhost:26661 unbonding-delegation $CELESTIA_VALIDATOR_2_OPERATOR $CELESTIA_VALIDATOR_2
 
 osmosisd tx wasm execute $CONTRACT '{"submit_batch":{}}' \
-    --from test_master --keyring-backend test -y \
-    --node https://rpc.testnet.osmosis.zone:443 -y -b block \
-    --gas-prices 0.025uosmo --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmo-test-5
+    --from test_master --keyring-backend test \
+    -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1
 osmosisd query wasm contract-state smart $CONTRACT '{"batch":{"id":1}}'
 
 RESERVE_TOKEN="ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA"

@@ -15,10 +15,10 @@ RESERVE_TOKEN="ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C5
 # liquid stake
 osmosisd tx wasm execute $CONTRACT '{"liquid_stake":{}}' \
     --amount 1000$RESERVE_TOKEN \
-    --from test_master --keyring-backend test -y \
-    --node https://rpc.testnet.osmosis.zone:443 -y -b block \
-    --gas-prices 0.025uosmo --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmo-test-5 --output json | jq -r '.raw_log'
+    --from test_master --keyring-backend test \
+    -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1 --output json | jq -r '.raw_log'
 
 # check balances
 # osmosisd query bank balances $ADMIN_OSMOSIS

@@ -1,11 +1,13 @@
-use crate::helpers::estimate_token_conversion;
+
+
+use crate::helpers::estimate_swap_exact_amount_out;
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, LiquidUnstakeRequestResponse, StateResponse,
 };
 use crate::state::{Config, BATCHES, CONFIG, PENDING_BATCH_ID, STATE};
-use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Decimal, Deps, Env, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
-use osmo_bindings::OsmosisQuery;
+
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
@@ -94,9 +96,14 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     Ok(batch_to_response(pending_batch))
 }
 
-pub fn query_spot_price(deps: Deps) -> StdResult<Uint128> {
+pub fn query_spot_price(deps: Deps, _env: &Env) -> StdResult<Uint128> {
     let config: Config = CONFIG.load(deps.storage)?;
-    let spot_price: Uint128 =
-        estimate_token_conversion(&deps.querier, config.pool_id, "usdc", "uosmo")?;
-    Ok(spot_price)
+    let in_amount: Uint128 = estimate_swap_exact_amount_out(
+        &deps.querier,
+        config.pool_id,
+        &config.native_token_denom,
+        "uosmo",
+        Uint128::new(1000u128),
+    )?;
+    Ok(in_amount)
 }

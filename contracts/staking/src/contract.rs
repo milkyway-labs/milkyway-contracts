@@ -25,7 +25,7 @@ use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
-use osmo_bindings::OsmosisQuery;
+
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 
 // Version information for migration
@@ -208,14 +208,14 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
-        QueryMsg::SpotPrice {} => to_binary(&query_spot_price(deps)?),
+        QueryMsg::SpotPrice {} => to_binary(&query_spot_price(deps, &env)?),
     }
 }
 

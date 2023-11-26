@@ -2,20 +2,20 @@ use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender,
-    estimate_token_conversion, multiply_ratio_ceil, sub_msg_id, validate_address,
+    estimate_swap_exact_amount_out, multiply_ratio_ceil, sub_msg_id, validate_address,
 };
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
     PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order,
+    ensure, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order,
     Response, StdResult, SubMsg, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 
-use osmo_bindings::OsmosisQuery;
+
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 
@@ -712,7 +712,7 @@ pub fn receive_unstaked_tokens(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let (distribute_msgs, fee_swap_msg, distribution_gas, fees_in_tia, rate) =
+    let (distribute_msgs, fee_swap_msg, distribution_gas, fees_in_tia) =
         auto_claim(&deps, &env, &config, batch)?;
 
     Ok(Response::new()
@@ -720,7 +720,6 @@ pub fn receive_unstaked_tokens(
         .add_attribute("amount", amount)
         .add_attribute("distribution_gas", distribution_gas)
         .add_attribute("fees_in_tia", fees_in_tia)
-        .add_attribute("rate", rate.to_string())
         .add_message(fee_swap_msg)
         .add_submessages(distribute_msgs))
 }
@@ -730,7 +729,7 @@ fn auto_claim(
     env: &Env,
     config: &Config,
     batch: Batch,
-) -> Result<(Vec<SubMsg>, CosmosMsg, Uint128, Uint128, Decimal), ContractError> {
+) -> Result<(Vec<SubMsg>, CosmosMsg, Uint128, Uint128), ContractError> {
     let gas_per_claim = 20000u64;
     let gas_price = Uint128::from(2500u128); // per 100000
     let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
@@ -740,9 +739,7 @@ fn auto_claim(
         Uint128::from(gas_per_claim) * gas_price * claims,
         Uint128::from(100000u128),
     );
-    // get value of "TIA to Osmo" from querier
-    let swap_ratio = query_swap_cost(&deps.as_ref(), env, config)?;
-    let tia_to_swap = amount_for_gas.mul_ceil(swap_ratio);
+    let tia_to_swap = query_swap_cost(&deps.as_ref(), env, config, amount_for_gas)?;
 
     let swap_msg = swap(
         &deps.as_ref(),
@@ -786,7 +783,6 @@ fn auto_claim(
             //     batch.received_native_unstaked.unwrap().to_string(),
             //     withdraw_amount.to_string(),
             //     amount_for_gas.to_string(),
-            //     swap_ratio.to_string(),
             //     tia_to_swap.to_string()
             // );
             send_msgs.push(msg.into());
@@ -805,16 +801,25 @@ fn auto_claim(
             }
         })
         .collect::<Vec<SubMsg>>();
-    Ok((sub_msgs, swap_msg, amount_for_gas, tia_to_swap, swap_ratio))
+    Ok((sub_msgs, swap_msg, amount_for_gas, tia_to_swap))
 }
 
-fn query_swap_cost(deps: &Deps, _env: &Env, config: &Config) -> StdResult<Decimal> {
-    let denom_out = "uosmo".to_string();
-    let denom_in = config.native_token_denom.to_string();
-    // let res =
-    //     estimate_token_conversion(&deps.querier, config.pool_id.clone(), &denom_in, &denom_out)?;
-    // Ok(res)
-    Ok(Decimal::zero())
+fn query_swap_cost(
+    deps: &Deps,
+    _env: &Env,
+    config: &Config,
+    amount: Uint128,
+) -> StdResult<Uint128> {
+    let _denom_out = "uosmo".to_string();
+    let _denom_in = config.native_token_denom.to_string();
+    let in_amount: Uint128 = estimate_swap_exact_amount_out(
+        &deps.querier,
+        config.pool_id,
+        &config.native_token_denom,
+        "uosmo",
+        amount,
+    )?;
+    Ok(in_amount)
 }
 fn swap(
     _deps: &Deps,
