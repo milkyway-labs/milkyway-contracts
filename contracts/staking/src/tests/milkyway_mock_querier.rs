@@ -1,11 +1,9 @@
 use cosmwasm_std::{
-    from_slice,
-    testing::{MockQuerier},
-    Addr, Empty, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
+    from_slice, testing::MockQuerier, Addr, Empty, Querier, QuerierResult, QueryRequest,
+    SystemError, SystemResult, WasmQuery,
 };
 
-
-use super::osmosis_querier::{OsmosisQuerier};
+use super::osmosis_querier::OsmosisQuerier;
 
 pub struct MilkywayMockQuerier {
     base: MockQuerier<Empty>,

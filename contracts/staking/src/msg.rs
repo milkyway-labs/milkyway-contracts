@@ -1,4 +1,4 @@
-use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
+use crate::state::{FeatureFlags, MultisigAddressConfig, ProtocolFeeConfig};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Timestamp, Uint128};
 use schemars::JsonSchema;
@@ -30,6 +30,8 @@ pub struct InstantiateMsg {
     pub ibc_channel_id: String,
     // Pool used to swap fees in
     pub pool_id: u64,
+    // Feature flags
+    pub feature_flags: FeatureFlags,
 }
 
 #[cw_serde]
@@ -60,6 +62,7 @@ pub enum ExecuteMsg {
         reserve_token: Option<String>,
         channel_id: Option<String>,
         pool_id: Option<u64>,
+        feature_flags: Option<FeatureFlags>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
@@ -121,8 +124,6 @@ pub enum QueryMsg {
     Batches {},
     #[returns(BatchResponse)]
     PendingBatch {},
-    #[returns(Uint128)]
-    SpotPrice {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

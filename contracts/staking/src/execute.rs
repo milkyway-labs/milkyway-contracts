@@ -5,16 +5,15 @@ use crate::helpers::{
     estimate_swap_exact_amount_out, multiply_ratio_ceil, sub_msg_id, validate_address,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
-    PENDING_BATCH_ID, STATE,
+    Config, FeatureFlags, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
+    IBC_CONFIG, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order,
-    Response, StdResult, SubMsg, Timestamp, Uint128,
+    ensure, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response,
+    StdResult, SubMsg, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
-
 
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -523,6 +522,7 @@ pub fn update_config(
     reserve_token: Option<String>,
     channel_id: Option<String>,
     pool_id: Option<u64>,
+    feature_flags: Option<FeatureFlags>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -545,6 +545,9 @@ pub fn update_config(
     }
     if let Some(pool_id) = pool_id {
         config.pool_id = pool_id;
+    }
+    if let Some(feature_flags) = feature_flags {
+        config.feature_flags = feature_flags;
     }
 
     if channel_id.is_some() && reserve_token.is_none() {
@@ -652,24 +655,21 @@ pub fn receive_unstaked_tokens(
 
     check_stopped(&config)?;
 
-    // ATTENTION: THIS CAN"T STAY COMMENTED!!!!
-    // if env.block.chain_id != "osmosis-dev-1" {
-    //     let expected_sender = derive_intermediate_sender(
-    //         &config.ibc_channel_id,
-    //         config.multisig_address_config.staker_address.as_ref(),
-    //         "osmo",
-    //     );
-    //     if expected_sender.is_err() {
-    //         return Err(ContractError::Unauthorized {
-    //             sender: info.sender.to_string(),
-    //         });
-    //     }
-    //     if info.sender != expected_sender.unwrap() {
-    //         return Err(ContractError::Unauthorized {
-    //             sender: info.sender.to_string(),
-    //         });
-    //     }
-    // }
+    let expected_sender = derive_intermediate_sender(
+        &config.ibc_channel_id,
+        config.multisig_address_config.staker_address.as_ref(),
+        "osmo",
+    );
+    if expected_sender.is_err() {
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
+    }
+    if info.sender != expected_sender.unwrap() {
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
+    }
 
     let coin = info
         .funds
@@ -692,10 +692,11 @@ pub fn receive_unstaked_tokens(
     }
 
     let mut batch = _batch.unwrap();
+    let batch_id = batch.id;
 
     if batch.next_batch_action_time.is_none() {
         return Err(ContractError::BatchNotClaimable {
-            batch_id: batch.id,
+            batch_id,
             status: batch.status,
         });
     }
@@ -710,25 +711,48 @@ pub fn receive_unstaked_tokens(
     batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
 
-    BATCHES.save(deps.storage, batch.id, &batch)?;
-
-    let (distribute_msgs, fee_swap_msg, distribution_gas, fees_in_tia) =
-        auto_claim(&deps, &env, &config, batch)?;
-
-    Ok(Response::new()
+    let response = Response::new()
         .add_attribute("action", "receive_unstaked_tokens")
         .add_attribute("amount", amount)
-        .add_attribute("distribution_gas", distribution_gas)
-        .add_attribute("fees_in_tia", fees_in_tia)
-        .add_message(fee_swap_msg)
-        .add_submessages(distribute_msgs))
+        .add_attribute("batch", batch_id.to_string());
+
+    if config.feature_flags.enable_auto_claim {
+        // calculate the amount of tia to swap for gas
+        let (distribute_msgs, fee_swap_msg, distribution_gas, fees_in_tia) =
+            auto_claim(&deps, &env, &config, &batch)?;
+
+        // mark all unstake requests as redeemed
+        let users: Vec<String> = batch.liquid_unstake_requests.keys().cloned().collect();
+        users.into_iter().for_each(|user| {
+            let request = batch.liquid_unstake_requests.get(&user).unwrap();
+            batch.liquid_unstake_requests.insert(
+                user,
+                LiquidUnstakeRequest {
+                    user: request.user.clone(),
+                    shares: request.shares,
+                    redeemed: true,
+                },
+            );
+        });
+
+        return Ok(response
+            .clone()
+            .add_attribute("distribution_gas", distribution_gas)
+            .add_attribute("fees_in_tia", fees_in_tia)
+            .add_message(fee_swap_msg)
+            .add_submessages(distribute_msgs));
+    }
+
+    BATCHES.save(deps.storage, batch_id, &batch)?;
+
+    Ok(response)
 }
 
 fn auto_claim(
     deps: &DepsMut,
     env: &Env,
     config: &Config,
-    batch: Batch,
+    batch: &Batch,
 ) -> Result<(Vec<SubMsg>, CosmosMsg, Uint128, Uint128), ContractError> {
     let gas_per_claim = 20000u64;
     let gas_price = Uint128::from(2500u128); // per 100000
@@ -754,7 +778,7 @@ fn auto_claim(
     let mut send_msgs: Vec<CosmosMsg> = vec![];
     batch
         .liquid_unstake_requests
-        .into_iter()
+        .iter()
         .map(|r| r.1)
         .for_each(|r| {
             let withdraw_amount = batch
@@ -778,13 +802,6 @@ fn auto_claim(
                     amount: withdraw_amount.to_string(),
                 }],
             };
-            // panic!(
-            //     "received amount {}, withdraw_amount {}, amount_for_gas {}, swap_ratio {}, tia_to_swap {}",
-            //     batch.received_native_unstaked.unwrap().to_string(),
-            //     withdraw_amount.to_string(),
-            //     amount_for_gas.to_string(),
-            //     tia_to_swap.to_string()
-            // );
             send_msgs.push(msg.into());
         });
     let sub_msg_id = sub_msg_id(&env);

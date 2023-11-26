@@ -4,7 +4,7 @@ mod staking_tests {
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
     use crate::state::{Config, BATCHES, CONFIG, STATE};
-    use crate::tests::test_helper::{init};
+    use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{attr, coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, BatchStatus};
@@ -366,8 +366,8 @@ mod staking_tests {
 
         let msg = ExecuteMsg::LiquidUnstake {};
 
-        // Bob unstakes 100
-        let info = mock_info("bob", &coins(100, "factory/cosmos2contract/stTIA"));
+        // Bob unstakes 10000
+        let info = mock_info("bob", &coins(10000, "factory/cosmos2contract/stTIA"));
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
 
@@ -389,7 +389,7 @@ mod staking_tests {
         let info = mock_info(
             &sender,
             &[cosmwasm_std::Coin {
-                amount: Uint128::from(100u128),
+                amount: Uint128::from(10000u128),
                 denom: config.native_token_denom.clone(),
             }],
         );
@@ -398,6 +398,7 @@ mod staking_tests {
 
         let res = res.unwrap();
         let messages = res.messages;
+
         assert!(messages.len() == 2); // distribution message and swap message
         assert_eq!(
             messages[0],
@@ -409,7 +410,7 @@ mod staking_tests {
                         pool_id: 1,
                         token_in_denom: config.native_token_denom.clone(),
                     }],
-                    token_in_max_amount: 100u128.to_string(),
+                    token_in_max_amount: 10000u128.to_string(),
                     token_out: Some(Coin {
                         denom: "uosmo".to_string(),
                         amount: 500u128.to_string(),
@@ -428,7 +429,7 @@ mod staking_tests {
                     to_address: "bob".to_string(),
                     amount: vec![Coin {
                         denom: config.native_token_denom.clone(),
-                        amount: "50".to_string(),
+                        amount: "9000".to_string(),
                     }],
                 }),
                 gas_limit: Some(20000),
@@ -439,10 +440,10 @@ mod staking_tests {
             res.attributes,
             vec![
                 attr("action", "receive_unstaked_tokens"),
-                attr("amount", "100"),
+                attr("amount", "10000"),
+                attr("batch", "1"),
                 attr("distribution_gas", "500"),
-                attr("fees_in_tia", "50"),
-                attr("rate", "0.1"),
+                attr("fees_in_tia", "1000"),
             ]
         );
     }

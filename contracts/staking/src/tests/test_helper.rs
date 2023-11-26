@@ -1,6 +1,6 @@
 use crate::contract::{instantiate, IBC_TIMEOUT};
 use crate::msg::InstantiateMsg;
-use crate::state::{IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
+use crate::state::{FeatureFlags, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
 
 use cosmwasm_std::testing::{
     mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
@@ -19,9 +19,6 @@ pub static CELESTIAVAL2: &str = "celestiavaloper1amxp3ah9anq4pmpnsknls7sql3kras9
 pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rtsdn9tz3";
 pub static CHANNEL_ID: &str = "channel-123";
 pub static NATIVE_TOKEN: &str = "osmoTIA";
-
-pub static RESERVE_TOKEN: &str =
-    "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA";
 
 /// mock_dependencies replacement for cosmwasm_std::testing::mock_dependencies
 pub fn mock_dependencies(
@@ -60,6 +57,10 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MilkywayMockQuerier> {
         },
         minimum_liquid_stake_amount: Uint128::from(100u128),
         ibc_channel_id: CHANNEL_ID.to_string(),
+        pool_id: 1,
+        feature_flags: FeatureFlags {
+            enable_auto_claim: true,
+        },
     };
     let info = mock_info("creator", &coins(1000, "uosmo"));
 

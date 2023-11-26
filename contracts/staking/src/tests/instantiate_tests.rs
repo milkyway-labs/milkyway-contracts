@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::msg::InstantiateMsg;
-    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, BATCHES};
+    use crate::state::{FeatureFlags, MultisigAddressConfig, ProtocolFeeConfig, BATCHES};
     use crate::tests::test_helper::{
         init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
@@ -46,6 +46,9 @@ mod tests {
                 minimum_liquid_stake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
                 pool_id: 1,
+                feature_flags: FeatureFlags {
+                    enable_auto_claim: true,
+                },
             }
         }
 
@@ -154,6 +157,9 @@ mod tests {
             ),
             channel_id: Some("channel-0".to_string()),
             pool_id: Some(1),
+            feature_flags: Some(FeatureFlags {
+                enable_auto_claim: true,
+            }),
         };
 
         let res = crate::contract::execute(
@@ -178,6 +184,9 @@ mod tests {
             reserve_token: Some("".to_string()),
             channel_id: Some("channel-0".to_string()),
             pool_id: Some(1),
+            feature_flags: Some(FeatureFlags {
+                enable_auto_claim: true,
+            }),
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -201,6 +210,9 @@ mod tests {
             reserve_token: Some("ibc/abc".to_string()),
             channel_id: Some("".to_string()),
             pool_id: Some(1),
+            feature_flags: Some(FeatureFlags {
+                enable_auto_claim: true,
+            }),
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -224,6 +236,9 @@ mod tests {
             reserve_token: Some("".to_string()),
             channel_id: Some("".to_string()),
             pool_id: Some(1),
+            feature_flags: Some(FeatureFlags {
+                enable_auto_claim: true,
+            }),
         };
         let res = crate::contract::execute(
             deps.as_mut(),

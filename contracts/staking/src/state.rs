@@ -19,6 +19,7 @@ pub struct Config {
     pub ibc_channel_id: String,
     pub stopped: bool,
     pub pool_id: u64,
+    pub feature_flags: FeatureFlags,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?
@@ -49,6 +50,11 @@ pub struct MultisigAddressConfig {
 pub struct IbcConfig {
     pub channel_id: String,
     pub default_timeout: Timestamp,
+}
+
+#[cw_serde]
+pub struct FeatureFlags {
+    pub enable_auto_claim: bool,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

@@ -12,15 +12,20 @@ done
 RESERVE_TOKEN="ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA"
 
 echo '{
-  "initial-deposit": "10000uosmo,10000ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA",
+  "initial-deposit": "1000000uosmo,1000000ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA",
   "swap-fee": "0.01",
   "exit-fee": "0",
   "weights": "10uosmo,1ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA"
 }' > pool.json
-
 
 osmosisd tx gamm create-pool --pool-file ./pool.json \
     --from validator1 --keyring-backend=test --home=$HOME/.osmosisd/validator1 \
     -y -b block \
     --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
     --chain-id osmosis-dev-1
+
+# add liquidity
+# osmosisd tx gamm join-pool --pool-id 1 --max-amounts-in 1000000$RESERVE_TOKEN,1000000uosmo --share-amount-out 1000 --from test_master --keyring-backend test -y \
+#     --node http://localhost:26657 -y -b block \
+#     --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+#     --chain-id osmosis-dev-1

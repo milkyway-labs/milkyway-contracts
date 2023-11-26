@@ -1,20 +1,14 @@
 use cosmwasm_std::{
-    to_vec, Addr, ContractResult, Decimal, Env, QuerierWrapper,
-    QueryRequest, StdError, StdResult, SystemResult, Uint128,
+    to_vec, Addr, ContractResult, Env, QuerierWrapper, QueryRequest, StdError, StdResult,
+    SystemResult, Uint128,
 };
 use cosmwasm_std::{Binary, CustomQuery};
-
-
-
 
 use osmosis_std::types::osmosis::poolmanager::v1beta1::PoolmanagerQuerier;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
 
-
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, str::FromStr};
-
-
 
 pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
@@ -136,22 +130,6 @@ pub fn multiply_ratio_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 
     };
 
     Uint128::from(result)
-}
-
-use regex::Regex;
-
-fn extract_decimal(input: &str) -> Result<Decimal, &str> {
-    let re = Regex::new(r"(\d+\.\d+)").unwrap();
-    if let Some(caps) = re.captures(input) {
-        if let Some(matched) = caps.get(0) {
-            let parsed = Decimal::from_str(matched.as_str());
-            if parsed.is_err() {
-                return Err("Failed to parse decimal");
-            }
-            return Ok(parsed.unwrap());
-        }
-    }
-    Err("No decimal found")
 }
 
 pub fn raw_query_bin<C: CustomQuery>(

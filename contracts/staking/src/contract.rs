@@ -3,9 +3,7 @@ use crate::execute::{
     resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
-use crate::query::{
-    query_batch, query_batches, query_config, query_pending_batch, query_spot_price, query_state,
-};
+use crate::query::{query_batch, query_batches, query_config, query_pending_batch, query_state};
 use crate::state::{
     Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH_ID, STATE,
 };
@@ -92,6 +90,7 @@ pub fn instantiate(
         ibc_channel_id: msg.ibc_channel_id.clone(),
         stopped: false,
         pool_id: msg.pool_id,
+        feature_flags: msg.feature_flags,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -183,6 +182,7 @@ pub fn execute(
             reserve_token,
             channel_id,
             pool_id,
+            feature_flags,
         } => update_config(
             deps,
             env,
@@ -195,6 +195,7 @@ pub fn execute(
             reserve_token,
             channel_id,
             pool_id,
+            feature_flags,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
@@ -208,14 +209,13 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
-        QueryMsg::SpotPrice {} => to_binary(&query_spot_price(deps, &env)?),
     }
 }
 
