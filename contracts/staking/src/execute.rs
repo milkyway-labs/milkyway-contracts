@@ -735,6 +735,8 @@ pub fn receive_unstaked_tokens(
             );
         });
 
+        BATCHES.save(deps.storage, batch_id, &batch)?;
+
         return Ok(response
             .clone()
             .add_attribute("distribution_gas", distribution_gas)
