@@ -1,5 +1,5 @@
 docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   cosmwasm/workspace-optimizer-arm64:0.14.0
 
@@ -22,10 +22,7 @@ RESERVE_TOKEN="ibc/0E22FFB61DB307FE01D3D0DFF4A8EBEB6CC4997DCF9E901AE0751A2FFF4B9
 CELESTIA_VALIDATOR_1=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f1 | bech32 --decode | bech32 --prefix celestiavaloper)
 CELESTIA_VALIDATOR_2=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f2 | bech32 --decode | bech32 --prefix celestiavaloper)
 CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.validators | map(.operator_address) | join(",")' | cut -d',' -f3 | bech32 --decode | bech32 --prefix celestiavaloper)
-UNBONDING_PERIOD=$(celestia-appd query staking params --node https://rpc.celestia-mocha.com:443 --output json | jq -r '.unbonding_time | .[:-1]')
-BATCH_PERIOD=$(echo "scale=2; ($UNBONDING_PERIOD + 6) / 7" | bc)
-BATCH_PERIOD=${BATCH_PERIOD%.*}
-INIT={\"native_token_denom\":\"$RESERVE_TOKEN\",\"liquid_stake_token_denom\":\"stTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":1209600,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"$CHANNEL\",\"pool_id\":1}
+INIT={\"native_token_denom\":\"$RESERVE_TOKEN\",\"liquid_stake_token_denom\":\"stTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":1209600,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"controller_address\":\"$ADMIN_CELESTIA\",\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"$CHANNEL\"}
 RES=$(osmosisd tx wasm instantiate $CODE_ID $INIT \
     --from test_master --keyring-backend test --label "milkyway test" -y \
     --admin "$ADMIN_OSMOSIS" --node https://rpc.testnet.osmosis.zone:443 -y -b block \
@@ -35,4 +32,7 @@ CONTRACT=$(echo $RES | jq -r '.raw_log | fromjson | .[0].events[] | select(.type
 echo $CONTRACT
 
 # current deployment
-# osmo10nghhpea7rc78n4h3vcjy5rsq8m8supwpyrd3avgp7dtlh7zl4xqrnkhs4
+# osmo1h3s40qhqztppucdfggzwykz7xgwhcnps952y86xc73eupqfu9jmqcaghze
+
+45540333
+1000000000uosmo

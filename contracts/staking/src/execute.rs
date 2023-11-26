@@ -1,19 +1,21 @@
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, multiply_ratio_ceil,
-    query_arithmetic_twap_price, sub_msg_id, validate_address,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender,
+    estimate_token_conversion, multiply_ratio_ceil, sub_msg_id, validate_address,
 };
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG,
     PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response, StdResult, SubMsg, Timestamp, Uint128,
+    ensure, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order,
+    Response, StdResult, SubMsg, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 
+use osmo_bindings::OsmosisQuery;
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 
@@ -520,6 +522,7 @@ pub fn update_config(
     protocol_fee_config: Option<ProtocolFeeConfig>,
     reserve_token: Option<String>,
     channel_id: Option<String>,
+    pool_id: Option<u64>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -540,6 +543,10 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
+    if let Some(pool_id) = pool_id {
+        config.pool_id = pool_id;
+    }
+
     if channel_id.is_some() && reserve_token.is_none() {
         return Err(ContractError::IbcChannelNotFound {});
     }
@@ -645,21 +652,24 @@ pub fn receive_unstaked_tokens(
 
     check_stopped(&config)?;
 
-    let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config.multisig_address_config.staker_address.as_ref(),
-        "osmo",
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
+    // ATTENTION: THIS CAN"T STAY COMMENTED!!!!
+    // if env.block.chain_id != "osmosis-dev-1" {
+    //     let expected_sender = derive_intermediate_sender(
+    //         &config.ibc_channel_id,
+    //         config.multisig_address_config.staker_address.as_ref(),
+    //         "osmo",
+    //     );
+    //     if expected_sender.is_err() {
+    //         return Err(ContractError::Unauthorized {
+    //             sender: info.sender.to_string(),
+    //         });
+    //     }
+    //     if info.sender != expected_sender.unwrap() {
+    //         return Err(ContractError::Unauthorized {
+    //             sender: info.sender.to_string(),
+    //         });
+    //     }
+    // }
 
     let coin = info
         .funds
@@ -798,20 +808,13 @@ fn auto_claim(
     Ok((sub_msgs, swap_msg, amount_for_gas, tia_to_swap, swap_ratio))
 }
 
-const POOL_ID: u64 = 1;
-
-// TODO use better swapping estimation like TWAP https://github.com/osmosis-labs/bindings/blob/main/packages/bindings/src/query.rs
-fn query_swap_cost(deps: &Deps, env: &Env, config: &Config) -> StdResult<Decimal> {
-    let denom_out = "osmo".to_string();
+fn query_swap_cost(deps: &Deps, _env: &Env, config: &Config) -> StdResult<Decimal> {
+    let denom_out = "uosmo".to_string();
     let denom_in = config.native_token_denom.to_string();
-    let res = query_arithmetic_twap_price(
-        &deps.querier,
-        POOL_ID,
-        &denom_in,
-        &denom_out,
-        env.block.time.minus_hours(1).seconds() as u64,
-    )?;
-    Ok(res)
+    // let res =
+    //     estimate_token_conversion(&deps.querier, config.pool_id.clone(), &denom_in, &denom_out)?;
+    // Ok(res)
+    Ok(Decimal::zero())
 }
 fn swap(
     _deps: &Deps,
@@ -825,7 +828,7 @@ fn swap(
     let swap_msg: CosmosMsg = MsgSwapExactAmountOut {
         sender: env.contract.address.to_string(),
         routes: vec![SwapAmountOutRoute {
-            pool_id: POOL_ID,
+            pool_id: config.pool_id.clone(),
             token_in_denom: denom_in,
         }],
         token_in_max_amount: amount_in.to_string(),

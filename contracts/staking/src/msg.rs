@@ -28,6 +28,8 @@ pub struct InstantiateMsg {
     pub minimum_liquid_stake_amount: Uint128,
     // IBC channel id on Osmosis to Celestia
     pub ibc_channel_id: String,
+    // Pool used to swap fees in
+    pub pool_id: u64,
 }
 
 #[cw_serde]
@@ -57,6 +59,7 @@ pub enum ExecuteMsg {
         protocol_fee_config: Option<ProtocolFeeConfig>,
         reserve_token: Option<String>,
         channel_id: Option<String>,
+        pool_id: Option<u64>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
@@ -118,6 +121,8 @@ pub enum QueryMsg {
     Batches {},
     #[returns(BatchResponse)]
     PendingBatch {},
+    #[returns(Uint128)]
+    SpotPrice {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

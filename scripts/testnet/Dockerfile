@@ -8,8 +8,8 @@ RUN apt-get install -y golang-go
 RUN apt-get install -y wget
 RUN apt install unzip
 
-RUN wget https://github.com/osmosis-labs/osmosis/releases/download/v20.1.1/osmosisd-20.1.1-linux-amd64
-RUN mv osmosisd-20.1.1-linux-amd64 /usr/local/bin/osmosisd
+RUN wget https://github.com/osmosis-labs/osmosis/releases/download/v20.5.0/osmosisd-20.5.0-linux-amd64
+RUN mv osmosisd-20.5.0-linux-amd64 /usr/local/bin/osmosisd
 RUN chmod +x /usr/local/bin/osmosisd
 
 RUN ARCH=$(arch | sed s/aarch64/arm64/) && \
@@ -41,13 +41,20 @@ COPY ./local-hermes-new.sh ./local-hermes-new.sh
 COPY ./local-account.sh ./local-account.sh
 COPY ./hermes-config.toml ./hermes-config.toml
 COPY ./local-hermes-clear-packets.sh ./local-hermes-clear-packets.sh
+COPY ./tia-osmo-pool.sh ./tia-osmo-pool.sh
 RUN sh ./local-celestia-testnet-multi-continue.sh && \
     sh ./local-osmosis-testnet-continue.sh && \
     sh ./check-node-running.sh osmosis1 && \
     sh ./check-node-running.sh celestia1 && \
     sh ./local-hermes-new.sh && \
-    sh ./local-account.sh && \
-    sh ./tia-osmo-pool.sh
+    sh ./local-account.sh
+
+# RUN sh ./local-celestia-testnet-multi-continue.sh && \
+#     sh ./local-osmosis-testnet-continue.sh && \
+#     sh ./check-node-running.sh osmosis1 && \
+#     sh ./check-node-running.sh celestia1 && \
+#     sh ./local-hermes-continue.sh && \
+#     sh ./tia-osmo-pool.sh
 
 EXPOSE 26661
 EXPOSE 26657
@@ -60,6 +67,5 @@ CMD sh ./local-celestia-testnet-multi-continue.sh && \
     sh ./local-osmosis-testnet-continue.sh && \
     sh ./check-node-running.sh osmosis1 && \
     sh ./check-node-running.sh celestia1 && \
-    sh ./local-hermes-clear-packets.sh && \
     sh ./local-hermes-continue.sh && \
     tail -f /dev/null

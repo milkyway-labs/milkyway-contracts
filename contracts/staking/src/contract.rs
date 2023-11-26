@@ -3,7 +3,9 @@ use crate::execute::{
     resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
-use crate::query::{query_batch, query_batches, query_config, query_pending_batch, query_state};
+use crate::query::{
+    query_batch, query_batches, query_config, query_pending_batch, query_spot_price, query_state,
+};
 use crate::state::{
     Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, PENDING_BATCH_ID, STATE,
 };
@@ -23,6 +25,7 @@ use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
+use osmo_bindings::OsmosisQuery;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 
 // Version information for migration
@@ -88,6 +91,7 @@ pub fn instantiate(
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
         ibc_channel_id: msg.ibc_channel_id.clone(),
         stopped: false,
+        pool_id: msg.pool_id,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -178,6 +182,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            pool_id,
         } => update_config(
             deps,
             env,
@@ -189,6 +194,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            pool_id,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
@@ -209,6 +215,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
+        QueryMsg::SpotPrice {} => to_binary(&query_spot_price(deps)?),
     }
 }
 

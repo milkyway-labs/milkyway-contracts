@@ -18,6 +18,7 @@ pub struct Config {
     pub minimum_liquid_stake_amount: Uint128,
     pub ibc_channel_id: String,
     pub stopped: bool,
+    pub pool_id: u64,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?

@@ -1,8 +1,18 @@
-use cosmwasm_std::{Addr, Decimal, Env, QuerierWrapper, StdError, StdResult, Uint128};
-use osmosis_std::shim::Timestamp;
+use cosmwasm_std::{
+    Addr, Decimal, Env, QuerierWrapper, QueryRequest, StdError, StdResult, Uint128,
+};
+use osmo_bindings::{OsmosisQuery, Swap};
+use osmosis_std::types::osmosis::poolmanager::v1beta1::EstimateSwapExactAmountOutResponse;
+use osmosis_std::types::osmosis::poolmanager::v1beta1::PoolmanagerQuerier;
+use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
 use osmosis_std::types::osmosis::twap::v1beta1::TwapQuerier;
+use osmosis_std::types::osmosis::{
+    cosmwasmpool::v1beta1::SpotPrice, poolmanager::v2::SpotPriceResponse,
+};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, str::FromStr};
+
+use crate::state::Config;
 
 pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
@@ -126,26 +136,35 @@ pub fn multiply_ratio_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 
     Uint128::from(result)
 }
 
-/// Query arithmetic twap price of a coin, denominated in OSMO.
-/// `start_time` must be within 48 hours of current block time.
-pub fn query_arithmetic_twap_price(
+use regex::Regex;
+
+fn extract_decimal(input: &str) -> Result<Decimal, &str> {
+    let re = Regex::new(r"(\d+\.\d+)").unwrap();
+    if let Some(caps) = re.captures(input) {
+        if let Some(matched) = caps.get(0) {
+            let parsed = Decimal::from_str(matched.as_str());
+            if parsed.is_err() {
+                return Err("Failed to parse decimal");
+            }
+            return Ok(parsed.unwrap());
+        }
+    }
+    Err("No decimal found")
+}
+
+pub fn estimate_token_conversion(
     querier: &QuerierWrapper,
     pool_id: u64,
     base_denom: &str,
     quote_denom: &str,
-    start_time: u64,
-) -> StdResult<Decimal> {
-    let twap_res = TwapQuerier::new(querier).arithmetic_twap_to_now(
+) -> StdResult<Uint128> {
+    let spot_price_res = PoolmanagerQuerier::new(querier).spot_price(
         pool_id,
         base_denom.to_string(),
         quote_denom.to_string(),
-        Some(Timestamp {
-            seconds: start_time as i64,
-            nanos: 0,
-        }),
     )?;
-    let price = Decimal::from_str(&twap_res.arithmetic_twap)?;
-    Ok(price)
+    let price = Decimal::from_str(&spot_price_res.spot_price)?;
+    Ok(Uint128::zero())
 }
 
 #[cfg(test)]
