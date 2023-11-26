@@ -23,7 +23,7 @@ CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node http://loca
 UNBONDING_PERIOD=$(celestia-appd query staking params --node http://localhost:26661 --output json | jq -r '.unbonding_time | .[:-1]')
 BATCH_PERIOD=$(echo "scale=2; ($UNBONDING_PERIOD + 6) / 7" | bc)
 BATCH_PERIOD=${BATCH_PERIOD%.*}
-INIT={\"native_token_denom\":\"$RESERVE_TOKEN\",\"liquid_stake_token_denom\":\"mlk\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":$BATCH_PERIOD,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\",\"pool_id\":1}
+INIT={\"native_token_denom\":\"$RESERVE_TOKEN\",\"liquid_stake_token_denom\":\"mlk\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":$BATCH_PERIOD,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\",\"pool_id\":1,\"feature_flags\":{\"enable_auto_claim\":true}}
 osmosisd tx wasm instantiate $CODE_ID $INIT \
     --from test_master --keyring-backend test --label "milkyway test" -y \
     --admin "$ADMIN_OSMOSIS" --node http://localhost:26657 -y -b block \
@@ -31,5 +31,3 @@ osmosisd tx wasm instantiate $CODE_ID $INIT \
     --chain-id osmosis-dev-1
 CONTRACT=$(osmosisd query wasm list-contract-by-code $CODE_ID --node http://localhost:26657 --output json | jq -r '.contracts[-1]')
 echo $CONTRACT
-
-osmosisd query wasm contract-state smart $CONTRACT '{"spot_price":{}}'
