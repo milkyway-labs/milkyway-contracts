@@ -6,9 +6,7 @@ use crate::state::ibc::IBCTransfer;
 use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
-use crate::state::{BATCHES, CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE};
 use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
-use cosmwasm_std::{Decimal, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::Batch;
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
@@ -139,4 +137,5 @@ pub fn query_claimable(deps: Deps, user: Addr) -> StdResult<BatchesResponse> {
         .collect();
 
     let res = BatchesResponse { batches };
+    Ok(res)
 }
