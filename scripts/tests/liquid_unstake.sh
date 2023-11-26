@@ -34,14 +34,6 @@ osmosisd tx wasm execute $CONTRACT '{"submit_batch":{}}' \
     --chain-id osmosis-dev-1
 osmosisd query wasm contract-state smart $CONTRACT '{"batch":{"id":1}}'
 
-RESERVE_TOKEN="ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA"
-osmosisd tx wasm execute $CONTRACT '{"receive_unstaked_tokens":{}}' \
-    --from test_master --keyring-backend test -y \
-    --node http://localhost:26657 -y -b block \
-    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmosis-dev-1 \
-    --amount 100000$RESERVE_TOKEN
-
 MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"receive_rewards":{}}}}'
 celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --keyring-backend test --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 1000utia  --broadcast-mode block --memo "$MEMO"
 

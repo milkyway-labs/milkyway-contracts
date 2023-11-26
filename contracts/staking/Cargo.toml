@@ -38,7 +38,6 @@ milky_way = { path = "../../packages/milky_way" }
 bech32 = "0.9.1"
 bech32-no_std = "0.7.3"
 sha2 = "0.10.8"
-osmo-bindings = "0.6.0"
 regex = "1.10.2"
 
 [dev-dependencies]

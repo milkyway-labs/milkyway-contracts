@@ -229,9 +229,6 @@ mod staking_tests {
         assert!(res.is_ok());
 
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        if res.is_err() {
-            panic!("Unexpected error: {:?}", res.err());
-        }
         assert!(res.is_ok());
     }
 

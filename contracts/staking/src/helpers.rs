@@ -132,24 +132,6 @@ pub fn multiply_ratio_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 
     Uint128::from(result)
 }
 
-pub fn raw_query_bin<C: CustomQuery>(
-    querier: &QuerierWrapper,
-    req: &QueryRequest<C>,
-) -> StdResult<Binary> {
-    let raw = to_vec(req).map_err(|serialize_err| {
-        StdError::generic_err(format!("Serializing QueryRequest: {serialize_err}"))
-    })?;
-    match querier.raw_query(&raw) {
-        SystemResult::Err(system_err) => Err(StdError::generic_err(format!(
-            "Querier system error: {system_err}"
-        ))),
-        SystemResult::Ok(ContractResult::Err(contract_err)) => Err(StdError::generic_err(format!(
-            "Querier contract error: {contract_err}"
-        ))),
-        SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
-    }
-}
-
 pub fn estimate_swap_exact_amount_out(
     querier: &QuerierWrapper,
     pool_id: u64,

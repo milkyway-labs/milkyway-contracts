@@ -25,6 +25,8 @@ osmosisd tx wasm execute $CONTRACT '{"liquid_stake":{}}' \
 # osmosisd query bank balances $CONTRACT
 # celestia-appd query bank balances $ADMIN_CELESTIA --node http://localhost:26661
 # osmosisd query wasm contract-state smart $CONTRACT '{"state":{}}'
+# osmosisd query wasm contract-state smart $CONTRACT '{"ibc_queue":{}}' --output json | jq -r '.ibc_queue'
+# osmosisd query wasm contract-state smart $CONTRACT '{"batches":{}}'
 
 # check packets (inside docker)
 # hermes query packet pending --chain osmosis-dev-1 --port transfer --channel channel-0

@@ -787,10 +787,7 @@ fn auto_claim(
                 .multiply_ratio(r.shares, batch.batch_total_liquid_stake)
                 .checked_sub(fee_per_user);
             if withdraw_amount.is_err() {
-                // return ContractError::RewardsSmallerThenFees {
-                //     fees: tia_to_swap,
-                //     rewards: batch.received_native_unstaked.unwrap_or(Uint128::zero()),
-                // };
+                // if the fees are too small we don't send anything for now
                 return;
             }
             let withdraw_amount = withdraw_amount.unwrap();
