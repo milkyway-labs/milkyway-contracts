@@ -21,6 +21,20 @@ Run all tests in the repo:
 make test
 ```
 
+## Testnets
+
+There is Docker testnets available: Check `./scripts/testnet`
+
+Deploy the contract using the available scripts:
+
+```
+make initlocal
+```
+
+```
+make migratelocal
+```
+
 ## License
 
 This software is licensed under the Apache 2.0 license.
