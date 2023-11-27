@@ -559,21 +559,24 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
         env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    let msgs = packets.into_iter().map(|r| MsgTransfer {
-        source_channel: ibc_config.channel_id.clone(),
-        source_port: "transfer".to_string(),
-        token: Some(Coin {
-            denom: config.native_token_denom.clone(),
-            amount: r.amount.to_string(),
-        }),
-        receiver: config.multisig_address_config.staker_address.to_string(),
-        sender: env.contract.address.to_string(),
-        timeout_height: None,
-        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-        memo: format!(
-            "{{\"ibc_callback\":\"{}\"}}",
-            env.contract.address.to_string()
-        ),
+    let msgs = packets.into_iter().map(|r| {
+        INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
+        MsgTransfer {
+            source_channel: ibc_config.channel_id.clone(),
+            source_port: "transfer".to_string(),
+            token: Some(Coin {
+                denom: config.native_token_denom.clone(),
+                amount: r.amount.to_string(),
+            }),
+            receiver: config.multisig_address_config.staker_address.to_string(),
+            sender: env.contract.address.to_string(),
+            timeout_height: None,
+            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+            memo: format!(
+                "{{\"ibc_callback\":\"{}\"}}",
+                env.contract.address.to_string()
+            ),
+        }
     });
 
     Ok(Response::new()
