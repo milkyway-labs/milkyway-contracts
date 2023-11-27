@@ -408,6 +408,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-repr"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bad30c9c0fa1aaf1ae5010dab11f1117b15d35faf62cda4bbbc53b9987950f18"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "ff"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -893,8 +904,11 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw2",
+ "enum-repr",
  "milky_way",
  "osmosis-std",
+ "prost 0.11.9",
+ "prost-derive 0.12.3",
  "regex",
  "schemars",
  "serde",

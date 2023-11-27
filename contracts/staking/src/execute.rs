@@ -3,27 +3,33 @@ use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender,
     estimate_swap_exact_amount_out, multiply_ratio_ceil, sub_msg_id, validate_address,
+    validate_addresses,
 };
+use crate::state::ibc::{IBCTransfer, PacketLifecycleStatus};
 use crate::state::{
-    Config, FeatureFlags, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_CONFIG, PENDING_BATCH_ID, STATE,
+    Config, FeatureFlags, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State,
+    ADMIN, BATCHES, CONFIG, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
+use crate::state::{IbcConfig, IBC_WAITING_FOR_REPLY};
 use cosmwasm_std::{
-    ensure, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, Response,
-    StdResult, SubMsg, Timestamp, Uint128,
+    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
+    StdResult, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
-
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
-
+use osmosis_std::types::ibc::applications::transfer::v1::{MsgTransfer, MsgTransferResponse};
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
-
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
+use prost::Message;
 
-pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
+pub fn transfer_stake_msg(
+    deps: Deps,
+    env: &Env,
+    amount: Uint128,
+) -> Result<MsgTransfer, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let ibc_config = IBC_CONFIG.load(deps.storage)?;
 
@@ -31,20 +37,28 @@ pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMs
         return Err(ContractError::IbcChannelNotFound {});
     }
 
-    let ibc_coin = cosmwasm_std::Coin {
+    let ibc_coin = Coin {
         denom: config.native_token_denom,
-        amount,
+        amount: amount.to_string(),
     };
 
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
         env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    let ibc_msg = IbcMsg::Transfer {
-        channel_id: ibc_config.channel_id,
-        to_address: config.multisig_address_config.staker_address.to_string(),
-        amount: ibc_coin,
-        timeout,
+    let to_address = config.multisig_address_config.staker_address.to_string();
+    let ibc_msg = MsgTransfer {
+        source_channel: ibc_config.channel_id,
+        source_port: "transfer".to_string(),
+        token: Some(ibc_coin),
+        receiver: to_address.clone(),
+        sender: env.contract.address.to_string(),
+        timeout_height: None,
+        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+        memo: format!(
+            "{{\"ibc_callback\":\"{}\"}}",
+            env.contract.address.to_string()
+        ),
     };
 
     Ok(ibc_msg)
@@ -104,16 +118,35 @@ pub fn execute_liquid_stake(
     };
 
     // Transfer native token to multisig address
-    let ibc_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
+    let ibc_msg = transfer_stake_msg(deps.as_ref(), &env, amount)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
+    // message id will be dependendent on block and transaction index, and will therefor always be unique
+    let sub_msg_id = if env.transaction.is_none() {
+        env.block.time.nanos()
+    } else {
+        env.block.time.nanos() + env.transaction.unwrap().index as u64
+    };
 
     STATE.save(deps.storage, &state)?;
 
+    save_ibc_waiting_for_reply(
+        deps,
+        sub_msg_id,
+        IbcWaitingForReply {
+            amount: Uint128::from(amount).into(),
+        },
+    )?;
+
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_message(ibc_msg)
+        .add_submessage(SubMsg {
+            msg: ibc_msg.into(),
+            id: sub_msg_id,
+            reply_on: ReplyOn::Always,
+            gas_limit: None,
+        })
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("amount", amount))
@@ -382,7 +415,7 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = validate_address(new_validator.clone(), CELESTIA_VALIDATOR_PREFIX)?;
+    let new_validator_addr = validate_address(&new_validator, CELESTIA_VALIDATOR_PREFIX)?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -417,7 +450,7 @@ pub fn execute_remove_validator(
 
     let mut config = CONFIG.load(deps.storage)?;
     let validator_addr_to_remove =
-        validate_address(validator_to_remove.clone(), CELESTIA_VALIDATOR_PREFIX)?;
+        validate_address(&validator_to_remove, CELESTIA_VALIDATOR_PREFIX)?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -509,6 +542,51 @@ pub fn execute_accept_ownership(
     }
 }
 
+pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    // timed out and failed packets
+    let all_packages = INFLIGHT_PACKETS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter(|r| r.is_ok())
+        .map(|r| r.unwrap().1);
+    let packets = all_packages
+        .filter(|p| {
+            p.status == PacketLifecycleStatus::AckFailure
+                || p.status == PacketLifecycleStatus::TimedOut
+        })
+        .collect::<Vec<IBCTransfer>>();
+
+    let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
+    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
+        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
+    ));
+
+    let msgs = packets.into_iter().map(|r| {
+        INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
+        MsgTransfer {
+            source_channel: ibc_config.channel_id.clone(),
+            source_port: "transfer".to_string(),
+            token: Some(Coin {
+                denom: config.native_token_denom.clone(),
+                amount: r.amount.to_string(),
+            }),
+            receiver: config.multisig_address_config.staker_address.to_string(),
+            sender: env.contract.address.to_string(),
+            timeout_height: None,
+            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+            memo: format!(
+                "{{\"ibc_callback\":\"{}\"}}",
+                env.contract.address.to_string()
+            ),
+        }
+    });
+
+    Ok(Response::new()
+        .add_attribute("action", "recover")
+        .add_messages(msgs))
+}
+
 // Update the config; callable by the owner
 pub fn update_config(
     deps: DepsMut,
@@ -523,6 +601,7 @@ pub fn update_config(
     channel_id: Option<String>,
     pool_id: Option<u64>,
     feature_flags: Option<FeatureFlags>,
+    operators: Option<Vec<String>>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -549,11 +628,14 @@ pub fn update_config(
     if let Some(feature_flags) = feature_flags {
         config.feature_flags = feature_flags;
     }
+    if let Some(operators) = operators {
+        validate_addresses(&operators, "osmo")?;
+        config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
+    }
 
     if channel_id.is_some() && reserve_token.is_none() {
         return Err(ContractError::IbcChannelNotFound {});
     }
-
     let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
     if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
         return Err(ContractError::IbcChannelNotFound {});
@@ -636,7 +718,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), &env, amount_after_fees.clone())?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
@@ -718,21 +800,11 @@ pub fn receive_unstaked_tokens(
 
     if config.feature_flags.enable_auto_claim {
         // calculate the amount of tia to swap for gas
-        let (distribute_msgs, fee_swap_msg, distribution_gas, fees_in_tia) =
+        let (distribute_msgs, send_msgs, fee_swap_msg, distribution_gas, fees_in_tia) =
             auto_claim(&deps, &env, &config, &batch)?;
 
-        // mark all unstake requests as redeemed
-        let users: Vec<String> = batch.liquid_unstake_requests.keys().cloned().collect();
-        users.into_iter().for_each(|user| {
-            let request = batch.liquid_unstake_requests.get(&user).unwrap();
-            batch.liquid_unstake_requests.insert(
-                user,
-                LiquidUnstakeRequest {
-                    user: request.user.clone(),
-                    shares: request.shares,
-                    redeemed: true,
-                },
-            );
+        send_msgs.iter().for_each(|m| {
+            batch.liquid_unstake_requests.get_mut(m).unwrap().redeemed = true;
         });
 
         BATCHES.save(deps.storage, batch_id, &batch)?;
@@ -755,7 +827,7 @@ fn auto_claim(
     env: &Env,
     config: &Config,
     batch: &Batch,
-) -> Result<(Vec<SubMsg>, CosmosMsg, Uint128, Uint128), ContractError> {
+) -> Result<(Vec<SubMsg>, Vec<String>, CosmosMsg, Uint128, Uint128), ContractError> {
     let gas_per_claim = 20000u64;
     let gas_price = Uint128::from(2500u128); // per 100000
     let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
@@ -777,6 +849,7 @@ fn auto_claim(
 
     let fee_per_user = multiply_ratio_ceil(tia_to_swap, claims);
 
+    let mut users_claimed: Vec<String> = vec![];
     let mut send_msgs: Vec<CosmosMsg> = vec![];
     batch
         .liquid_unstake_requests
@@ -801,7 +874,9 @@ fn auto_claim(
                     amount: withdraw_amount.to_string(),
                 }],
             };
+
             send_msgs.push(msg.into());
+            users_claimed.push(r.user.to_string());
         });
     let sub_msg_id = sub_msg_id(&env);
     let sub_msgs = send_msgs
@@ -817,7 +892,14 @@ fn auto_claim(
             }
         })
         .collect::<Vec<SubMsg>>();
-    Ok((sub_msgs, swap_msg, amount_for_gas, tia_to_swap))
+
+    Ok((
+        sub_msgs,
+        users_claimed,
+        swap_msg,
+        amount_for_gas,
+        tia_to_swap,
+    ))
 }
 
 fn query_swap_cost(
@@ -886,4 +968,64 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attribute("action", "resume_contract"))
+}
+
+pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
+    // Parse the result from the underlying chain call (IBC send)
+    let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
+        return Err(ContractError::FailedIBCTransfer {
+            msg: format!("failed reply: {:?}", msg.result),
+        });
+    };
+
+    // The response contains the packet sequence. This is needed to be able to
+    // ensure that, if there is a delivery failure, the packet that failed is
+    // the same one that we stored recovery information for
+    let transfer_response =
+        MsgTransferResponse::decode(&b[..]).map_err(|_e| ContractError::FailedIBCTransfer {
+            msg: format!("could not decode response: {b}"),
+        })?;
+
+    let IbcWaitingForReply { amount } = IBC_WAITING_FOR_REPLY.load(deps.storage, msg.id)?;
+    IBC_WAITING_FOR_REPLY.remove(deps.storage, msg.id);
+
+    let recovery = IBCTransfer {
+        sequence: transfer_response.sequence,
+        amount,
+        status: PacketLifecycleStatus::Sent,
+    };
+
+    // Save as in-flight to be able to manipulate when the ack/timeout is received
+    INFLIGHT_PACKETS.save(deps.storage, transfer_response.sequence, &recovery)?;
+
+    let response = Response::new()
+        .add_attribute("action", "handle_ibc_reply")
+        .add_attribute("status", "ibc_message_successfully_submitted")
+        .add_attribute(
+            "packet_sequence",
+            format!("{:?}", transfer_response.sequence),
+        );
+
+    Ok(response)
+}
+
+fn save_ibc_waiting_for_reply(
+    deps: DepsMut,
+    id: u64,
+    ibc_msg: IbcWaitingForReply,
+) -> Result<(), ContractError> {
+    // Check that there isn't anything stored in IBC_WAITING_FOR_REPLY. If there
+    // is, it means that the contract is already waiting for a reply and should
+    // not override the stored state. This should never happen here, but adding
+    // the check for safety. If this happens there is likely a malicious attempt
+    // modify the contract's state before it has replied.
+    if IBC_WAITING_FOR_REPLY.may_load(deps.storage, id)?.is_some() {
+        return Err(ContractError::ContractLocked {
+            msg: "Already waiting for a reply".to_string(),
+        });
+    }
+    // Store the ibc send information and the user's failed delivery preference
+    // so that it can be handled by the response
+    IBC_WAITING_FOR_REPLY.save(deps.storage, id, &ibc_msg)?;
+    Ok(())
 }

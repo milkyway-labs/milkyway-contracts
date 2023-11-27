@@ -1,12 +1,17 @@
 #[cfg(test)]
 mod staking_tests {
     use crate::contract::execute;
+    use crate::contract::query;
     use crate::helpers::derive_intermediate_sender;
+    use crate::msg::BatchesResponse;
     use crate::msg::ExecuteMsg;
+    use crate::msg::QueryMsg;
     use crate::state::{Config, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
+    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{attr, coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
+    use milky_way::staking::LiquidUnstakeRequest;
     use milky_way::staking::{Batch, BatchStatus};
     use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -443,5 +448,92 @@ mod staking_tests {
                 attr("fees_in_tia", "1000"),
             ]
         );
+    }
+
+    #[test]
+    fn claimable_batches() {
+        let mut deps = init();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let mut batch_1 = Batch::new(1, Uint128::from(100u128), 1000);
+        batch_1.liquid_unstake_requests.insert(
+            "bob".to_string(),
+            LiquidUnstakeRequest {
+                user: Addr::unchecked("bob"),
+                shares: Uint128::from(100u128), // Too little so auto claim will ignore this user
+                redeemed: false,
+            },
+        );
+        let mut batch_2 = Batch::new(2, Uint128::from(1000u128), 1000);
+        batch_2.liquid_unstake_requests.insert(
+            "bob".to_string(),
+            LiquidUnstakeRequest {
+                user: Addr::unchecked("bob"),
+                shares: Uint128::from(1000u128),
+                redeemed: false,
+            },
+        );
+        let res = BATCHES.save(&mut deps.storage, 1, &batch_1);
+        assert!(res.is_ok());
+        let res = BATCHES.save(&mut deps.storage, 2, &batch_2);
+        assert!(res.is_ok());
+
+        let claimable_batches_res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::ClaimableBatches {
+                user: Addr::unchecked("bob"),
+            },
+        );
+        assert!(claimable_batches_res.is_ok());
+        let claimable_batches_res = from_binary::<BatchesResponse>(&claimable_batches_res.unwrap());
+        assert!(claimable_batches_res.is_ok());
+        let claimable_batches = claimable_batches_res.unwrap();
+        assert_eq!(claimable_batches.batches.len(), 0);
+
+        // receive tokens for batch 1
+        let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
+        batch.update_status(BatchStatus::Submitted, Some(1000));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let info = mock_info(
+            &derive_intermediate_sender(
+                &CONFIG.load(&deps.storage).unwrap().ibc_channel_id,
+                &CONFIG
+                    .load(&deps.storage)
+                    .unwrap()
+                    .multisig_address_config
+                    .staker_address
+                    .to_string(),
+                "osmo",
+            )
+            .unwrap(),
+            &[cosmwasm_std::Coin {
+                amount: Uint128::from(100u128),
+                denom: CONFIG.load(&deps.storage).unwrap().native_token_denom,
+            }],
+        );
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        assert!(res.is_ok());
+
+        let claimable_batches_res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::ClaimableBatches {
+                user: Addr::unchecked("bob"),
+            },
+        );
+        assert!(claimable_batches_res.is_ok());
+        let claimable_batches_res = from_binary::<BatchesResponse>(&claimable_batches_res.unwrap());
+        assert!(claimable_batches_res.is_ok());
+        let claimable_batches = claimable_batches_res.unwrap();
+        assert_eq!(claimable_batches.batches.len(), 1);
+        assert_eq!(claimable_batches.batches[0].id, 1);
     }
 }

@@ -1,11 +1,4 @@
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/workspace-optimizer-arm64:0.14.0
-
-# cargo install --git https://github.com/cmoog/bech32         
-
-RES=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --keyring-backend test --output json --node https://rpc.testnet.osmosis.zone:443 -y -b block --gas-prices 0.025uosmo --gas-adjustment 1.7 --gas auto --chain-id osmo-test-5)
+RES=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --keyring-backend --output json --node https://rpc.testnet.osmosis.zone:443 -y -b block --gas-prices 0.025uosmo --gas-adjustment 1.7 --gas auto --chain-id osmo-test-5)
 CODE_ID=$(echo $RES | jq -r '.raw_log | fromjson | .[0].events[] | select(.type == "store_code") | .attributes[] | select(.key == "code_id") | .value')
 ADMIN_OSMOSIS=osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge
 ADMIN_CELESTIA=celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx

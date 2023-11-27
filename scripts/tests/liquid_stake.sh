@@ -31,3 +31,9 @@ osmosisd tx wasm execute $CONTRACT '{"liquid_stake":{}}' \
 # check packets (inside docker)
 # hermes query packet pending --chain osmosis-dev-1 --port transfer --channel channel-0
 
+# recover packets
+osmosisd tx wasm execute $CONTRACT '{"recover_pending_ibc_transfers":{}}' \
+    --from test_master -y \
+    --node http://localhost:26657 -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1

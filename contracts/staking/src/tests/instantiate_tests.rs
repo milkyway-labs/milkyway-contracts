@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::msg::InstantiateMsg;
-    use crate::state::{FeatureFlags, MultisigAddressConfig, ProtocolFeeConfig, BATCHES};
+    use crate::state::{
+        Config, FeatureFlags, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG,
+    };
     use crate::tests::test_helper::{
         init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
@@ -160,6 +162,7 @@ mod tests {
             feature_flags: Some(FeatureFlags {
                 enable_auto_claim: true,
             }),
+            operators: Some(vec![OSMO3.to_string()]),
         };
 
         let res = crate::contract::execute(
@@ -169,6 +172,9 @@ mod tests {
             config_update_msg,
         );
         assert!(res.is_ok());
+        let config: Config = CONFIG.load(&deps.storage).unwrap();
+        assert!(config.operators.len() == 1);
+        assert!(config.operators.get(0).unwrap().to_string() == OSMO3.to_string());
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -187,6 +193,7 @@ mod tests {
             feature_flags: Some(FeatureFlags {
                 enable_auto_claim: true,
             }),
+            operators: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -213,6 +220,7 @@ mod tests {
             feature_flags: Some(FeatureFlags {
                 enable_auto_claim: true,
             }),
+            operators: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -239,6 +247,7 @@ mod tests {
             feature_flags: Some(FeatureFlags {
                 enable_auto_claim: true,
             }),
+            operators: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
