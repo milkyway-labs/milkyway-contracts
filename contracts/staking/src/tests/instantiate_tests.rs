@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::msg::InstantiateMsg;
-    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig, BATCHES};
+    use crate::state::{Config, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG};
     use crate::tests::test_helper::{
         init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
@@ -152,6 +152,7 @@ mod tests {
                 "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA".to_string(),
             ),
             channel_id: Some("channel-0".to_string()),
+            operators: Some(vec![OSMO3.to_string()]),
         };
 
         let res = crate::contract::execute(
@@ -161,6 +162,9 @@ mod tests {
             config_update_msg,
         );
         assert!(res.is_ok());
+        let config: Config = CONFIG.load(&deps.storage).unwrap();
+        assert!(config.operators.len() == 1);
+        assert!(config.operators.get(0).unwrap().to_string() == OSMO3.to_string());
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -175,6 +179,7 @@ mod tests {
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some("".to_string()),
             channel_id: Some("channel-0".to_string()),
+            operators: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -197,6 +202,7 @@ mod tests {
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some("ibc/abc".to_string()),
             channel_id: Some("".to_string()),
+            operators: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -219,6 +225,7 @@ mod tests {
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some("".to_string()),
             channel_id: Some("".to_string()),
+            operators: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),

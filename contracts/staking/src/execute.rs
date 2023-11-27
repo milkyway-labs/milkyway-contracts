@@ -2,6 +2,7 @@ use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
+    validate_addresses,
 };
 use crate::state::IbcConfig;
 use crate::state::{
@@ -10,7 +11,7 @@ use crate::state::{
     CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
+    ensure, Addr, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
     SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
@@ -412,7 +413,7 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = validate_address(new_validator.clone(), CELESTIA_VALIDATOR_PREFIX)?;
+    let new_validator_addr = validate_address(&new_validator, CELESTIA_VALIDATOR_PREFIX)?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -447,7 +448,7 @@ pub fn execute_remove_validator(
 
     let mut config = CONFIG.load(deps.storage)?;
     let validator_addr_to_remove =
-        validate_address(validator_to_remove.clone(), CELESTIA_VALIDATOR_PREFIX)?;
+        validate_address(&validator_to_remove, CELESTIA_VALIDATOR_PREFIX)?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -596,6 +597,7 @@ pub fn update_config(
     protocol_fee_config: Option<ProtocolFeeConfig>,
     reserve_token: Option<String>,
     channel_id: Option<String>,
+    operators: Option<Vec<String>>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -616,10 +618,14 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
+    if let Some(operators) = operators {
+        validate_addresses(&operators, "osmo")?;
+        config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
+    }
+
     if channel_id.is_some() && reserve_token.is_none() {
         return Err(ContractError::IbcChannelNotFound {});
     }
-
     let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
     if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
         return Err(ContractError::IbcChannelNotFound {});
