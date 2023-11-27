@@ -87,4 +87,3 @@ pub mod ibc {
 /// In-Flight packets by (source_channel_id, sequence)
 pub const INFLIGHT_PACKETS: Map<u64, ibc::IBCTransfer> = Map::new("inflight");
 pub const IBC_WAITING_FOR_REPLY: Map<u64, IbcWaitingForReply> = Map::new("ibc_waiting_for_reply");
-

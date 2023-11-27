@@ -31,4 +31,3 @@ pub struct MsgTransferResponse {
     #[prost(uint64, tag = "1")]
     pub sequence: u64,
 }
-

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::Uint128;
     use crate::helpers::{compute_mint_amount, compute_unbond_amount, validate_addresses};
+    use cosmwasm_std::Uint128;
 
     #[test]
     fn validate_addresses_success() {

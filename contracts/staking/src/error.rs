@@ -107,7 +107,7 @@ pub enum ContractError {
 
     #[error("Contract already locked")]
     ContractLocked { msg: String },
-  
+
     #[error("Receive rewards are smaller then the fee")]
     ReceiveRewardsTooSmall { amount: Uint128, minimum: Uint128 },
 

@@ -5,7 +5,7 @@ mod withdraw_tests {
     use crate::state::{BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{Addr, CosmosMsg, from_binary, ReplyOn, SubMsg, Uint128};
+    use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
     use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -39,7 +39,7 @@ mod withdraw_tests {
         assert!(res.is_err());
 
         // batch ready
-        pending_batch.received_native_unstaked = Some(Uint128::new(130_000)); 
+        pending_batch.received_native_unstaked = Some(Uint128::new(130_000));
         pending_batch.status = milky_way::staking::BatchStatus::Received;
         let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
         assert!(res.is_ok());
@@ -77,9 +77,9 @@ mod withdraw_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
             denom: config.native_token_denom.clone(),
-            amount: "40000".to_string(), 
+            amount: "40000".to_string(),
         };
-        
+
         // check the MsgSend
         let mut coins = Vec::new();
         coins.push(coin);
@@ -121,7 +121,7 @@ mod withdraw_tests {
             denom: config.native_token_denom.clone(),
             amount: "90000".to_string(),
         };
-        
+
         // check the MsgSend
         let mut coins = Vec::new();
         coins.push(coin);
@@ -192,7 +192,7 @@ mod withdraw_tests {
             denom: config.native_token_denom.clone(),
             amount: "304615".to_string(), //304615.384... = 304615
         };
-        
+
         // check the MsgSend
         let mut coins = Vec::new();
         coins.push(coin);
@@ -234,7 +234,7 @@ mod withdraw_tests {
             denom: config.native_token_denom.clone(),
             amount: "685384".to_string(), //685,384.615... = 685384
         };
-        
+
         // check the MsgSend
         let mut coins = Vec::new();
         coins.push(coin);
