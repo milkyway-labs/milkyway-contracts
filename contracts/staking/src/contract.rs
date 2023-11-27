@@ -52,8 +52,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let operators = validate_addresses(msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
-    let validators = validate_addresses(msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
+    let operators = validate_addresses(&msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
+    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -67,13 +67,13 @@ pub fn instantiate(
     }
 
     validate_address(
-        msg.multisig_address_config
+        &msg.multisig_address_config
             .reward_collector_address
             .to_string(),
         &CELESTIA_ACCOUNT_PREFIX,
     )?;
     validate_address(
-        msg.multisig_address_config.staker_address.to_string(),
+        &msg.multisig_address_config.staker_address.to_string(),
         &CELESTIA_ACCOUNT_PREFIX,
     )?;
 
@@ -186,6 +186,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            operators,
         } => update_config(
             deps,
             env,
@@ -197,6 +198,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),

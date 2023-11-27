@@ -59,6 +59,7 @@ pub enum ExecuteMsg {
         protocol_fee_config: Option<ProtocolFeeConfig>,
         reserve_token: Option<String>,
         channel_id: Option<String>,
+        operators: Option<Vec<String>>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
