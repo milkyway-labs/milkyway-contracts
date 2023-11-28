@@ -1,4 +1,3 @@
-
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
     LiquidUnstakeRequestResponse, StateResponse,

@@ -673,23 +673,26 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         return Err(ContractError::NoLiquidStake {});
     }
 
-    let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
-        "osmo",
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
+    // allow admin and rewards address to call this
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
+        let expected_sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            config
+                .multisig_address_config
+                .reward_collector_address
+                .as_ref(),
+            "osmo",
+        );
+        if expected_sender.is_err() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
+        if info.sender != expected_sender.unwrap() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
     }
 
     let coin = info
@@ -741,20 +744,23 @@ pub fn receive_unstaked_tokens(
 
     check_stopped(&config)?;
 
-    let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config.multisig_address_config.staker_address.as_ref(),
-        "osmo",
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
+    // allow admin and staker address to call this
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
+        let expected_sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            config.multisig_address_config.staker_address.as_ref(),
+            "osmo",
+        );
+        if expected_sender.is_err() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
+        if info.sender != expected_sender.unwrap() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
     }
 
     let coin = info
@@ -832,11 +838,10 @@ fn auto_claim(
     config: &Config,
     batch: &Batch,
 ) -> Result<(Vec<SubMsg>, Vec<String>, CosmosMsg, Uint128, Uint128), ContractError> {
-    let gas_per_claim = 20000u64;
+    let gas_per_claim = 350000u64;
     let gas_price = Uint128::from(2500u128); // per 100000
     let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
     // amount of uosmo we need to pay for gas
-    // TODO check safe math, overflow?
     let amount_for_gas = multiply_ratio_ceil(
         Uint128::from(gas_per_claim) * gas_price * claims,
         Uint128::from(100000u128),
@@ -883,6 +888,7 @@ fn auto_claim(
             users_claimed.push(r.user.to_string());
         });
     let sub_msg_id = sub_msg_id(&env);
+    // submessages will fail if there is not enough gas, failing the whole tx
     let sub_msgs = send_msgs
         .into_iter()
         .enumerate()
@@ -892,7 +898,7 @@ fn auto_claim(
                 id,
                 msg: cosmwasm_std::CosmosMsg::from(m),
                 gas_limit: Some(gas_per_claim),
-                reply_on: cosmwasm_std::ReplyOn::Error,
+                reply_on: cosmwasm_std::ReplyOn::Never,
             }
         })
         .collect::<Vec<SubMsg>>();
