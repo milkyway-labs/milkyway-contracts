@@ -35,6 +35,9 @@ pub struct InstantiateMsg {
 
     /// Minimum amount to liquid stake
     pub minimum_liquid_stake_amount: Uint128,
+
+    /// Minimum amount to liquid unstake
+    pub minimum_liquid_unstake_amount: Uint128,
 }
 ```
 
@@ -105,7 +108,8 @@ pub enum QueryMsg {
     "validators": ["VALIDATOR_ADDR_1", "VALIDATOR_ADDR_2"],
     "batch_period": 86400,
     "unbonding_period": 1209600,
-    "minimum_liquid_stake_amount": 100
+    "minimum_liquid_stake_amount": 100,
+    "minimum_liquid_unstake_amount": 100
 }
 ```
 

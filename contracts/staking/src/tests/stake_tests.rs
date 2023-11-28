@@ -186,7 +186,7 @@ mod staking_tests {
             }
         }
     }
-
+    
     #[test]
     fn receive_rewards_before_minting() {
         let mut deps = init();

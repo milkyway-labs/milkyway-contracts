@@ -36,6 +36,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
             reward_collector_address: Addr::unchecked(CELESTIA2),
         },
         minimum_liquid_stake_amount: Uint128::from(100u128),
+        minimum_liquid_unstake_amount: Uint128::from(100u128),
         ibc_channel_id: CHANNEL_ID.to_string(),
     };
     let info = mock_info("creator", &coins(1000, "uosmo"));

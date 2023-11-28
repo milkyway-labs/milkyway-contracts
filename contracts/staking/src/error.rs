@@ -30,6 +30,12 @@ pub enum ContractError {
         sent_amount: Uint128,
     },
 
+    #[error("Minimum liquid unstake amount not met")]
+    MinimumLiquidUnStakeAmount {
+        minimum_unstake_amount: Uint128,
+        sent_amount: Uint128,
+    },
+
     #[error("Unable to mint liquid staking token")]
     MintError {},
 

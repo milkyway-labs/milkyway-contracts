@@ -29,6 +29,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         batch_period: config.batch_period,
         unbonding_period: config.unbonding_period,
         minimum_liquid_stake_amount: config.minimum_liquid_stake_amount,
+        minimum_liquid_unstake_amount: config.minimum_liquid_unstake_amount,
     };
     Ok(res)
 }
