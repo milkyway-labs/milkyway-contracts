@@ -6,10 +6,13 @@ celestia-appd tx ibc-transfer transfer transfer channel-0 --from validator1 --no
 
 # get tia ibc token name
 echo "waiting for tia to arrive"
-while [ -z $(osmosisd query bank balances $OSMOSIS_VALIDATOR_1_ADDR --output json | jq -r '.balances[].denom | select(. | contains("ibc/"))') ]; do
-    sleep 1000
-done
-RESERVE_TOKEN="ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA"
+RESERVE_TOKEN=""
+while [ -z "$RESERVE_TOKEN" ]; do
+    BALANCES=$(osmosisd query bank balances $OSMOSIS_VALIDATOR_1_ADDR --output json)
+    echo $BALANCES
+    RESERVE_TOKEN=$(echo $BALANCES | jq -r '.balances[].denom | select(. | contains("ibc/"))')
+    sleep 1s
+done;
 
 echo '{
   "initial-deposit": "1000000uosmo,1000000ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA",
