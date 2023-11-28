@@ -3,12 +3,12 @@ import { CosmWasmClient } from "cosmwasm";
 const networks = {
   ["osmosis-testnet"]: {
     id: "osmosis-testnet",
-    contract: "osmo1h6d53zdzp4dwqr742qvzlucafghuhus7653su0f8cfdfzzkww4as9389xs",
+    contract: "osmo1zemdpquegrkcenhav9z47jp0hpq4hmk7gflq66qxu7nmpx09tygqtssvhv",
     rpc: "https://rpc.testnet.osmosis.zone:443",
   },
   ["canary"]: {
     id: "canary",
-    contract: "osmo17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgs5yczr8",
+    contract: "osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9",
     rpc: "https://osmosis-rpc.milkyway.hanjun.kim",
   },
   // ["local"]: {
