@@ -52,7 +52,10 @@ pub fn compute_mint_amount(
     if total_native_token.is_zero() {
         native_to_stake
     } else {
-        total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
+        div_ceil(
+            total_liquid_stake_token * native_to_stake,
+            total_native_token,
+        )
     }
 }
 
@@ -69,7 +72,10 @@ pub fn compute_unbond_amount(
         // batch_liquid_stake_token - total stTIA in submitted batch
         // total_liquid_stake_token - total stTIA minted by MilkyWay
 
-        total_native_token.multiply_ratio(batch_liquid_stake_token, total_liquid_stake_token)
+        div_ceil(
+            total_native_token * batch_liquid_stake_token,
+            total_liquid_stake_token,
+        )
     }
 }
 

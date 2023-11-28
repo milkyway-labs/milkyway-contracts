@@ -84,7 +84,7 @@ pub fn instantiate(
         liquid_stake_token_denom: format!(
             "factory/{0}/{1}",
             env.contract.address, msg.liquid_stake_token_denom
-        ), //TODO determine the format to save in
+        ),
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         operators,
         validators,
@@ -138,7 +138,6 @@ pub fn instantiate(
     };
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
 
-    // TODO: Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender)

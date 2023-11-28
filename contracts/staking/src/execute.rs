@@ -103,9 +103,6 @@ pub fn execute_liquid_stake(
         return Err(ContractError::MintError {});
     }
 
-    // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
-    //       Needs testing and validation - also need to check mint_to_address
-    //
     // Mint liquid staking token
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
