@@ -49,12 +49,12 @@ RUN sh ./local-celestia-testnet-multi-continue.sh && \
     sh ./local-hermes-new.sh && \
     sh ./local-account.sh
 
-# RUN sh ./local-celestia-testnet-multi-continue.sh && \
-#     sh ./local-osmosis-testnet-continue.sh && \
-#     sh ./check-node-running.sh osmosis1 && \
-#     sh ./check-node-running.sh celestia1 && \
-#     sh ./local-hermes-continue.sh && \
-#     sh ./tia-osmo-pool.sh
+RUN sh ./local-celestia-testnet-multi-continue.sh && \
+    sh ./local-osmosis-testnet-continue.sh && \
+    sh ./check-node-running.sh osmosis1 && \
+    sh ./check-node-running.sh celestia1 && \
+    sh ./local-hermes-continue.sh && \
+    sh ./tia-osmo-pool.sh
 
 EXPOSE 26661
 EXPOSE 26657
