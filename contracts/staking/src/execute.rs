@@ -614,25 +614,29 @@ pub fn update_config(
         config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
     }
 
-    if channel_id.is_some() && reserve_token.is_none() {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
-    if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
-    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_none()
-        || channel_id.is_some() && reserve_token.is_none()
-    {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_some() {
-        config.ibc_channel_id = channel_id.unwrap();
-        config.native_token_denom = reserve_token.unwrap();
+    // TODO get reserve token from channel? Maybe leave as safeguard?
+    if channel_id.is_some() || reserve_token.is_some() {
+        if channel_id.is_none() || reserve_token.is_none() {
+            return Err(ContractError::IbcChannelNotFound {});
+        }
+
+        let channel_id = channel_id.unwrap();
+        let reserve_token = reserve_token.unwrap();
+        let channel_id_correct = channel_id.starts_with("channel-")
+            && channel_id
+                .strip_prefix("channel-")
+                .unwrap()
+                .parse::<u64>()
+                .is_ok();
+        let reserve_token_correct = reserve_token.starts_with("ibc/")
+            && reserve_token.strip_prefix("ibc/").unwrap().len() == 64;
+
+        if !channel_id_correct || !reserve_token_correct {
+            return Err(ContractError::IbcChannelConfigWrong {});
+        }
+
+        config.ibc_channel_id = channel_id;
+        config.native_token_denom = reserve_token;
     }
 
     CONFIG.save(deps.storage, &config)?;
