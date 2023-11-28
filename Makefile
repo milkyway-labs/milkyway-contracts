@@ -26,7 +26,3 @@ _initlocal:
 migratelocal: optimize _migratelocal
 _migratelocal:
 	bash scripts/testnet/migrate_stake_contract.sh
-
-_test_deploy: 
-	bash scripts/testnet/migrate_stake_contract.sh
-test_deploy: optimize _test_deploy

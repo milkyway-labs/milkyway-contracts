@@ -34,8 +34,21 @@ osmosisd tx wasm execute $CONTRACT '{"submit_batch":{}}' \
     --chain-id osmosis-dev-1
 osmosisd query wasm contract-state smart $CONTRACT '{"batch":{"id":1}}'
 
-MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"receive_unstaked_tokens":{}}}}'
-PACKET_SEQUENCE=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --keyring-backend test --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 100000utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log | fromjson | .[0].events[] | select(.type == "send_packet") | .attributes[] | select(.key == "packet_sequence") | .value')
+# send tokens as admin
+osmosisd tx wasm execute $CONTRACT '{"receive_unstaked_tokens":{}}' \
+    --amount 1000000$RESERVE_TOKEN \
+    --from test_master --keyring-backend test \
+    -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1
 
+# or via IBC as in actual setup
+MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"receive_unstaked_tokens":{}}}}'
+PACKET_SEQUENCE=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --keyring-backend test --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 1000000utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log | fromjson | .[0].events[] | select(.type == "send_packet") | .attributes[] | select(.key == "packet_sequence") | .value')
+while [ "$(osmosisd query txs --events "recv_packet.packet_sequence=$PACKET_SEQUENCE" --output json | jq -r '.txs[-1].raw_log')"=="null" ]; do
+    sleep 3
+done;
 osmosisd query txs --events "recv_packet.packet_sequence=$PACKET_SEQUENCE" --output json | jq -r '.txs[-1].raw_log'
+
+
 osmosisd query wasm contract-state smart $CONTRACT '{"batch":{"id":1}}'

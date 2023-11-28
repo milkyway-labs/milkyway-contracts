@@ -11,7 +11,7 @@ while [ -z "$RESERVE_TOKEN" ]; do
     BALANCES=$(osmosisd query bank balances $OSMOSIS_VALIDATOR_1_ADDR --output json)
     echo $BALANCES
     RESERVE_TOKEN=$(echo $BALANCES | jq -r '.balances[].denom | select(. | contains("ibc/"))')
-    sleep 1s
+    sleep 3
 done;
 
 echo '{
