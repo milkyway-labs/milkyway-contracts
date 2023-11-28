@@ -873,13 +873,12 @@ fn auto_claim(
                 // if the fees are too small we don't send anything for now
                 return;
             }
-            let withdraw_amount = withdraw_amount.unwrap();
             let msg = MsgSend {
                 from_address: env.contract.address.to_string(),
                 to_address: r.user.to_string(),
                 amount: vec![Coin {
                     denom: config.native_token_denom.to_string(),
-                    amount: withdraw_amount.to_string(),
+                    amount: withdraw_amount.unwrap().to_string(),
                 }],
             };
 

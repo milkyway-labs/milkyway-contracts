@@ -415,7 +415,7 @@ mod staking_tests {
                     token_in_max_amount: 10000u128.to_string(),
                     token_out: Some(Coin {
                         denom: "uosmo".to_string(),
-                        amount: 500u128.to_string(),
+                        amount: 8750u128.to_string(),
                     }),
                 }),
                 gas_limit: None,
@@ -434,8 +434,8 @@ mod staking_tests {
                         amount: "9000".to_string(),
                     }],
                 }),
-                gas_limit: Some(20000),
-                reply_on: ReplyOn::Error,
+                gas_limit: Some(350000),
+                reply_on: ReplyOn::Never,
             }
         );
         assert_eq!(
@@ -444,7 +444,7 @@ mod staking_tests {
                 attr("action", "receive_unstaked_tokens"),
                 attr("amount", "10000"),
                 attr("batch", "1"),
-                attr("distribution_gas", "500"),
+                attr("distribution_gas", "8750"),
                 attr("fees_in_tia", "1000"),
             ]
         );
