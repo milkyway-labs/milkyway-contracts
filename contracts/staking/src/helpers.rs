@@ -1,7 +1,4 @@
-use cosmwasm_std::{
-    Addr, Env, QuerierWrapper, StdError, StdResult, Uint128,
-};
-
+use cosmwasm_std::{Addr, Env, QuerierWrapper, StdError, StdResult, Uint128};
 
 use osmosis_std::types::osmosis::poolmanager::v1beta1::PoolmanagerQuerier;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
@@ -93,7 +90,6 @@ pub fn addess_hash(typ: &str, key: &[u8]) -> [u8; 32] {
 // derives the sender address to be used when calling wasm hooks
 // https://github.com/osmosis-labs/osmosis/blob/master/x/ibc-hooks/keeper/keeper.go#L170 ```
 pub const SENDER_PREFIX: &str = "ibc-wasm-hook-intermediary";
-
 pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
@@ -114,7 +110,7 @@ pub fn sub_msg_id(env: &Env) -> u64 {
     }
 }
 
-pub fn multiply_ratio_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 {
+pub fn div_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 {
     if denominator.is_zero() {
         return Uint128::zero();
     }

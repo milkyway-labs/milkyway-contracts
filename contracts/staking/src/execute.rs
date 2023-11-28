@@ -1,9 +1,8 @@
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender,
-    estimate_swap_exact_amount_out, multiply_ratio_ceil, sub_msg_id, validate_address,
-    validate_addresses,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, div_ceil,
+    estimate_swap_exact_amount_out, sub_msg_id, validate_address, validate_addresses,
 };
 use crate::state::ibc::{IBCTransfer, PacketLifecycleStatus};
 use crate::state::{
@@ -842,7 +841,7 @@ fn auto_claim(
     let gas_price = Uint128::from(2500u128); // per 100000
     let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
     // amount of uosmo we need to pay for gas
-    let amount_for_gas = multiply_ratio_ceil(
+    let amount_for_gas = div_ceil(
         Uint128::from(gas_per_claim) * gas_price * claims,
         Uint128::from(100000u128),
     );
@@ -856,7 +855,7 @@ fn auto_claim(
         amount_for_gas,
     );
 
-    let fee_per_user = multiply_ratio_ceil(tia_to_swap, claims);
+    let fee_per_user = div_ceil(tia_to_swap, claims);
 
     let mut users_claimed: Vec<String> = vec![];
     let mut send_msgs: Vec<CosmosMsg> = vec![];
