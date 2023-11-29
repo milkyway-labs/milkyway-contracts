@@ -36,7 +36,6 @@ mod query_tests {
                 assert_eq!(res.batch_period, 86400);
                 assert_eq!(res.unbonding_period, 1209600);
                 assert_eq!(res.minimum_liquid_stake_amount, Uint128::from(100u128));
-                assert_eq!(res.minimum_liquid_unstake_amount, Uint128::from(100u128));
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),

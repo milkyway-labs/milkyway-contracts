@@ -92,7 +92,6 @@ pub fn instantiate(
         protocol_fee_config: msg.protocol_fee_config,
         multisig_address_config: msg.multisig_address_config,
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
-        minimum_liquid_unstake_amount: msg.minimum_liquid_unstake_amount,
         ibc_channel_id: msg.ibc_channel_id.clone(),
         stopped: false,
     };
@@ -183,7 +182,6 @@ pub fn execute(
             batch_period,
             unbonding_period,
             minimum_liquid_stake_amount,
-            minimum_liquid_unstake_amount,
             multisig_address_config,
             protocol_fee_config,
             reserve_token,
@@ -196,7 +194,6 @@ pub fn execute(
             batch_period,
             unbonding_period,
             minimum_liquid_stake_amount,
-            minimum_liquid_unstake_amount,
             multisig_address_config,
             protocol_fee_config,
             reserve_token,

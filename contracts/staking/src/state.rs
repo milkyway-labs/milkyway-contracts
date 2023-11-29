@@ -16,7 +16,6 @@ pub struct Config {
     pub protocol_fee_config: ProtocolFeeConfig,
     pub multisig_address_config: MultisigAddressConfig,
     pub minimum_liquid_stake_amount: Uint128,
-    pub minimum_liquid_unstake_amount: Uint128,
     pub ibc_channel_id: String,
     pub stopped: bool,
 }

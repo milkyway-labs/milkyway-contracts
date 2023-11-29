@@ -28,8 +28,6 @@ pub struct InstantiateMsg {
     pub multisig_address_config: MultisigAddressConfig,
     /// Minimum amount to liquid stake
     pub minimum_liquid_stake_amount: Uint128,
-    /// Minimum amount to liquid unstake
-    pub minimum_liquid_unstake_amount: Uint128,
     // IBC channel id on Osmosis to Celestia
     pub ibc_channel_id: String,
 }
@@ -57,7 +55,6 @@ pub enum ExecuteMsg {
         batch_period: Option<u64>,
         unbonding_period: Option<u64>,
         minimum_liquid_stake_amount: Option<Uint128>,
-        minimum_liquid_unstake_amount: Option<Uint128>,
         multisig_address_config: Option<MultisigAddressConfig>,
         protocol_fee_config: Option<ProtocolFeeConfig>,
         reserve_token: Option<String>,
@@ -81,7 +78,6 @@ pub struct ConfigResponse {
     pub batch_period: u64,
     pub unbonding_period: u64,
     pub minimum_liquid_stake_amount: Uint128,
-    pub minimum_liquid_unstake_amount: Uint128,
     pub staker_address: String,
     pub reward_collector_address: String,
 }

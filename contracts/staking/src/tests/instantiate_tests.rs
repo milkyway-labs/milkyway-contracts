@@ -44,7 +44,6 @@ mod tests {
                     reward_collector_address: Addr::unchecked(CELESTIA2),
                 },
                 minimum_liquid_stake_amount: Uint128::from(100u128),
-                minimum_liquid_unstake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
             }
         }
@@ -149,7 +148,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_liquid_unstake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some(
                 "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA".to_string(),
             ),
@@ -179,7 +177,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_liquid_unstake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some("".to_string()),
             channel_id: Some("channel-0".to_string()),
             operators: None,
@@ -203,7 +200,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_liquid_unstake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some("ibc/abc".to_string()),
             channel_id: Some("".to_string()),
             operators: None,
@@ -227,7 +223,6 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            minimum_liquid_unstake_amount: Some(Uint128::from(100u128)),
             reserve_token: Some("".to_string()),
             channel_id: Some("".to_string()),
             operators: None,

@@ -584,7 +584,6 @@ pub fn update_config(
     batch_period: Option<u64>,
     unbonding_period: Option<u64>,
     minimum_liquid_stake_amount: Option<Uint128>,
-    minimum_liquid_unstake_amount: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
     reserve_token: Option<String>,
@@ -603,9 +602,6 @@ pub fn update_config(
     }
     if let Some(minimum_liquid_stake_amount) = minimum_liquid_stake_amount {
         config.minimum_liquid_stake_amount = minimum_liquid_stake_amount;
-    }
-    if let Some(minimum_liquid_unstake_amount) = minimum_liquid_unstake_amount {
-        config.minimum_liquid_unstake_amount = minimum_liquid_unstake_amount;
     }
     if let Some(multisig_address_config) = multisig_address_config {
         config.multisig_address_config = multisig_address_config;
