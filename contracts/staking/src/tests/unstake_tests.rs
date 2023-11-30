@@ -160,25 +160,6 @@ mod staking_tests {
     }
 
     #[test]
-    fn minimum_liquid_unstake() {
-        let mut deps = init();
-
-        let mut state = STATE.load(&deps.storage).unwrap();
-
-        state.total_liquid_stake_token = Uint128::from(100_000u128);
-        STATE.save(&mut deps.storage, &state).unwrap();
-
-        let info = mock_info("bob", &coins(100, "factory/cosmos2contract/stTIA"));
-        let msg = ExecuteMsg::LiquidUnstake {};
-        let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
-        assert!(res.is_ok());
-
-        let info = mock_info("bob", &coins(99, "factory/cosmos2contract/stTIA"));
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-        assert!(res.is_err());
-    }
-
-    #[test]
     fn invalid_denom_liquid_unstake() {
         let mut deps = init();
 

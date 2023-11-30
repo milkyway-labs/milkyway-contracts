@@ -162,15 +162,6 @@ pub fn execute_liquid_unstake(
 
     STATE.load(deps.storage)?;
 
-    // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
-    // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
-    ensure!(
-        amount >= config.minimum_liquid_stake_amount,
-        ContractError::MinimumLiquidStakeAmount {
-            minimum_stake_amount: (config.minimum_liquid_stake_amount),
-            sent_amount: (amount)
-        }
-    );
     // Load current pending batch
     let mut pending_batch: Batch = BATCHES
         .range(deps.storage, None, None, Order::Descending)
