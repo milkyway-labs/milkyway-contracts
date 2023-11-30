@@ -26,6 +26,14 @@ celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --n
 osmosisd query bank balances $ADMIN_OSMOSIS
 osmosisd query bank balances $CONTRACT
 celestia-appd query bank balances $ADMIN_CELESTIA --node http://localhost:26661
+osmosisd query wasm contract-state smart $CONTRACT '{"ibc_queue":{}}'
 
 # check packets (inside docker)
 hermes query packet pending --chain osmosis-dev-1 --port transfer --channel channel-0
+
+# recover packets
+osmosisd tx wasm execute $CONTRACT '{"recover_pending_ibc_transfers":{}}' \
+    --from test_master -y \
+    --node http://localhost:26657 -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1

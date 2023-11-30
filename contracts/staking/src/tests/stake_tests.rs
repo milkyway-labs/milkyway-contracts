@@ -1,19 +1,23 @@
 #[cfg(test)]
 mod staking_tests {
-    use crate::contract::{execute, IBC_TIMEOUT};
+    use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, STATE};
-    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
+    use crate::state::{BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, STATE};
+    use crate::tests::test_helper::{
+        init, resolve_replies, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3,
+    };
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
-        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, ReplyOn, SubMsg, Timestamp,
-        Uint128,
+        attr, coins, Addr, CosmosMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg, SubMsgResponse,
+        SubMsgResult, Timestamp, Uint128,
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
+    use osmosis_std::types::ibc::applications::transfer::v1::{MsgTransfer, MsgTransferResponse};
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
+    use std::vec::Vec;
 
     #[test]
     fn proper_liquid_stake() {
@@ -29,11 +33,12 @@ mod staking_tests {
             env.block.time.nanos() + IBC_TIMEOUT.nanos(),
         ));
 
-        let ibc_coin = cosmwasm_std::Coin {
+        let ibc_coin = Coin {
             denom: NATIVE_TOKEN.to_string(),
-            amount: Uint128::from(1000u128),
+            amount: "1000".to_string(),
         };
 
+        let ibc_sub_msg_id = env.block.time.nanos() + env.transaction.unwrap().index as u64;
         match res {
             Ok(ref result) => {
                 assert_eq!(
@@ -48,15 +53,22 @@ mod staking_tests {
                 assert_eq!(
                     result.messages[1],
                     SubMsg {
-                        id: 0,
-                        msg: <cosmwasm_std::IbcMsg as Into<CosmosMsg>>::into(IbcMsg::Transfer {
-                            channel_id: CHANNEL_ID.to_string(),
-                            to_address: Addr::unchecked(CELESTIA1).to_string(),
-                            amount: ibc_coin,
-                            timeout,
+                        id: ibc_sub_msg_id.clone(),
+                        msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
+                            source_channel: CHANNEL_ID.to_string(),
+                            source_port: "transfer".to_string(),
+                            sender: env.contract.address.to_string(),
+                            receiver: Addr::unchecked(CELESTIA1).to_string(),
+                            token: Some(ibc_coin),
+                            timeout_height: None,
+                            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+                            memo: format!(
+                                "{{\"ibc_callback\":\"{}\"}}",
+                                env.contract.address.to_string()
+                            ),
                         }),
                         gas_limit: None,
-                        reply_on: ReplyOn::Never,
+                        reply_on: ReplyOn::Always,
                     }
                 );
                 assert_eq!(
@@ -81,8 +93,22 @@ mod staking_tests {
             }
         }
 
+        // need to do this or we can't send more ibc messages
+        // IBC_WAITING_FOR_REPLY.remove(deps.as_mut().storage);
+        let _result = reply(
+            deps.as_mut(),
+            mock_env(),
+            Reply {
+                id: ibc_sub_msg_id,
+                result: SubMsgResult::Ok(SubMsgResponse {
+                    data: Some(cosmwasm_std::Binary(Vec::new())), // No data returned
+                    events: Vec::new(),                           // No events
+                }),
+            },
+        );
+
         let pending_batch = BATCHES
-            .range(&deps.storage, None, None, Order::Descending)
+            .range(deps.as_ref().storage, None, None, Order::Descending)
             .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
             .unwrap()
             .unwrap()
@@ -90,12 +116,13 @@ mod staking_tests {
         assert!(pending_batch.id == 1);
 
         // Use the previously unwrapped value
-        let state = STATE.load(&deps.storage).unwrap();
+        let state = STATE.load(deps.as_ref().storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
         assert_eq!(state.total_native_token, Uint128::from(1000u128));
 
         let info = mock_info(OSMO3, &coins(10000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+
         assert!(res.is_ok());
         let state_for_osmo3 = STATE.load(&deps.storage).unwrap();
         assert_eq!(
@@ -179,12 +206,44 @@ mod staking_tests {
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
 
+        resolve_replies(deps.as_mut());
+
         let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: Some(OSMO3.to_string()),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        if res.is_err() {
+            panic!("Unexpected error: {:?}", res);
+        }
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn receive_rewards_before_minting() {
+        let mut deps = init();
+        let env = mock_env();
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+
+        // received rewards in advance of any liquid stake requests
+        let sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            &config
+                .multisig_address_config
+                .reward_collector_address
+                .to_string(),
+            "osmo",
+        )
+        .unwrap();
+        let resp = execute(
+            deps.as_mut(),
+            env.clone(),
+            mock_info(&sender, &coins(1_000, NATIVE_TOKEN)),
+            ExecuteMsg::ReceiveRewards {},
+        );
+
+        assert!(resp.is_err());
     }
 }

@@ -57,6 +57,12 @@ pub enum ContractError {
     #[error("No liquid unstake requests in batch")]
     BatchEmpty {},
 
+    #[error("Batch is either already closed or is in an error state")]
+    BatchNotClaimable { batch_id: u64, status: BatchStatus },
+
+    #[error("The tokens in this batch have already been claimed")]
+    TokensAlreadyClaimed { batch_id: u64 },
+
     #[error("Batch provided doesn't have a request for the user")]
     NoRequestInBatch {},
 
@@ -71,6 +77,9 @@ pub enum ContractError {
 
     #[error("From wrong port")]
     FromOtherPort { port: String },
+
+    #[error("Invalid reply id")]
+    InvalidReplyID { id: u64 },
 
     #[error("unexpected batch status")]
     UnexpecedBatchStatus {
@@ -92,4 +101,16 @@ pub enum ContractError {
 
     #[error("format error")]
     FormatError {},
+
+    #[error("Failed ibc transfer")]
+    FailedIBCTransfer { msg: String },
+
+    #[error("Contract already locked")]
+    ContractLocked { msg: String },
+
+    #[error("Receive rewards are smaller then the fee")]
+    ReceiveRewardsTooSmall { amount: Uint128, minimum: Uint128 },
+
+    #[error("No liquid stake to distribute rewards to")]
+    NoLiquidStake {},
 }

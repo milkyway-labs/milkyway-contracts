@@ -27,3 +27,6 @@ tarpaulin-report.*
 testdata
 .DS_Store
 .idea
+
+node_modules
+pool.json

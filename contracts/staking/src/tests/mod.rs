@@ -1,4 +1,6 @@
 mod circuit_breaker_tests;
+mod helper_tests;
+mod ibc_transfer_tests;
 mod instantiate_tests;
 mod ownership_tests;
 mod query_tests;

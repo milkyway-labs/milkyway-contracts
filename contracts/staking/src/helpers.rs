@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
-pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
+pub fn validate_address(address: &String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
 
     if validated_addr.is_err() {
@@ -13,18 +13,18 @@ pub fn validate_address(address: String, prefix: &str) -> StdResult<Addr> {
         return Err(StdError::generic_err("Invalid address prefix"));
     }
 
-    Ok(Addr::unchecked(&address))
+    Ok(Addr::unchecked(address))
 }
 
 // Validates addresses are valid and unique and returns a vector of validated addresses
-pub fn validate_addresses(addresses: Vec<String>, prefix: &str) -> StdResult<Vec<Addr>> {
+pub fn validate_addresses(addresses: &Vec<String>, prefix: &str) -> StdResult<Vec<Addr>> {
     let mut validated = Vec::new();
     let mut seen = HashSet::new();
 
     for address in addresses {
-        let validated_addr = validate_address(address.clone(), prefix)?;
+        let validated_addr = validate_address(address, prefix)?;
 
-        if seen.contains(&address) {
+        if seen.contains(address) {
             return Err(StdError::generic_err("Duplicate address"));
         }
 
@@ -40,10 +40,10 @@ pub fn compute_mint_amount(
     total_liquid_stake_token: Uint128,
     native_to_stake: Uint128,
 ) -> Uint128 {
-    //TODO: Review integer math
+    // TODO: Review integer math
     // Possible truncation issues when quantities are small
     // Initial very large total_native_token would cause round to 0 and block minting
-    // Mint at a 1:1 ratio if there is no total native token or total liquid stake token
+    // Mint at a 1:1 ratio if there is no total native token
     // Amount = Total stTIA * (Amount of native token / Total native token)
     if total_native_token.is_zero() {
         native_to_stake
@@ -86,6 +86,7 @@ pub fn addess_hash(typ: &str, key: &[u8]) -> [u8; 32] {
 // derives the sender address to be used when calling wasm hooks
 // https://github.com/osmosis-labs/osmosis/blob/master/x/ibc-hooks/keeper/keeper.go#L170 ```
 pub const SENDER_PREFIX: &str = "ibc-wasm-hook-intermediary";
+
 pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
@@ -109,7 +110,7 @@ mod tests {
             "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         ];
 
-        let result = validate_addresses(addresses, &"osmo".to_string()).unwrap();
+        let result = validate_addresses(&addresses, &"osmo".to_string()).unwrap();
 
         assert_eq!(2, result.len());
     }
@@ -121,10 +122,11 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(addresses, &"osmo".to_string());
+        let result = validate_addresses(&addresses, &"osmo".to_string());
 
         assert!(result.is_err());
     }
+
     #[test]
     fn validate_addresses_invalid() {
         let addresses = vec![
@@ -132,11 +134,11 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(addresses, &"osmo".to_string());
+        let result = validate_addresses(&addresses, &"osmo".to_string());
 
         assert!(result.is_err());
     }
-    // TODO: Review this test - currently passing but I think mock_deps has weird deps.api.addr_validate behavior?
+
     #[test]
     fn validate_addresses_invalid_prefix() {
         let addresses = vec![
@@ -144,10 +146,11 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(addresses, &"celestia".to_string());
+        let result = validate_addresses(&addresses, &"celestia".to_string());
 
         assert!(result.is_err());
     }
+
     // Basic test - based on figures from excalidraw
     #[test]
     fn test_compute_mint_amount() {
@@ -162,6 +165,7 @@ mod tests {
 
         assert_eq!(mint_amount, Uint128::from(90_000_000u128));
     }
+
     // Basic test - based on figures from excalidraw
     #[test]
     fn test_compute_unbond_amount() {

@@ -1,6 +1,7 @@
 # MilkyWay Contracts
 
-MilkyWay is a liquid staking protocol tailored for the [Celestia](https://celestia.org/) ecosystem.
+MilkyWay is a liquid staking protocol for the [Celestia](https://celestia.org/) ecosystem.
+
 This repository contains MilkyWay's core contracts that is deployed and operated on [Osmosis](https://osmosis.zone/).
 
 ## Contracts
@@ -9,16 +10,6 @@ This repository contains MilkyWay's core contracts that is deployed and operated
 | ---------------------------------- | ------------------------------------------------------- |
 | [`staking`](./contracts/staking)   | Core contract for liquid staking / liquid unstaking TIA |
 | [`treasury`](./contracts/treasury) | MilkyWay DAO                                            |
-
-## Deployment
-
-### Mainnet (`osmosis-1`)
-
-...
-
-### Testnet (`osmo-test-5`)
-
-...
 
 ## Testing
 
@@ -30,3 +21,20 @@ Run all tests in the repo:
 make test
 ```
 
+## Testnets
+
+There is Docker testnets available: Check `./scripts/testnet`
+
+Deploy the contract using the available scripts:
+
+```
+make initlocal
+```
+
+```
+make migratelocal
+```
+
+## License
+
+This software is licensed under the Apache 2.0 license.

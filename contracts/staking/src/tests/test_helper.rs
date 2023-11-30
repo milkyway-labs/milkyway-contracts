@@ -1,18 +1,19 @@
 use crate::contract::{instantiate, IBC_TIMEOUT};
 use crate::msg::InstantiateMsg;
-use crate::state::{IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
+use crate::state::{
+    IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG, IBC_WAITING_FOR_REPLY,
+};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{coins, Addr, OwnedDeps, Uint128};
+use cosmwasm_std::{coins, Addr, DepsMut, Order, OwnedDeps, Uint128};
 
 pub static OSMO1: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
 pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
 pub static OSMO3: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
 pub static CELESTIA1: &str = "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx";
 pub static CELESTIA2: &str = "celestia1ztrhpdznu2xlwakd4yp3hg9lwyr3d46ayd30u2";
-pub static CELESTIA3: &str = "celestia1kgm42ek36k07cn3e8fqw23sszrky22769vsnha";
 pub static CELESTIAVAL1: &str = "celestiavaloper1463wx5xkus5hyugyecvlhv9qpxklz62kyhwcts";
 pub static CELESTIAVAL2: &str = "celestiavaloper1amxp3ah9anq4pmpnsknls7sql3kras9hs8pu0g";
 pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rtsdn9tz3";
@@ -33,7 +34,6 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
             dao_treasury_fee: Uint128::from(10000u128),
         },
         multisig_address_config: MultisigAddressConfig {
-            controller_address: Addr::unchecked(CELESTIA3),
             staker_address: Addr::unchecked(CELESTIA1),
             reward_collector_address: Addr::unchecked(CELESTIA2),
         },
@@ -53,4 +53,15 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
 
     deps
+}
+
+pub fn resolve_replies(deps: DepsMut) {
+    let mut reply_id = 0;
+    IBC_WAITING_FOR_REPLY
+        .range(deps.storage, None, None, Order::Ascending)
+        .for_each(|r| {
+            let (k, _) = r.unwrap();
+            reply_id = k;
+        });
+    IBC_WAITING_FOR_REPLY.remove(deps.storage, reply_id);
 }

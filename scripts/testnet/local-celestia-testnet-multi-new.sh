@@ -19,9 +19,18 @@ celestia-appd keys add validator1 --keyring-backend=test --home=$HOME/.celestia-
 celestia-appd keys add validator2 --keyring-backend=test --home=$HOME/.celestia-app/validator2
 celestia-appd keys add validator3 --keyring-backend=test --home=$HOME/.celestia-app/validator3
 
-# update_genesis () {    
-#     cat $HOME/.celestia-app/validator1/config/genesis.json | jq "$1" > $HOME/.celestia-app/validator1/config/tmp_genesis.json && mv $HOME/.celestia-app/validator1/config/tmp_genesis.json $HOME/.celestia-app/validator1/config/genesis.json
-# }
+update_genesis () {    
+    cat $HOME/.celestia-app/validator1/config/genesis.json | jq "$1" > $HOME/.celestia-app/validator1/config/tmp_genesis.json && mv $HOME/.celestia-app/validator1/config/tmp_genesis.json $HOME/.celestia-app/validator1/config/genesis.json
+}
+
+# change unbonding time to 1 hour if env variable is set
+if [ -z "$UNBONDING_TIME" ]
+then
+    echo "UNBONDING_TIME is unset, using default value of 21 days"
+else
+    echo "UNBONDING_TIME is set to '$UNBONDING_TIME', using this value"
+    update_genesis '.app_state["staking"]["params"]["unbonding_time"]'="\"$UNBONDING_TIME\""
+fi
 
 # create validator node with tokens to transfer to the three other nodes
 celestia-appd add-genesis-account $(celestia-appd keys show validator1 -a --keyring-backend=test --home=$HOME/.celestia-app/validator1) 10000000000utia --home=$HOME/.celestia-app/validator1
@@ -44,6 +53,7 @@ sed -i -E 's|tcp://127.0.0.1:26657|tcp://0.0.0.0:26661|g' $VALIDATOR1_CONFIG
 sed -i -E 's|tcp://0.0.0.0:26656|tcp://0.0.0.0:26660|g' $VALIDATOR1_CONFIG
 sed -i -E 's|allow_duplicate_ip = false|allow_duplicate_ip = true|g' $VALIDATOR1_CONFIG
 sed -i -E 's#"null"#"kv"#g' $VALIDATOR1_CONFIG
+sed -i -E 's|discard_abci_responses = true|discard_abci_responses = false|g' $VALIDATOR1_CONFIG
 # validator2
 sed -i -E 's|tcp://127.0.0.1:26658|tcp://0.0.0.0:26655|g' $VALIDATOR2_CONFIG
 sed -i -E 's|tcp://127.0.0.1:26657|tcp://0.0.0.0:26654|g' $VALIDATOR2_CONFIG

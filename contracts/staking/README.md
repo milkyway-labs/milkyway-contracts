@@ -1,5 +1,7 @@
 # Staking Contract
 
+The staking contract contains the core functionalities for liquid staking derivative.
+
 ## InstantiateMsg
 
 ```rust
@@ -34,7 +36,6 @@ pub struct InstantiateMsg {
     /// Minimum amount to liquid stake
     pub minimum_liquid_stake_amount: Uint128,
 }
-
 ```
 
 ## ExecuteMsg
@@ -47,6 +48,7 @@ pub enum ExecuteMsg {
     /// Call to initiate unbonding process for a user
     LiquidUnstake {},
 
+    /// Process the pending batch
     SubmitBatch {
       batch_id u64,
     },
@@ -65,7 +67,7 @@ pub enum ExecuteMsg {
     /// This will require the new owner to accept to take effect.
     TransferOwnership {
       new_owner: String,
-    }
+    },
 
     /// Accept an ownership transfer; callable by the new owner
     AcceptOwnership {},
@@ -103,7 +105,7 @@ pub enum QueryMsg {
     "validators": ["VALIDATOR_ADDR_1", "VALIDATOR_ADDR_2"],
     "batch_period": 86400,
     "unbonding_period": 1209600,
-    "minimum_liquid_stake_amount": 100
+    "minimum_liquid_stake_amount": 100,
 }
 ```
 

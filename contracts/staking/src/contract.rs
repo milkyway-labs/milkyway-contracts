@@ -1,10 +1,17 @@
 use crate::execute::{
-    circuit_breaker, execute_submit_batch, receive_rewards, receive_unstaked_tokens,
-    resume_contract, update_config,
+    circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
+    receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
-use crate::query::{query_batch, query_batches, query_config, query_state};
-use crate::state::{Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, STATE};
+use crate::ibc::{receive_ack, receive_timeout};
+use crate::query::{
+    query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
+    query_pending_batch, query_reply_queue, query_state,
+};
+use crate::state::{
+    Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY,
+    PENDING_BATCH_ID, STATE,
+};
 use crate::{
     error::ContractError,
     execute::{
@@ -12,10 +19,11 @@ use crate::{
         execute_liquid_unstake, execute_remove_validator, execute_revoke_ownership_transfer,
         execute_transfer_ownership, execute_withdraw,
     },
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
@@ -44,8 +52,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let operators = validate_addresses(msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
-    let validators = validate_addresses(msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
+    let operators = validate_addresses(&msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
+    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -59,17 +67,13 @@ pub fn instantiate(
     }
 
     validate_address(
-        msg.multisig_address_config.controller_address.to_string(),
-        &CELESTIA_ACCOUNT_PREFIX.to_string(),
-    )?;
-    validate_address(
-        msg.multisig_address_config
+        &msg.multisig_address_config
             .reward_collector_address
             .to_string(),
         &CELESTIA_ACCOUNT_PREFIX,
     )?;
     validate_address(
-        msg.multisig_address_config.staker_address.to_string(),
+        &msg.multisig_address_config.staker_address.to_string(),
         &CELESTIA_ACCOUNT_PREFIX,
     )?;
 
@@ -101,7 +105,10 @@ pub fn instantiate(
         pending_owner: None,
         total_reward_amount: Uint128::zero(),
         total_fees: Uint128::zero(),
+        ibc_id_counter: 0,
+        rate: 1u128.into(),
     };
+
     STATE.save(deps.storage, &state)?;
 
     // Create liquid stake token denom
@@ -120,6 +127,7 @@ pub fn instantiate(
 
     // Set pending batch and batches
     BATCHES.save(deps.storage, 1, &pending_batch)?;
+    PENDING_BATCH_ID.save(deps.storage, &1)?;
 
     let ibc_config = IbcConfig {
         channel_id: msg.ibc_channel_id.clone(),
@@ -155,7 +163,7 @@ pub fn execute(
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
             execute_liquid_unstake(deps, env, info, payment)
         }
-        ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
+        ExecuteMsg::SubmitBatch {} => execute_submit_batch(deps, env, info),
         ExecuteMsg::Withdraw { batch_id } => execute_withdraw(deps, env, info, batch_id),
         ExecuteMsg::AddValidator { new_validator } => {
             execute_add_validator(deps, env, info, new_validator)
@@ -178,6 +186,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            operators,
         } => update_config(
             deps,
             env,
@@ -189,11 +198,13 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
+        ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
     }
 }
 
@@ -208,6 +219,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
+        QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
+        QueryMsg::ClaimableBatches { user } => to_binary(&query_claimable(deps, user)?),
+
+        // dev only, depr
+        QueryMsg::IbcQueue {} => to_binary(&query_ibc_queue(deps)?),
+        QueryMsg::IbcReplyQueue {} => to_binary(&query_reply_queue(deps)?),
     }
 }
 
@@ -219,4 +236,36 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
     // TODO: note implement yet
     Ok(Response::new())
+}
+
+/////////////
+/// SUDO  ///
+/////////////
+
+#[cfg_attr(not(feature = "imported"), entry_point)]
+pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
+            channel,
+            sequence,
+            ack,
+            success,
+        }) => receive_ack(deps, channel, sequence, ack, success),
+        SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout { channel, sequence }) => {
+            receive_timeout(deps, channel, sequence)
+        }
+    }
+}
+
+/////////////
+/// REPLY ///
+/////////////
+
+#[cfg_attr(not(feature = "imported"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+    let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
+    match ibc_waiting_result {
+        Ok(_ibc_waiting_for_reply) => handle_ibc_reply(deps, reply),
+        Err(_) => Err(ContractError::InvalidReplyID { id: reply.id }),
+    }
 }
