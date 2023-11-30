@@ -64,9 +64,9 @@ const handleUpdate = async (network) => {
       client.set(network.id + "-claimable-" + user, JSON.stringify(batches));
     });
 
-    console.log("Updated", network.id, Date.now().toString());
+    console.log("Updated", network.id, new Date().toISOString());
 
-    await client.set(network.id + "-updated", Date.now().toString());
+    await client.set(network.id + "-updated", new Date().toISOString());
   } catch (err) {
     console.error(err);
   } finally {
