@@ -9,7 +9,7 @@ const networks = {
   ["canary"]: {
     id: "canary",
     contract: "osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9",
-    rpc: "https://osmosis-rpc.devnet.milkyway.zone",
+    rpc: "https://osmosis-rpc.devnet.milkyway.zone:443",
   },
   // ["local"]: {
   //   id: "local",
