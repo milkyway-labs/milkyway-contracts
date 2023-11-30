@@ -47,6 +47,7 @@ const handleUpdate = async (network) => {
     });
     await client.set(network.id + "-batches", JSON.stringify(batches.batches));
 
+    let oldUsers = JSON.parse(await client.get(network.id + "-users")) || [];
     let users = {};
     batches.batches.forEach((batch) => {
       batch.requests.forEach((request) => {
@@ -62,6 +63,12 @@ const handleUpdate = async (network) => {
     // TODO optimize
     Object.entries(users).forEach(([user, batches]) => {
       client.set(network.id + "-claimable-" + user, JSON.stringify(batches));
+    });
+    client.set(network.id + "-users", JSON.stringify(Object.keys(users)));
+    // dif users
+    const difUsers = oldUsers.filter((i) => !users[i]);
+    difUsers.forEach((user) => {
+      client.del(network.id + "-claimable-" + user);
     });
 
     console.log("Updated", network.id, new Date().toISOString());
