@@ -4,7 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
     validate_addresses,
 };
-use crate::state::IbcConfig;
+use crate::state::{self, IbcConfig};
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -804,7 +804,14 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     Ok(Response::new().add_attribute("action", "circuit_breaker"))
 }
 
-pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn resume_contract(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    total_native_token: Uint128,
+    total_liquid_stake_token: Uint128,
+    total_reward_amount: Uint128,
+) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config: Config = CONFIG.load(deps.storage)?;
@@ -812,7 +819,19 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "resume_contract"))
+    let mut state: State = STATE.load(deps.storage)?;
+
+    state.total_native_token = total_native_token;
+    state.total_liquid_stake_token = total_liquid_stake_token;
+    state.total_reward_amount = total_reward_amount;
+
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "resume_contract")
+        .add_attribute("total_native_token", total_native_token)
+        .add_attribute("total_liquid_stake_token", total_liquid_stake_token)
+        .add_attribute("total_reward_amount", total_reward_amount))
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
