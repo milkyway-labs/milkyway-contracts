@@ -66,6 +66,10 @@ pub enum ExecuteMsg {
     CircuitBreaker {},
     ResumeContract {},
     RecoverPendingIbcTransfers {},
+    FeeWithdraw {
+        receiver: String,
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]

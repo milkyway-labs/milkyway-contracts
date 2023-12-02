@@ -1,5 +1,5 @@
 use crate::execute::{
-    circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
+    circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
@@ -205,6 +205,9 @@ pub fn execute(
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
         ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
+        ExecuteMsg::FeeWithdraw { receiver, amount } => {
+            fee_withdraw(deps, env, info, receiver, amount)
+        }
     }
 }
 

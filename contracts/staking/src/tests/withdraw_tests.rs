@@ -3,7 +3,7 @@ mod withdraw_tests {
     use crate::contract::{execute, query};
     use crate::msg::{BatchResponse, ExecuteMsg, QueryMsg};
     use crate::state::{BATCHES, CONFIG, STATE};
-    use crate::tests::test_helper::init;
+    use crate::tests::test_helper::{init, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
@@ -246,6 +246,51 @@ mod withdraw_tests {
                     from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
                     to_address: "tom".to_string(),
                     amount: coins,
+                }),
+                gas_limit: None,
+                reply_on: ReplyOn::Never,
+            }
+        );
+    }
+
+    #[test]
+    fn fee_withdraw() {
+        let mut deps = init();
+        let env = mock_env();
+        let mut state = STATE.load(&deps.storage).unwrap();
+        state.total_fees = Uint128::from(1000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let msg = ExecuteMsg::FeeWithdraw {
+            receiver: "alice".to_string(),
+            amount: Uint128::from(2000u128),
+        };
+        let info = mock_info("bob", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_err()); // because not admin
+
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_err()); // because too high amount
+
+        let msg = ExecuteMsg::FeeWithdraw {
+            receiver: "alice".to_string(),
+            amount: Uint128::from(1000u128),
+        };
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_ok());
+        assert_eq!(
+            res.unwrap().messages[0],
+            SubMsg {
+                id: 0,
+                msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
+                    from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                    to_address: "alice".to_string(),
+                    amount: vec![Coin {
+                        denom: NATIVE_TOKEN.to_string(),
+                        amount: "1000".to_string()
+                    }],
                 }),
                 gas_limit: None,
                 reply_on: ReplyOn::Never,

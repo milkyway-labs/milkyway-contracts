@@ -113,4 +113,7 @@ pub enum ContractError {
 
     #[error("No liquid stake to distribute rewards to")]
     NoLiquidStake {},
+
+    #[error("Insufficient funds")]
+    InsufficientFunds {},
 }
