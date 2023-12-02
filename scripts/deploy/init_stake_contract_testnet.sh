@@ -25,4 +25,4 @@ CONTRACT=$(echo $RES | jq -r '.raw_log | fromjson | .[0].events[] | select(.type
 echo $CONTRACT
 
 # current deployment
-# osmo1h3s40qhqztppucdfggzwykz7xgwhcnps952y86xc73eupqfu9jmqcaghze
+# osmo1tcmdquceeen0wzye5y5mmctye70gx7mkr6027drzg4xdaphf98ps9rlrw0
