@@ -22,7 +22,7 @@ mod query_tests {
         let result = from_binary::<ConfigResponse>(&bin);
         match result {
             Ok(res) => {
-                assert_eq!(res.native_token_denom, "osmoTIA".to_string());
+                assert_eq!(res.native_token_denom, NATIVE_TOKEN.to_string());
                 assert_eq!(
                     res.liquid_stake_token_denom,
                     "factory/cosmos2contract/stTIA".to_string()

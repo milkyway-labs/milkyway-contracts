@@ -2,15 +2,15 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
-use crate::helpers::{validate_address, validate_addresses};
+use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
     query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
     query_pending_batch, query_reply_queue, query_state,
 };
 use crate::state::{
-    Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY,
-    PENDING_BATCH_ID, STATE,
+    Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
+    IBC_CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -22,8 +22,8 @@ use crate::{
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    Uint128,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
@@ -52,51 +52,63 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let operators = validate_addresses(&msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
-    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
 
-    if msg.ibc_channel_id == "" {
-        return Err(ContractError::ConfigWrong {});
-    }
-
-    if msg.native_token_denom == "" {
-        return Err(ContractError::ConfigWrong {});
-    }
-
-    validate_address(
-        &msg.multisig_address_config
-            .reward_collector_address
-            .to_string(),
-        &CELESTIA_ACCOUNT_PREFIX,
-    )?;
-    validate_address(
-        &msg.multisig_address_config.staker_address.to_string(),
-        &CELESTIA_ACCOUNT_PREFIX,
-    )?;
+    // validations
+    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
+    assert!(
+        msg.liquid_stake_token_denom.len() > 3,
+        "liquid_stake_token_denom is required"
+    );
+    assert!(
+        msg.liquid_stake_token_denom
+            .chars()
+            .all(|c| c.is_ascii_alphabetic()),
+        "liquid_stake_token_denom must be alphabetic"
+    );
 
     // Init Config
     let config = Config {
-        native_token_denom: msg.native_token_denom,
+        native_token_denom: "".to_string(),
         liquid_stake_token_denom: format!(
             "factory/{0}/{1}",
             env.contract.address, msg.liquid_stake_token_denom
         ), //TODO determine the format to save in
-        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
-        operators,
+        treasury_address: Addr::unchecked(""),
+        operators: vec![],
         validators,
-        batch_period: msg.batch_period,
-        unbonding_period: msg.unbonding_period,
-        protocol_fee_config: msg.protocol_fee_config,
-        multisig_address_config: msg.multisig_address_config,
-        minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
-        ibc_channel_id: msg.ibc_channel_id.clone(),
-        stopped: false,
+        batch_period: 0,
+        unbonding_period: 0,
+        protocol_fee_config: ProtocolFeeConfig {
+            dao_treasury_fee: Uint128::zero(),
+        },
+        multisig_address_config: MultisigAddressConfig {
+            staker_address: Addr::unchecked(""),
+            reward_collector_address: Addr::unchecked(""),
+        },
+        minimum_liquid_stake_amount: Uint128::zero(),
+        ibc_channel_id: "".to_string(),
+        stopped: true, // we start stopped
     };
 
     CONFIG.save(deps.storage, &config)?;
+
+    update_config(
+        deps.branch(),
+        env.clone(),
+        info.clone(),
+        Some(msg.batch_period),
+        Some(msg.unbonding_period),
+        Some(msg.minimum_liquid_stake_amount),
+        Some(msg.multisig_address_config),
+        Some(msg.protocol_fee_config),
+        Some(msg.native_token_denom),
+        Some(msg.ibc_channel_id.clone()),
+        Some(msg.operators),
+        Some(msg.treasury_address),
+    )?;
 
     // Init State
     let state = State {
@@ -187,6 +199,7 @@ pub fn execute(
             reserve_token,
             channel_id,
             operators,
+            treasury_address,
         } => update_config(
             deps,
             env,
@@ -199,6 +212,7 @@ pub fn execute(
             reserve_token,
             channel_id,
             operators,
+            treasury_address,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),

@@ -1,6 +1,8 @@
 use crate::contract::{instantiate, IBC_TIMEOUT};
 use crate::msg::InstantiateMsg;
-use crate::state::{IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, IBC_CONFIG};
+use crate::state::{
+    Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, State, CONFIG, IBC_CONFIG, STATE,
+};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -16,7 +18,8 @@ pub static CELESTIAVAL1: &str = "celestiavaloper1463wx5xkus5hyugyecvlhv9qpxklz62
 pub static CELESTIAVAL2: &str = "celestiavaloper1amxp3ah9anq4pmpnsknls7sql3kras9hs8pu0g";
 pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rtsdn9tz3";
 pub static CHANNEL_ID: &str = "channel-123";
-pub static NATIVE_TOKEN: &str = "osmoTIA";
+pub static NATIVE_TOKEN: &str =
+    "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA";
 
 pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
@@ -41,7 +44,9 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let info = mock_info("creator", &coins(1000, "uosmo"));
 
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
-
+    if res.is_err() {
+        panic!("error: {:?}", res);
+    }
     assert!(res.is_ok());
 
     let ibc_config = IbcConfig {
@@ -49,6 +54,10 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         default_timeout: IBC_TIMEOUT,
     };
     IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
+
+    let mut config: Config = CONFIG.load(&deps.storage).unwrap();
+    config.stopped = false;
+    CONFIG.save(&mut deps.storage, &config).unwrap();
 
     deps
 }

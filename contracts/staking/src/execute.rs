@@ -586,9 +586,10 @@ pub fn update_config(
     minimum_liquid_stake_amount: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
-    reserve_token: Option<String>,
+    native_token_denom: Option<String>,
     channel_id: Option<String>,
     operators: Option<Vec<String>>,
+    treasury_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -613,8 +614,12 @@ pub fn update_config(
         validate_addresses(&operators, "osmo")?;
         config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
     }
+    if let Some(treasury_address) = treasury_address {
+        validate_address(&treasury_address, "osmo")?;
+        config.treasury_address = Addr::unchecked(treasury_address);
+    }
 
-    if channel_id.is_some() && reserve_token.is_none() {
+    if channel_id.is_some() && native_token_denom.is_none() {
         return Err(ContractError::IbcChannelNotFound {});
     }
     let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
@@ -622,17 +627,19 @@ pub fn update_config(
         return Err(ContractError::IbcChannelNotFound {});
     }
     let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
-    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_none()
-        || channel_id.is_some() && reserve_token.is_none()
+    if native_token_denom.is_some()
+        && !ibc_token_regexp.is_match(&native_token_denom.clone().unwrap())
     {
         return Err(ContractError::IbcChannelNotFound {});
     }
-    if reserve_token.is_some() && channel_id.is_some() {
+    if native_token_denom.is_some() && channel_id.is_none()
+        || channel_id.is_some() && native_token_denom.is_none()
+    {
+        return Err(ContractError::IbcChannelNotFound {});
+    }
+    if native_token_denom.is_some() && channel_id.is_some() {
         config.ibc_channel_id = channel_id.unwrap();
-        config.native_token_denom = reserve_token.unwrap();
+        config.native_token_denom = native_token_denom.unwrap();
     }
 
     CONFIG.save(deps.storage, &config)?;
