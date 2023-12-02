@@ -272,7 +272,6 @@ pub fn execute_submit_batch(
         }
     );
 
-    let config = CONFIG.load(deps.storage)?;
     // Update batch status
     batch.update_status(
         BatchStatus::Submitted,
