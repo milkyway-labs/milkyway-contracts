@@ -65,7 +65,9 @@ pub enum ExecuteMsg {
     ReceiveUnstakedTokens {},
     CircuitBreaker {},
     ResumeContract {},
-    RecoverPendingIbcTransfers {},
+    RecoverPendingIbcTransfers {
+        paginated: Option<bool>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]

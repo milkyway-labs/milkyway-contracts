@@ -126,7 +126,7 @@ mod ibc_transfer_tests {
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers {};
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         // still the same
@@ -232,7 +232,7 @@ mod ibc_transfer_tests {
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers {};
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         let inflight_packet = INFLIGHT_PACKETS
@@ -309,7 +309,7 @@ mod ibc_transfer_tests {
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers {};
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         let inflight_packet = INFLIGHT_PACKETS
@@ -319,5 +319,59 @@ mod ibc_transfer_tests {
 
         let res = query_ibc_queue(deps.as_ref());
         assert!(res.unwrap().ibc_queue.len() == 0);
+    }
+
+    #[test]
+    fn recover_non_paginated() {
+        let mut deps = init();
+        let info = mock_info("creator", &[]);
+
+        for i in 1..=15 {
+            let res = INFLIGHT_PACKETS.save(
+                &mut deps.storage,
+                i,
+                &ibc::IBCTransfer {
+                    sequence: i.clone(),
+                    amount: 1000,
+                    status: ibc::PacketLifecycleStatus::AckFailure,
+                },
+            );
+            assert!(res.is_ok());
+        }
+
+        // send recover message
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.attributes[1], attr("packets", "15"));
+    }
+
+    #[test]
+    fn recover_paginated() {
+        let mut deps = init();
+        let info = mock_info("creator", &[]);
+
+        for i in 1..=15 {
+            let res = INFLIGHT_PACKETS.save(
+                &mut deps.storage,
+                i,
+                &ibc::IBCTransfer {
+                    sequence: i.clone(),
+                    amount: 1000,
+                    status: ibc::PacketLifecycleStatus::AckFailure,
+                },
+            );
+            assert!(res.is_ok());
+        }
+
+        // send recover message
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: Some(true),
+        };
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.attributes[1], attr("packets", "10"));
     }
 }

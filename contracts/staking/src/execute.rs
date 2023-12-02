@@ -1,8 +1,8 @@
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
-    validate_addresses,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, paginate_map,
+    validate_address, validate_addresses,
 };
 use crate::state::IbcConfig;
 use crate::state::{
@@ -531,25 +531,31 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Response> {
+pub fn recover(
+    deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    page: bool,
+) -> ContractResult<Response> {
+    let page_size = 10;
     let config: Config = CONFIG.load(deps.storage)?;
 
-    // timed out and failed packets
-    let all_packages = INFLIGHT_PACKETS
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap().1);
-    let packets = all_packages
-        .filter(|p| {
-            p.status == PacketLifecycleStatus::AckFailure
-                || p.status == PacketLifecycleStatus::TimedOut
-        })
-        .collect::<Vec<IBCTransfer>>();
+    let packets: Vec<IBCTransfer> = paginate_map(
+        deps.as_ref(),
+        &INFLIGHT_PACKETS,
+        None,
+        if page { Some(page_size) } else { None },
+        Order::Ascending,
+    )?
+    .into_iter()
+    .map(|r| r.1)
+    .filter(|r| {
+        r.status == PacketLifecycleStatus::AckFailure || r.status == PacketLifecycleStatus::TimedOut
+    })
+    .collect();
 
     let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
-    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
-    ));
+    let timeout_timestamp = env.block.time.nanos() + ibc_config.default_timeout.nanos();
 
     let msgs = packets.into_iter().map(|r| {
         INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
@@ -563,7 +569,7 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
             receiver: config.multisig_address_config.staker_address.to_string(),
             sender: env.contract.address.to_string(),
             timeout_height: None,
-            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+            timeout_timestamp,
             memo: format!(
                 "{{\"ibc_callback\":\"{}\"}}",
                 env.contract.address.to_string()
@@ -573,6 +579,7 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
 
     Ok(Response::new()
         .add_attribute("action", "recover")
+        .add_attribute("packets", msgs.len().to_string())
         .add_messages(msgs))
 }
 

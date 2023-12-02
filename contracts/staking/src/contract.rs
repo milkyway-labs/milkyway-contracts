@@ -204,7 +204,9 @@ pub fn execute(
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
-        ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
+        ExecuteMsg::RecoverPendingIbcTransfers { paginated } => {
+            recover(deps, env, info, paginated.unwrap_or(false))
+        }
     }
 }
 
