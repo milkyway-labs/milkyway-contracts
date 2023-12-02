@@ -85,7 +85,7 @@ mod ibc_transfer_tests {
             .unwrap();
         assert_eq!(Some(inflight_packet), Some(None));
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 0);
 
         // Reply
@@ -122,7 +122,7 @@ mod ibc_transfer_tests {
             })
         );
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
@@ -142,7 +142,7 @@ mod ibc_transfer_tests {
             })
         );
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         let _result = sudo(
@@ -161,7 +161,7 @@ mod ibc_transfer_tests {
             .unwrap();
         assert_eq!(Some(inflight_packet), Some(None));
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 0);
     }
 
@@ -228,7 +228,7 @@ mod ibc_transfer_tests {
             })
         );
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
@@ -240,7 +240,7 @@ mod ibc_transfer_tests {
             .unwrap();
         assert_eq!(Some(inflight_packet), Some(None));
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 0);
     }
 
@@ -305,7 +305,7 @@ mod ibc_transfer_tests {
             })
         );
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
@@ -317,7 +317,7 @@ mod ibc_transfer_tests {
             .unwrap();
         assert_eq!(Some(inflight_packet), Some(None));
 
-        let res = query_ibc_queue(deps.as_ref());
+        let res = query_ibc_queue(deps.as_ref(), None, None);
         assert!(res.unwrap().ibc_queue.len() == 0);
     }
 

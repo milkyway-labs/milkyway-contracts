@@ -546,13 +546,11 @@ pub fn recover(
         None,
         if page { Some(page_size) } else { None },
         Order::Ascending,
-    )?
-    .into_iter()
-    .map(|r| r.1)
-    .filter(|r| {
-        r.status == PacketLifecycleStatus::AckFailure || r.status == PacketLifecycleStatus::TimedOut
-    })
-    .collect();
+        Some(|r| {
+            r.status == PacketLifecycleStatus::AckFailure
+                || r.status == PacketLifecycleStatus::TimedOut
+        }),
+    )?;
 
     let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
     let timeout_timestamp = env.block.time.nanos() + ibc_config.default_timeout.nanos();

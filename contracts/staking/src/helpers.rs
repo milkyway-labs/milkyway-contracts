@@ -108,7 +108,8 @@ pub fn paginate_map<'a, 'b, K, V, R: 'static>(
     start_after: Option<K>,
     limit: Option<u32>,
     order: Order,
-) -> StdResult<Vec<(R, V)>>
+    filter: Option<fn(&V) -> bool>,
+) -> StdResult<Vec<V>>
 where
     K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
     V: serde::de::DeserializeOwned + serde::Serialize,
@@ -119,11 +120,32 @@ where
     };
 
     let items = map.range(deps.storage, range_min, range_max, order);
+    let mut taken = 0;
     match limit {
         Some(limit) => Ok(items
-            .take(limit.try_into().unwrap())
-            .collect::<StdResult<_>>()?),
-        None => Ok(items.collect::<StdResult<_>>()?),
+            .map(|i| i.unwrap().1)
+            .take_while(|i| {
+                if taken >= limit {
+                    return false;
+                }
+                taken += 1;
+                if let Some(filter) = filter {
+                    filter(&i)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>()),
+        None => Ok(items
+            .map(|i| i.unwrap().1)
+            .take_while(|i| {
+                if let Some(filter) = filter {
+                    filter(&i)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>()),
     }
 }
 

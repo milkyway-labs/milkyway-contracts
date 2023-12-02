@@ -131,15 +131,28 @@ pub enum QueryMsg {
     #[returns(BatchResponse)]
     Batch { id: u64 },
     #[returns(BatchesResponse)]
-    Batches {},
+    Batches {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(BatchResponse)]
     PendingBatch {},
     #[returns(BatchesResponse)]
-    ClaimableBatches { user: Addr },
+    ClaimableBatches {
+        user: Addr,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(IBCQueueResponse)]
-    IbcQueue {},
+    IbcQueue {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(IBCReplyQueueResponse)]
-    IbcReplyQueue {},
+    IbcReplyQueue {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
