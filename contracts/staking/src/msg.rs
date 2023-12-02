@@ -36,7 +36,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {},
     LiquidUnstake {},
-    SubmitBatch {},
+    SubmitBatch {
+        batch_id: u64,
+    },
     Withdraw {
         batch_id: u64,
     },

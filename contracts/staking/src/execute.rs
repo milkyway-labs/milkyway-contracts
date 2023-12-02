@@ -223,13 +223,13 @@ pub fn execute_submit_batch(
     deps: DepsMut,
     env: Env,
     _info: MessageInfo,
+    batch_id: u64,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
 
-    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
-    let mut batch = BATCHES.load(deps.storage, pending_batch_id)?;
+    let mut batch = BATCHES.load(deps.storage, batch_id)?;
 
     if let Some(est_next_batch_time) = batch.next_batch_action_time {
         // Check if the batch has been submitted
@@ -272,16 +272,19 @@ pub fn execute_submit_batch(
     // Move pending batch to batches
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    // Create new pending batch
-    let new_pending_batch = Batch::new(
-        batch.id + 1,
-        Uint128::zero(),
-        env.block.time.seconds() + config.batch_period,
-    );
+    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
+    if pending_batch_id == batch_id {
+        // Create new pending batch
+        let new_pending_batch = Batch::new(
+            batch.id + 1,
+            Uint128::zero(),
+            env.block.time.seconds() + config.batch_period,
+        );
 
-    // Save new pending batch
-    BATCHES.save(deps.storage, new_pending_batch.id, &new_pending_batch)?;
-    PENDING_BATCH_ID.save(deps.storage, &new_pending_batch.id)?;
+        // Save new pending batch
+        BATCHES.save(deps.storage, new_pending_batch.id, &new_pending_batch)?;
+        PENDING_BATCH_ID.save(deps.storage, &new_pending_batch.id)?;
+    }
 
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens

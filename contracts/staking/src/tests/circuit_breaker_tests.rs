@@ -99,7 +99,7 @@ mod circuit_breaker_tests {
 
         // submit batch
         env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
-        let msg = ExecuteMsg::SubmitBatch {};
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         let info = mock_info(&contract, &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_err());

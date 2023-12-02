@@ -193,7 +193,7 @@ mod query_tests {
         // submit batch
         let config = CONFIG.load(&deps.storage).unwrap();
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let submit_batch_msg = ExecuteMsg::SubmitBatch {};
+        let submit_batch_msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         let contract = env.contract.address.clone().to_string();
         let submit_info = mock_info(&contract, &[]);
         let res = execute(deps.as_mut(), env.clone(), submit_info, submit_batch_msg);
@@ -273,7 +273,7 @@ mod query_tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let submit_batch_msg = ExecuteMsg::SubmitBatch {};
+        let submit_batch_msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         let contract = env.contract.address.clone().to_string();
         let submit_info = mock_info(&contract, &[]);
         let res = execute(deps.as_mut(), env.clone(), submit_info, submit_batch_msg);

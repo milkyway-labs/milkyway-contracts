@@ -163,7 +163,7 @@ pub fn execute(
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
             execute_liquid_unstake(deps, env, info, payment)
         }
-        ExecuteMsg::SubmitBatch {} => execute_submit_batch(deps, env, info),
+        ExecuteMsg::SubmitBatch { batch_id } => execute_submit_batch(deps, env, info, batch_id),
         ExecuteMsg::Withdraw { batch_id } => execute_withdraw(deps, env, info, batch_id),
         ExecuteMsg::AddValidator { new_validator } => {
             execute_add_validator(deps, env, info, new_validator)

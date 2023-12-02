@@ -47,7 +47,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch {};
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
         let attrs = res.unwrap().attributes;
@@ -125,7 +125,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
 
-        let msg = ExecuteMsg::SubmitBatch {};
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         let resp = res.unwrap();
         let attrs = resp.attributes;
@@ -254,7 +254,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch {};
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         assert!(res.is_err());
 
@@ -311,7 +311,7 @@ mod staking_tests {
         let config = CONFIG.load(&deps.storage).unwrap();
 
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
-        let msg = ExecuteMsg::SubmitBatch {};
+        let msg = ExecuteMsg::SubmitBatch { batch_id: 1 };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         assert!(res.is_err());
 
