@@ -38,7 +38,9 @@ mod circuit_breaker_tests {
 
         // liquid stake
         let info = mock_info("creator", &coins(1000, "osmoTIA"));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_err());
 
@@ -121,7 +123,9 @@ mod circuit_breaker_tests {
 
         // test enabled
         let info = mock_info("creator", &coins(1000, "osmoTIA"));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
     }

@@ -155,9 +155,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     match msg {
-        ExecuteMsg::LiquidStake {} => {
+        ExecuteMsg::LiquidStake {
+            expected_mint_amount,
+        } => {
             let payment = must_pay(&info, &config.native_token_denom)?;
-            execute_liquid_stake(deps, env, info, payment)
+            execute_liquid_stake(deps, env, info, payment, expected_mint_amount)
         }
         ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;

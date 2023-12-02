@@ -34,7 +34,9 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    LiquidStake {},
+    LiquidStake {
+        expected_mint_amount: Option<Uint128>,
+    },
     LiquidUnstake {},
     SubmitBatch {},
     Withdraw {

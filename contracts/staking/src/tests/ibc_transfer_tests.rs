@@ -20,7 +20,9 @@ mod ibc_transfer_tests {
         let mut deps = init();
         let env = mock_env();
         let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
 
         let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
@@ -170,7 +172,9 @@ mod ibc_transfer_tests {
         let mut deps = init();
         let env = mock_env();
         let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         let ibc_sub_msg_id = env.block.time.nanos() + env.transaction.unwrap().index as u64;
         match res {
@@ -249,7 +253,9 @@ mod ibc_transfer_tests {
         let mut deps = init();
         let env = mock_env();
         let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         let ibc_sub_msg_id = env.block.time.nanos() + env.transaction.unwrap().index as u64;
         match res {
