@@ -113,4 +113,7 @@ pub enum ContractError {
 
     #[error("No liquid stake to distribute rewards to")]
     NoLiquidStake {},
+
+    #[error("Calculated mint amount not as expected")]
+    MintAmountMismatch { expected: Uint128, actual: Uint128 },
 }

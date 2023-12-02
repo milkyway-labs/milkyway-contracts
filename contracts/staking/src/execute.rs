@@ -77,6 +77,7 @@ pub fn execute_liquid_stake(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
+    expected_mint_amount: Option<Uint128>,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -100,6 +101,15 @@ pub fn execute_liquid_stake(
     // If mint amount is zero it is likely there was a an issue with rounding, return error and do not mint
     if mint_amount.is_zero() {
         return Err(ContractError::MintError {});
+    }
+    if let Some(expected_mint_amount) = expected_mint_amount {
+        ensure!(
+            mint_amount == expected_mint_amount,
+            ContractError::MintAmountMismatch {
+                expected: expected_mint_amount,
+                actual: mint_amount
+            }
+        );
     }
 
     // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
