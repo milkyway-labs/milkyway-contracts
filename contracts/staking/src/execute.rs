@@ -4,7 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
     validate_addresses,
 };
-use crate::state::{self, IbcConfig};
+use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
