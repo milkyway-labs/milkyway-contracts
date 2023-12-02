@@ -163,12 +163,8 @@ pub fn execute_liquid_unstake(
     STATE.load(deps.storage)?;
 
     // Load current pending batch
-    let mut pending_batch: Batch = BATCHES
-        .range(deps.storage, None, None, Order::Descending)
-        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
-        .unwrap()
-        .unwrap()
-        .1;
+    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
+    let mut pending_batch: Batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     // Add unstake request to pending batch
     match pending_batch
