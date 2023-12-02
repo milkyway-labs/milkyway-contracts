@@ -378,4 +378,63 @@ mod ibc_transfer_tests {
             INFLIGHT_PACKETS.range(&deps.storage, None, None, cosmwasm_std::Order::Ascending);
         assert_eq!(inflight_packet.count(), 0);
     }
+
+    #[test]
+    fn recover_recursive() {
+        let mut deps = init();
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+
+        let res = INFLIGHT_PACKETS.save(
+            &mut deps.storage,
+            1,
+            &ibc::IBCTransfer {
+                sequence: 1,
+                amount: 1000,
+                status: ibc::PacketLifecycleStatus::TimedOut,
+            },
+        );
+        assert!(res.is_ok());
+
+        // send recover message
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {};
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+
+        // Reply
+        let _result = reply(
+            deps.as_mut(),
+            mock_env(),
+            Reply {
+                id: 2,
+                result: SubMsgResult::Ok(SubMsgResponse {
+                    data: Some(cosmwasm_std::Binary::from(MsgTransferResponse {
+                        sequence: 2,
+                    })), // No data returned
+                    events: Vec::new(), // No events
+                }),
+            },
+        );
+
+        let inflight_packet =
+            INFLIGHT_PACKETS.range(&deps.storage, None, None, cosmwasm_std::Order::Ascending);
+        assert_eq!(inflight_packet.count(), 1);
+
+        let _result = sudo(
+            deps.as_mut(),
+            mock_env(),
+            SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
+                channel: CHANNEL_ID.to_string(),
+                sequence: 2,
+                ack: "ack".to_string(),
+                success: false,
+            }),
+        );
+
+        // send recover message
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {};
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.messages.len(), 1);
+    }
 }
