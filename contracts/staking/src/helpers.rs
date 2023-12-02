@@ -1,6 +1,10 @@
-use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Env, QuerierWrapper, StdError, StdResult, Uint128};
+
+use osmosis_std::types::osmosis::poolmanager::v1beta1::PoolmanagerQuerier;
+use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
+
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
 pub fn validate_address(address: &String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
@@ -48,7 +52,10 @@ pub fn compute_mint_amount(
     if total_native_token.is_zero() {
         native_to_stake
     } else {
-        total_liquid_stake_token.multiply_ratio(native_to_stake, total_native_token)
+        div_ceil(
+            total_liquid_stake_token * native_to_stake,
+            total_native_token,
+        )
     }
 }
 
@@ -65,7 +72,10 @@ pub fn compute_unbond_amount(
         // batch_liquid_stake_token - total stTIA in submitted batch
         // total_liquid_stake_token - total stTIA minted by MilkyWay
 
-        total_native_token.multiply_ratio(batch_liquid_stake_token, total_liquid_stake_token)
+        div_ceil(
+            total_native_token * batch_liquid_stake_token,
+            total_liquid_stake_token,
+        )
     }
 }
 
@@ -86,7 +96,6 @@ pub fn addess_hash(typ: &str, key: &[u8]) -> [u8; 32] {
 // derives the sender address to be used when calling wasm hooks
 // https://github.com/osmosis-labs/osmosis/blob/master/x/ibc-hooks/keeper/keeper.go#L170 ```
 pub const SENDER_PREFIX: &str = "ibc-wasm-hook-intermediary";
-
 pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
@@ -97,6 +106,54 @@ pub fn derive_intermediate_sender(
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32.to_base32();
     bech32_no_std::encode(bech32_prefix, sender)
+}
+
+pub fn sub_msg_id(env: &Env) -> u64 {
+    if env.transaction.is_none() {
+        env.block.time.nanos()
+    } else {
+        env.block.time.nanos() + env.transaction.clone().unwrap().index as u64
+    }
+}
+
+pub fn div_ceil(numerator: Uint128, denominator: Uint128) -> Uint128 {
+    if denominator.is_zero() {
+        return Uint128::zero();
+    }
+
+    let quotient = numerator.u128() / denominator.u128();
+    let remainder = numerator.u128() % denominator.u128();
+
+    let result = if remainder > 0 {
+        quotient + 1
+    } else {
+        quotient
+    };
+
+    Uint128::from(result)
+}
+
+pub fn estimate_swap_exact_amount_out(
+    querier: &QuerierWrapper,
+    pool_id: u64,
+    token_in_denom: &str,
+    token_out_denom: &str,
+    amount: Uint128,
+) -> StdResult<Uint128> {
+    let pm_querier = PoolmanagerQuerier::new(querier);
+
+    let pool_route = SwapAmountOutRoute {
+        pool_id,
+        token_in_denom: token_in_denom.to_string(),
+    };
+
+    let result = pm_querier.estimate_swap_exact_amount_out(
+        pool_id,
+        vec![pool_route],
+        amount.to_string() + token_out_denom,
+    )?;
+
+    Uint128::from_str(&result.token_in_amount)
 }
 
 #[cfg(test)]

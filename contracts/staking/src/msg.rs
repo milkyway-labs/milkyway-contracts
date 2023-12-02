@@ -1,5 +1,5 @@
 use crate::state::{
-    ibc::IBCTransfer, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig,
+    ibc::IBCTransfer, FeatureFlags, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
@@ -30,6 +30,10 @@ pub struct InstantiateMsg {
     pub minimum_liquid_stake_amount: Uint128,
     // IBC channel id on Osmosis to Celestia
     pub ibc_channel_id: String,
+    // Pool used to swap fees in
+    pub pool_id: u64,
+    // Feature flags
+    pub feature_flags: FeatureFlags,
 }
 
 #[cw_serde]
@@ -59,6 +63,8 @@ pub enum ExecuteMsg {
         protocol_fee_config: Option<ProtocolFeeConfig>,
         reserve_token: Option<String>,
         channel_id: Option<String>,
+        pool_id: Option<u64>,
+        feature_flags: Option<FeatureFlags>,
         operators: Option<Vec<String>>,
     },
     ReceiveRewards {},

@@ -1,25 +1,26 @@
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
-    validate_addresses,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, div_ceil,
+    estimate_swap_exact_amount_out, sub_msg_id, validate_address, validate_addresses,
 };
-use crate::state::IbcConfig;
+use crate::state::ibc::{IBCTransfer, PacketLifecycleStatus};
 use crate::state::{
-    ibc::{IBCTransfer, PacketLifecycleStatus},
-    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
-    CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    Config, FeatureFlags, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State,
+    ADMIN, BATCHES, CONFIG, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
+use crate::state::{IbcConfig, IBC_WAITING_FOR_REPLY};
 use cosmwasm_std::{
-    ensure, Addr, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
-    SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
+    StdResult, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
-use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
-use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
+use osmosis_std::types::ibc::applications::transfer::v1::{MsgTransfer, MsgTransferResponse};
+use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut;
+use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
@@ -102,9 +103,6 @@ pub fn execute_liquid_stake(
         return Err(ContractError::MintError {});
     }
 
-    // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
-    //       Needs testing and validation - also need to check mint_to_address
-    //
     // Mint liquid staking token
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
@@ -588,6 +586,8 @@ pub fn update_config(
     protocol_fee_config: Option<ProtocolFeeConfig>,
     reserve_token: Option<String>,
     channel_id: Option<String>,
+    pool_id: Option<u64>,
+    feature_flags: Option<FeatureFlags>,
     operators: Option<Vec<String>>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -609,30 +609,40 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
+    if let Some(pool_id) = pool_id {
+        config.pool_id = pool_id;
+    }
+    if let Some(feature_flags) = feature_flags {
+        config.feature_flags = feature_flags;
+    }
     if let Some(operators) = operators {
         validate_addresses(&operators, "osmo")?;
         config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
     }
 
-    if channel_id.is_some() && reserve_token.is_none() {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
-    if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
-    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_none()
-        || channel_id.is_some() && reserve_token.is_none()
-    {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_some() {
-        config.ibc_channel_id = channel_id.unwrap();
-        config.native_token_denom = reserve_token.unwrap();
+    // TODO get reserve token from channel? Maybe leave as safeguard?
+    if channel_id.is_some() || reserve_token.is_some() {
+        if channel_id.is_none() || reserve_token.is_none() {
+            return Err(ContractError::IbcChannelNotFound {});
+        }
+
+        let channel_id = channel_id.unwrap();
+        let reserve_token = reserve_token.unwrap();
+        let channel_id_correct = channel_id.starts_with("channel-")
+            && channel_id
+                .strip_prefix("channel-")
+                .unwrap()
+                .parse::<u64>()
+                .is_ok();
+        let reserve_token_correct = reserve_token.starts_with("ibc/")
+            && reserve_token.strip_prefix("ibc/").unwrap().len() == 64;
+
+        if !channel_id_correct || !reserve_token_correct {
+            return Err(ContractError::IbcChannelConfigWrong {});
+        }
+
+        config.ibc_channel_id = channel_id;
+        config.native_token_denom = reserve_token;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -650,23 +660,26 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
         return Err(ContractError::NoLiquidStake {});
     }
 
-    let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
-        "osmo",
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
+    // allow admin and rewards address to call this
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
+        let expected_sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            config
+                .multisig_address_config
+                .reward_collector_address
+                .as_ref(),
+            "osmo",
+        );
+        if expected_sender.is_err() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
+        if info.sender != expected_sender.unwrap() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
     }
 
     let coin = info
@@ -718,20 +731,23 @@ pub fn receive_unstaked_tokens(
 
     check_stopped(&config)?;
 
-    let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config.multisig_address_config.staker_address.as_ref(),
-        "osmo",
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
+    // allow admin and staker address to call this
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
+        let expected_sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            config.multisig_address_config.staker_address.as_ref(),
+            "osmo",
+        );
+        if expected_sender.is_err() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
+        if info.sender != expected_sender.unwrap() {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.to_string(),
+            });
+        }
     }
 
     let coin = info
@@ -755,10 +771,11 @@ pub fn receive_unstaked_tokens(
     }
 
     let mut batch = _batch.unwrap();
+    let batch_id = batch.id;
 
     if batch.next_batch_action_time.is_none() {
         return Err(ContractError::BatchNotClaimable {
-            batch_id: batch.id,
+            batch_id,
             status: batch.status,
         });
     }
@@ -773,11 +790,154 @@ pub fn receive_unstaked_tokens(
     batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
 
-    BATCHES.save(deps.storage, batch.id, &batch)?;
-
-    Ok(Response::new()
+    let response = Response::new()
         .add_attribute("action", "receive_unstaked_tokens")
-        .add_attribute("amount", amount))
+        .add_attribute("amount", amount)
+        .add_attribute("batch", batch_id.to_string());
+
+    if config.feature_flags.enable_auto_claim {
+        // calculate the amount of tia to swap for gas
+        let (distribute_msgs, send_msgs, fee_swap_msg, distribution_gas, fees_in_tia) =
+            auto_claim(&deps, &env, &config, &batch)?;
+
+        send_msgs.iter().for_each(|m| {
+            batch.liquid_unstake_requests.get_mut(m).unwrap().redeemed = true;
+        });
+
+        BATCHES.save(deps.storage, batch_id, &batch)?;
+
+        return Ok(response
+            .clone()
+            .add_attribute("distribution_gas", distribution_gas)
+            .add_attribute("fees_in_tia", fees_in_tia)
+            .add_message(fee_swap_msg)
+            .add_submessages(distribute_msgs));
+    }
+
+    BATCHES.save(deps.storage, batch_id, &batch)?;
+
+    Ok(response)
+}
+
+fn auto_claim(
+    deps: &DepsMut,
+    env: &Env,
+    config: &Config,
+    batch: &Batch,
+) -> Result<(Vec<SubMsg>, Vec<String>, CosmosMsg, Uint128, Uint128), ContractError> {
+    let gas_per_claim = 350000u64;
+    let gas_price = Uint128::from(2500u128); // per 100000
+    let claims = Uint128::from(batch.liquid_unstake_requests.len() as u128);
+    // amount of uosmo we need to pay for gas
+    let amount_for_gas = div_ceil(
+        Uint128::from(gas_per_claim) * gas_price * claims,
+        Uint128::from(100000u128),
+    );
+    let tia_to_swap = query_swap_cost(&deps.as_ref(), env, config, amount_for_gas)?;
+
+    let swap_msg = swap(
+        &deps.as_ref(),
+        &env,
+        config,
+        batch.received_native_unstaked.unwrap(),
+        amount_for_gas,
+    );
+
+    let fee_per_user = div_ceil(tia_to_swap, claims);
+
+    let mut users_claimed: Vec<String> = vec![];
+    let mut send_msgs: Vec<CosmosMsg> = vec![];
+    batch
+        .liquid_unstake_requests
+        .iter()
+        .map(|r| r.1)
+        .for_each(|r| {
+            let withdraw_amount = batch
+                .received_native_unstaked
+                .unwrap()
+                .multiply_ratio(r.shares, batch.batch_total_liquid_stake)
+                .checked_sub(fee_per_user);
+            if withdraw_amount.is_err() {
+                // if the fees are too small we don't send anything for now
+                return;
+            }
+            let msg = MsgSend {
+                from_address: env.contract.address.to_string(),
+                to_address: r.user.to_string(),
+                amount: vec![Coin {
+                    denom: config.native_token_denom.to_string(),
+                    amount: withdraw_amount.unwrap().to_string(),
+                }],
+            };
+
+            send_msgs.push(msg.into());
+            users_claimed.push(r.user.to_string());
+        });
+    let sub_msg_id = sub_msg_id(&env);
+    // submessages will fail if there is not enough gas, failing the whole tx
+    let sub_msgs = send_msgs
+        .into_iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let id = sub_msg_id + i as u64;
+            SubMsg {
+                id,
+                msg: cosmwasm_std::CosmosMsg::from(m),
+                gas_limit: Some(gas_per_claim),
+                reply_on: cosmwasm_std::ReplyOn::Never,
+            }
+        })
+        .collect::<Vec<SubMsg>>();
+
+    Ok((
+        sub_msgs,
+        users_claimed,
+        swap_msg,
+        amount_for_gas,
+        tia_to_swap,
+    ))
+}
+
+fn query_swap_cost(
+    deps: &Deps,
+    _env: &Env,
+    config: &Config,
+    amount: Uint128,
+) -> StdResult<Uint128> {
+    let _denom_out = "uosmo".to_string();
+    let _denom_in = config.native_token_denom.to_string();
+    let in_amount: Uint128 = estimate_swap_exact_amount_out(
+        &deps.querier,
+        config.pool_id,
+        &config.native_token_denom,
+        "uosmo",
+        amount,
+    )?;
+    Ok(in_amount)
+}
+fn swap(
+    _deps: &Deps,
+    env: &Env,
+    config: &Config,
+    amount_in: Uint128,
+    amount_out: Uint128,
+) -> CosmosMsg {
+    let denom_out = "uosmo".to_string();
+    let denom_in = config.native_token_denom.to_string();
+    let swap_msg: CosmosMsg = MsgSwapExactAmountOut {
+        sender: env.contract.address.to_string(),
+        routes: vec![SwapAmountOutRoute {
+            pool_id: config.pool_id.clone(),
+            token_in_denom: denom_in,
+        }],
+        token_in_max_amount: amount_in.to_string(),
+        token_out: Some(Coin {
+            denom: denom_out,
+            amount: amount_out.to_string(),
+        }),
+    }
+    .into();
+    swap_msg
 }
 
 pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {

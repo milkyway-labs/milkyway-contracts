@@ -10,10 +10,13 @@ mod staking_tests {
     use crate::tests::test_helper::init;
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
+    use cosmwasm_std::{attr, coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::LiquidUnstakeRequest;
     use milky_way::staking::{Batch, BatchStatus};
+    use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
+    use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut;
+    use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 
     #[test]
@@ -330,6 +333,105 @@ mod staking_tests {
     }
 
     #[test]
+    fn automatic_distribution() {
+        // initializing the contract state with 2 batches that are submitted
+        // and 1 batch that is pending
+
+        let mut deps = init();
+        let mut env = mock_env();
+        let config: Config = CONFIG.load(&deps.storage).unwrap();
+
+        let mut state = STATE.load(&deps.storage).unwrap();
+        state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(100_000u128);
+        state.total_reward_amount = Uint128::from(0u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let msg = ExecuteMsg::LiquidUnstake {};
+
+        // Bob unstakes 10000
+        let info = mock_info("bob", &coins(10000, "factory/cosmos2contract/stTIA"));
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_ok());
+
+        env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
+        let msg = ExecuteMsg::SubmitBatch {};
+
+        let info = mock_info("bob", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_ok());
+
+        env.block.time = env.block.time.plus_seconds(config.unbonding_period + 1);
+        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let sender = derive_intermediate_sender(
+            &config.ibc_channel_id,
+            &config.multisig_address_config.staker_address.to_string(),
+            "osmo",
+        )
+        .unwrap();
+        let info = mock_info(
+            &sender,
+            &[cosmwasm_std::Coin {
+                amount: Uint128::from(10000u128),
+                denom: config.native_token_denom.clone(),
+            }],
+        );
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        let messages = res.messages;
+
+        assert!(messages.len() == 2); // distribution message and swap message
+        assert_eq!(
+            messages[0],
+            SubMsg {
+                id: 0,
+                msg: <MsgSwapExactAmountOut as Into<CosmosMsg>>::into(MsgSwapExactAmountOut {
+                    sender: env.contract.address.to_string(),
+                    routes: vec![SwapAmountOutRoute {
+                        pool_id: 1,
+                        token_in_denom: config.native_token_denom.clone(),
+                    }],
+                    token_in_max_amount: 10000u128.to_string(),
+                    token_out: Some(Coin {
+                        denom: "uosmo".to_string(),
+                        amount: 8750u128.to_string(),
+                    }),
+                }),
+                gas_limit: None,
+                reply_on: ReplyOn::Never,
+            }
+        );
+        assert_eq!(
+            messages[1],
+            SubMsg {
+                id: 1573093421879305536,
+                msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
+                    from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                    to_address: "bob".to_string(),
+                    amount: vec![Coin {
+                        denom: config.native_token_denom.clone(),
+                        amount: "9000".to_string(),
+                    }],
+                }),
+                gas_limit: Some(350000),
+                reply_on: ReplyOn::Never,
+            }
+        );
+        assert_eq!(
+            res.attributes,
+            vec![
+                attr("action", "receive_unstaked_tokens"),
+                attr("amount", "10000"),
+                attr("batch", "1"),
+                attr("distribution_gas", "8750"),
+                attr("fees_in_tia", "1000"),
+            ]
+        );
+    }
+
+    #[test]
     fn claimable_batches() {
         let mut deps = init();
 
@@ -338,12 +440,12 @@ mod staking_tests {
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let mut batch_1 = Batch::new(1, Uint128::from(1000u128), 1000);
+        let mut batch_1 = Batch::new(1, Uint128::from(100u128), 1000);
         batch_1.liquid_unstake_requests.insert(
             "bob".to_string(),
             LiquidUnstakeRequest {
                 user: Addr::unchecked("bob"),
-                shares: Uint128::from(1000u128),
+                shares: Uint128::from(100u128), // Too little so auto claim will ignore this user
                 redeemed: false,
             },
         );
@@ -394,7 +496,7 @@ mod staking_tests {
             )
             .unwrap(),
             &[cosmwasm_std::Coin {
-                amount: Uint128::from(1000u128),
+                amount: Uint128::from(100u128),
                 denom: CONFIG.load(&deps.storage).unwrap().native_token_denom,
             }],
         );

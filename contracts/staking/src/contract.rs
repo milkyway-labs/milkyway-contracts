@@ -29,6 +29,7 @@ use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
+
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 
 // Version information for migration
@@ -83,7 +84,7 @@ pub fn instantiate(
         liquid_stake_token_denom: format!(
             "factory/{0}/{1}",
             env.contract.address, msg.liquid_stake_token_denom
-        ), //TODO determine the format to save in
+        ),
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         operators,
         validators,
@@ -94,6 +95,8 @@ pub fn instantiate(
         minimum_liquid_stake_amount: msg.minimum_liquid_stake_amount,
         ibc_channel_id: msg.ibc_channel_id.clone(),
         stopped: false,
+        pool_id: msg.pool_id,
+        feature_flags: msg.feature_flags,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -135,7 +138,6 @@ pub fn instantiate(
     };
     IBC_CONFIG.save(deps.storage, &ibc_config)?;
 
-    // TODO: Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender)
@@ -186,6 +188,8 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            pool_id,
+            feature_flags,
             operators,
         } => update_config(
             deps,
@@ -198,6 +202,8 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            pool_id,
+            feature_flags,
             operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
