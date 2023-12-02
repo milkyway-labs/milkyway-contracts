@@ -105,7 +105,7 @@ pub enum QueryMsg {
     "validators": ["VALIDATOR_ADDR_1", "VALIDATOR_ADDR_2"],
     "batch_period": 86400,
     "unbonding_period": 1209600,
-    "minimum_liquid_stake_amount": 100
+    "minimum_liquid_stake_amount": 100,
 }
 ```
 

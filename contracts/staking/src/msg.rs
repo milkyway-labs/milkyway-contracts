@@ -1,6 +1,8 @@
-use crate::state::{ibc::IBCTransfer, MultisigAddressConfig, ProtocolFeeConfig};
+use crate::state::{
+    ibc::IBCTransfer, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -57,6 +59,7 @@ pub enum ExecuteMsg {
         protocol_fee_config: Option<ProtocolFeeConfig>,
         reserve_token: Option<String>,
         channel_id: Option<String>,
+        operators: Option<Vec<String>>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
@@ -75,6 +78,8 @@ pub struct ConfigResponse {
     pub batch_period: u64,
     pub unbonding_period: u64,
     pub minimum_liquid_stake_amount: Uint128,
+    pub staker_address: String,
+    pub reward_collector_address: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -109,6 +114,10 @@ pub struct BatchesResponse {
 pub struct IBCQueueResponse {
     pub ibc_queue: Vec<IBCTransfer>,
 }
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct IBCReplyQueueResponse {
+    pub ibc_queue: Vec<IbcWaitingForReply>,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -123,8 +132,12 @@ pub enum QueryMsg {
     Batches {},
     #[returns(BatchResponse)]
     PendingBatch {},
+    #[returns(BatchesResponse)]
+    ClaimableBatches { user: Addr },
     #[returns(IBCQueueResponse)]
     IbcQueue {},
+    #[returns(IBCReplyQueueResponse)]
+    IbcReplyQueue {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

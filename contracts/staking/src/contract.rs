@@ -5,7 +5,8 @@ use crate::execute::{
 use crate::helpers::{validate_address, validate_addresses};
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
-    query_batch, query_batches, query_config, query_ibc_queue, query_pending_batch, query_state,
+    query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
+    query_pending_batch, query_reply_queue, query_state,
 };
 use crate::state::{
     Config, IbcConfig, State, ADMIN, BATCHES, CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY,
@@ -52,8 +53,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let operators = validate_addresses(msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
-    let validators = validate_addresses(msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
+    let operators = validate_addresses(&msg.operators, OSMOSIS_ACCOUNT_PREFIX)?;
+    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
 
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
@@ -67,13 +68,13 @@ pub fn instantiate(
     }
 
     validate_address(
-        msg.multisig_address_config
+        &msg.multisig_address_config
             .reward_collector_address
             .to_string(),
         &CELESTIA_ACCOUNT_PREFIX,
     )?;
     validate_address(
-        msg.multisig_address_config.staker_address.to_string(),
+        &msg.multisig_address_config.staker_address.to_string(),
         &CELESTIA_ACCOUNT_PREFIX,
     )?;
 
@@ -186,6 +187,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            operators,
         } => update_config(
             deps,
             env,
@@ -197,6 +199,7 @@ pub fn execute(
             protocol_fee_config,
             reserve_token,
             channel_id,
+            operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
@@ -218,7 +221,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
+        QueryMsg::ClaimableBatches { user } => to_binary(&query_claimable(deps, user)?),
+
+        // dev only, depr
         QueryMsg::IbcQueue {} => to_binary(&query_ibc_queue(deps)?),
+        QueryMsg::IbcReplyQueue {} => to_binary(&query_reply_queue(deps)?),
     }
 }
 

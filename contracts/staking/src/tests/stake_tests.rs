@@ -8,11 +8,12 @@ mod staking_tests {
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
-        attr, coins, Addr, CosmosMsg, IbcMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
-        SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+        attr, coins, Addr, CosmosMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg, SubMsgResponse,
+        SubMsgResult, Timestamp, Uint128,
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
+    use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
     use std::vec::Vec;
 
@@ -28,11 +29,12 @@ mod staking_tests {
             env.block.time.nanos() + IBC_TIMEOUT.nanos(),
         ));
 
-        let ibc_coin = cosmwasm_std::Coin {
+        let ibc_coin = Coin {
             denom: NATIVE_TOKEN.to_string(),
-            amount: Uint128::from(1000u128),
+            amount: "1000".to_string(),
         };
 
+        let ibc_sub_msg_id = env.block.time.nanos() + env.transaction.unwrap().index as u64;
         match res {
             Ok(ref result) => {
                 assert_eq!(
@@ -47,12 +49,19 @@ mod staking_tests {
                 assert_eq!(
                     result.messages[1],
                     SubMsg {
-                        id: 0,
-                        msg: <IbcMsg as Into<CosmosMsg>>::into(IbcMsg::Transfer {
-                            channel_id: CHANNEL_ID.to_string(),
-                            to_address: Addr::unchecked(CELESTIA1).to_string(),
-                            amount: ibc_coin,
-                            timeout,
+                        id: ibc_sub_msg_id.clone(),
+                        msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
+                            source_channel: CHANNEL_ID.to_string(),
+                            source_port: "transfer".to_string(),
+                            sender: env.contract.address.to_string(),
+                            receiver: Addr::unchecked(CELESTIA1).to_string(),
+                            token: Some(ibc_coin),
+                            timeout_height: None,
+                            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+                            memo: format!(
+                                "{{\"ibc_callback\":\"{}\"}}",
+                                env.contract.address.to_string()
+                            ),
                         }),
                         gas_limit: None,
                         reply_on: ReplyOn::Always,
@@ -82,14 +91,14 @@ mod staking_tests {
 
         // need to do this or we can't send more ibc messages
         // IBC_WAITING_FOR_REPLY.remove(deps.as_mut().storage);
-        let _ = reply(
+        let _result = reply(
             deps.as_mut(),
             mock_env(),
             Reply {
-                id: 0,
+                id: ibc_sub_msg_id,
                 result: SubMsgResult::Ok(SubMsgResponse {
-                    data: None,         // No data returned
-                    events: Vec::new(), // No events
+                    data: Some(cosmwasm_std::Binary(Vec::new())), // No data returned
+                    events: Vec::new(),                           // No events
                 }),
             },
         );

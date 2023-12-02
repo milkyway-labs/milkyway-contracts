@@ -2,26 +2,32 @@ use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
+    validate_addresses,
 };
 use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
-    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_WAITING_FOR_REPLY, IBC_CONFIG, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
+    CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Order, ReplyOn, Response, 
-    SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+    ensure, Addr, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
+    SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
+use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
-pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMsg, ContractError> {
+pub fn transfer_stake_msg(
+    deps: Deps,
+    env: &Env,
+    amount: Uint128,
+) -> Result<MsgTransfer, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let ibc_config = IBC_CONFIG.load(deps.storage)?;
 
@@ -29,9 +35,9 @@ pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMs
         return Err(ContractError::IbcChannelNotFound {});
     }
 
-    let ibc_coin = cosmwasm_std::Coin {
+    let ibc_coin = Coin {
         denom: config.native_token_denom,
-        amount,
+        amount: amount.to_string(),
     };
 
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
@@ -39,11 +45,18 @@ pub fn transfer_stake_msg(deps: Deps, env: Env, amount: Uint128) -> Result<IbcMs
     ));
 
     let to_address = config.multisig_address_config.staker_address.to_string();
-    let ibc_msg = IbcMsg::Transfer {
-        channel_id: ibc_config.channel_id,
-        to_address: to_address.clone(),
-        amount: ibc_coin.clone(),
-        timeout,
+    let ibc_msg = MsgTransfer {
+        source_channel: ibc_config.channel_id,
+        source_port: "transfer".to_string(),
+        token: Some(ibc_coin),
+        receiver: to_address.clone(),
+        sender: env.contract.address.to_string(),
+        timeout_height: None,
+        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+        memo: format!(
+            "{{\"ibc_callback\":\"{}\"}}",
+            env.contract.address.to_string()
+        ),
     };
 
     Ok(ibc_msg)
@@ -103,12 +116,17 @@ pub fn execute_liquid_stake(
     };
 
     // Transfer native token to multisig address
-    let ibc_msg = transfer_stake_msg(deps.as_ref(), env, amount)?;
+    let ibc_msg = transfer_stake_msg(deps.as_ref(), &env, amount)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
-    let sub_msg_id = state.ibc_id_counter;
-    state.ibc_id_counter += 1;
+    // message id will be dependendent on block and transaction index, and will therefor always be unique
+    let sub_msg_id = if env.transaction.is_none() {
+        env.block.time.nanos()
+    } else {
+        env.block.time.nanos() + env.transaction.unwrap().index as u64
+    };
+
     STATE.save(deps.storage, &state)?;
 
     save_ibc_waiting_for_reply(
@@ -144,15 +162,6 @@ pub fn execute_liquid_unstake(
 
     STATE.load(deps.storage)?;
 
-    // TODO: lets discuss, added minimum_liquid_stake_amount as a placeholder
-    // Do we want to add a minimum unstake amount? As time goes on the stake and unstake amounts will diverge
-    ensure!(
-        amount >= config.minimum_liquid_stake_amount,
-        ContractError::MinimumLiquidStakeAmount {
-            minimum_stake_amount: (config.minimum_liquid_stake_amount),
-            sent_amount: (amount)
-        }
-    );
     // Load current pending batch
     let mut pending_batch: Batch = BATCHES
         .range(deps.storage, None, None, Order::Descending)
@@ -395,7 +404,7 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = validate_address(new_validator.clone(), CELESTIA_VALIDATOR_PREFIX)?;
+    let new_validator_addr = validate_address(&new_validator, CELESTIA_VALIDATOR_PREFIX)?;
 
     // Check if the new_validator is already in the list.
     if config
@@ -430,7 +439,7 @@ pub fn execute_remove_validator(
 
     let mut config = CONFIG.load(deps.storage)?;
     let validator_addr_to_remove =
-        validate_address(validator_to_remove.clone(), CELESTIA_VALIDATOR_PREFIX)?;
+        validate_address(&validator_to_remove, CELESTIA_VALIDATOR_PREFIX)?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
@@ -526,10 +535,11 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
     let config: Config = CONFIG.load(deps.storage)?;
 
     // timed out and failed packets
-    let packets = INFLIGHT_PACKETS
+    let all_packages = INFLIGHT_PACKETS
         .range(deps.storage, None, None, Order::Ascending)
         .filter(|r| r.is_ok())
-        .map(|r| r.unwrap().1)
+        .map(|r| r.unwrap().1);
+    let packets = all_packages
         .filter(|p| {
             p.status == PacketLifecycleStatus::AckFailure
                 || p.status == PacketLifecycleStatus::TimedOut
@@ -541,14 +551,24 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
         env.block.time.nanos() + ibc_config.default_timeout.nanos(),
     ));
 
-    let msgs = packets.into_iter().map(|r| IbcMsg::Transfer {
-        channel_id: ibc_config.channel_id.clone(),
-        to_address: config.multisig_address_config.staker_address.to_string(),
-        amount: cosmwasm_std::Coin {
-            denom: config.native_token_denom.clone(),
-            amount: Uint128::from(r.amount),
-        },
-        timeout: timeout.clone(),
+    let msgs = packets.into_iter().map(|r| {
+        INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
+        MsgTransfer {
+            source_channel: ibc_config.channel_id.clone(),
+            source_port: "transfer".to_string(),
+            token: Some(Coin {
+                denom: config.native_token_denom.clone(),
+                amount: r.amount.to_string(),
+            }),
+            receiver: config.multisig_address_config.staker_address.to_string(),
+            sender: env.contract.address.to_string(),
+            timeout_height: None,
+            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+            memo: format!(
+                "{{\"ibc_callback\":\"{}\"}}",
+                env.contract.address.to_string()
+            ),
+        }
     });
 
     Ok(Response::new()
@@ -568,6 +588,7 @@ pub fn update_config(
     protocol_fee_config: Option<ProtocolFeeConfig>,
     reserve_token: Option<String>,
     channel_id: Option<String>,
+    operators: Option<Vec<String>>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -588,10 +609,14 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
+    if let Some(operators) = operators {
+        validate_addresses(&operators, "osmo")?;
+        config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
+    }
+
     if channel_id.is_some() && reserve_token.is_none() {
         return Err(ContractError::IbcChannelNotFound {});
     }
-
     let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
     if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
         return Err(ContractError::IbcChannelNotFound {});
@@ -674,7 +699,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), env, amount_after_fees.clone())?;
+    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), &env, amount_after_fees.clone())?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
