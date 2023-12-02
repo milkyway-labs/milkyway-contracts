@@ -4,7 +4,7 @@ mod staking_tests {
     use crate::error::ContractError;
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, CONFIG, STATE};
+    use crate::state::{State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
@@ -212,5 +212,26 @@ mod staking_tests {
         );
 
         assert!(resp.is_err());
+    }
+
+    #[test]
+    fn zero_liquid_stake_but_native_tokens() {
+        let mut deps = init();
+
+        let mut state: State = STATE.load(&deps.storage).unwrap();
+        state.total_native_token = Uint128::from(1000u128);
+        state.total_liquid_stake_token = Uint128::from(0u128);
+        state.total_fees = Uint128::from(100u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let msg = ExecuteMsg::LiquidStake {};
+        let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+        assert!(res.is_ok());
+
+        let state: State = STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_native_token, Uint128::from(1000u128));
+        assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
+        assert_eq!(state.total_fees, Uint128::from(1100u128));
     }
 }
