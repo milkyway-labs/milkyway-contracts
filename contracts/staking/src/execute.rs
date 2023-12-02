@@ -713,6 +713,7 @@ pub fn receive_unstaked_tokens(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    batch_id: u64,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -744,17 +745,7 @@ pub fn receive_unstaked_tokens(
 
     let amount = coin.unwrap().amount;
 
-    // get the oldest submitted batch
-    let _batch: Option<Batch> = BATCHES
-        .range(deps.storage, None, None, Order::Ascending)
-        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Submitted)
-        .map(|r| r.unwrap().1);
-
-    if _batch.is_none() {
-        return Err(ContractError::BatchEmpty {});
-    }
-
-    let mut batch = _batch.unwrap();
+    let mut batch: Batch = BATCHES.load(deps.storage, batch_id)?;
 
     if batch.next_batch_action_time.is_none() {
         return Err(ContractError::BatchNotClaimable {
@@ -777,6 +768,7 @@ pub fn receive_unstaked_tokens(
 
     Ok(Response::new()
         .add_attribute("action", "receive_unstaked_tokens")
+        .add_attribute("batch", batch_id.to_string())
         .add_attribute("amount", amount))
 }
 

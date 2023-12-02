@@ -201,7 +201,9 @@ pub fn execute(
             operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
-        ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
+        ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
+            receive_unstaked_tokens(deps, env, info, batch_id)
+        }
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
         ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),

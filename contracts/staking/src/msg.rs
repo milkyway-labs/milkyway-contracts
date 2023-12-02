@@ -62,7 +62,9 @@ pub enum ExecuteMsg {
         operators: Option<Vec<String>>,
     },
     ReceiveRewards {},
-    ReceiveUnstakedTokens {},
+    ReceiveUnstakedTokens {
+        batch_id: u64,
+    },
     CircuitBreaker {},
     ResumeContract {},
     RecoverPendingIbcTransfers {},
