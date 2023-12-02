@@ -870,7 +870,6 @@ pub fn fee_withdraw(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    receiver: String,
     amount: Uint128,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -887,7 +886,7 @@ pub fn fee_withdraw(
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
-        to_address: receiver.to_string(),
+        to_address: config.treasury_address.to_string(),
         amount: vec![Coin {
             denom: config.native_token_denom,
             amount: amount.to_string(),
@@ -896,7 +895,7 @@ pub fn fee_withdraw(
 
     Ok(Response::new()
         .add_attribute("action", "fee_withdraw")
-        .add_attribute("receiver", receiver.to_string())
+        .add_attribute("receiver", config.treasury_address.to_string())
         .add_attribute("amount", amount)
         .add_message(send_msg))
 }

@@ -67,7 +67,6 @@ pub enum ExecuteMsg {
     ResumeContract {},
     RecoverPendingIbcTransfers {},
     FeeWithdraw {
-        receiver: String,
         amount: Uint128,
     },
 }

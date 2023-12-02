@@ -205,9 +205,7 @@ pub fn execute(
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
         ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
         ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
-        ExecuteMsg::FeeWithdraw { receiver, amount } => {
-            fee_withdraw(deps, env, info, receiver, amount)
-        }
+        ExecuteMsg::FeeWithdraw { amount } => fee_withdraw(deps, env, info, amount),
     }
 }
 

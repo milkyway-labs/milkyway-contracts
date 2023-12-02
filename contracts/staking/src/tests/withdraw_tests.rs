@@ -3,7 +3,7 @@ mod withdraw_tests {
     use crate::contract::{execute, query};
     use crate::msg::{BatchResponse, ExecuteMsg, QueryMsg};
     use crate::state::{BATCHES, CONFIG, STATE};
-    use crate::tests::test_helper::{init, NATIVE_TOKEN};
+    use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO1};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
@@ -262,7 +262,6 @@ mod withdraw_tests {
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let msg = ExecuteMsg::FeeWithdraw {
-            receiver: "alice".to_string(),
             amount: Uint128::from(2000u128),
         };
         let info = mock_info("bob", &[]);
@@ -274,7 +273,6 @@ mod withdraw_tests {
         assert!(res.is_err()); // because too high amount
 
         let msg = ExecuteMsg::FeeWithdraw {
-            receiver: "alice".to_string(),
             amount: Uint128::from(1000u128),
         };
         let info = mock_info("creator", &[]);
@@ -286,7 +284,7 @@ mod withdraw_tests {
                 id: 0,
                 msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                     from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                    to_address: "alice".to_string(),
+                    to_address: OSMO1.to_string(),
                     amount: vec![Coin {
                         denom: NATIVE_TOKEN.to_string(),
                         amount: "1000".to_string()
