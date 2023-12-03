@@ -109,7 +109,7 @@ pub fn execute_liquid_stake(
 
     check_stopped(&config)?;
 
-    let mut state = STATE.load(deps.storage)?;
+    let mut state: State = STATE.load(deps.storage)?;
     ensure!(
         amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
@@ -117,6 +117,14 @@ pub fn execute_liquid_stake(
             sent_amount: (amount)
         }
     );
+
+    // this handles a special case that through slashing and redeeming chaining we get into a state
+    // where the total liquid stake is zero but the total native stake is not
+    // nobody can claim the native stake, so we need to claim it to the DAO
+    if state.total_liquid_stake_token.is_zero() && !state.total_native_token.is_zero() {
+        state.total_fees += state.total_native_token;
+        state.total_native_token = Uint128::zero();
+    }
 
     // Compute mint amount
     let mint_amount = compute_mint_amount(
