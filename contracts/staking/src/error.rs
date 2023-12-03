@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{StdError, Timestamp, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 use milky_way::staking::BatchStatus;
@@ -20,6 +20,9 @@ pub enum ContractError {
 
     #[error("No pending owner")]
     NoPendingOwner {},
+
+    #[error("Ownership transfer not ready")]
+    OwnershipTransferNotReady { time_to_claim: Timestamp },
 
     #[error("Payment error: {0}")]
     Payment(#[from] PaymentError),

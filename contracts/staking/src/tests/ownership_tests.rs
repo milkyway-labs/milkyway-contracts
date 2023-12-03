@@ -42,15 +42,23 @@ mod ownership_tests {
             new_owner: "new_owner".to_string(),
         };
 
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        let mut env = mock_env();
+
+        let res = execute(deps.as_mut(), env.clone(), info, msg);
         assert!(res.is_ok());
 
         let info = mock_info("new_owner", &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AcceptOwnership {};
 
-        let res2 = execute(deps.as_mut(), mock_env(), info, msg);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err()); // no time yet
 
-        let attrs = res2.unwrap().attributes;
+        env.block.time = mock_env().block.time.plus_seconds(60 * 60 * 24 * 7);
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_ok());
+
+        let attrs = res.unwrap().attributes;
         assert_eq!(attrs[0].value, "accept_ownership");
         assert_eq!(attrs[1].value, "new_owner");
     }
