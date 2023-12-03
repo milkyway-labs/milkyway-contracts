@@ -76,7 +76,7 @@ pub fn instantiate(
         liquid_stake_token_denom: format!(
             "factory/{0}/{1}",
             env.contract.address, msg.liquid_stake_token_denom
-        ), //TODO determine the format to save in
+        ),
         treasury_address: Addr::unchecked(""),
         operators: vec![],
         validators,
