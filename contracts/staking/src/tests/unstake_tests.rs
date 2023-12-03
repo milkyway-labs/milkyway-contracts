@@ -187,7 +187,7 @@ mod staking_tests {
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
 
         let sender = derive_intermediate_sender(
             &config.ibc_channel_id,
@@ -382,7 +382,7 @@ mod staking_tests {
         let res = BATCHES.save(&mut deps.storage, 1, &batch);
         assert!(res.is_ok());
 
-        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
         let info = mock_info(
             &derive_intermediate_sender(
                 &CONFIG.load(&deps.storage).unwrap().ibc_channel_id,

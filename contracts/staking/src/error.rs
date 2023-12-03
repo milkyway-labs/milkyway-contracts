@@ -81,6 +81,12 @@ pub enum ContractError {
     #[error("Invalid reply id")]
     InvalidReplyID { id: u64 },
 
+    #[error("No inflight packages to recover")]
+    NoInflightPackets {},
+
+    #[error("Error recovering failed ibc transactions")]
+    RecoverError {},
+
     #[error("unexpected batch status")]
     UnexpecedBatchStatus {
         actual: BatchStatus,
@@ -113,4 +119,7 @@ pub enum ContractError {
 
     #[error("No liquid stake to distribute rewards to")]
     NoLiquidStake {},
+
+    #[error("Insufficient funds")]
+    InsufficientFunds {},
 }

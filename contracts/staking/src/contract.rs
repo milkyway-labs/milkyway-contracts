@@ -1,5 +1,5 @@
 use crate::execute::{
-    circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
+    circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
@@ -201,12 +201,26 @@ pub fn execute(
             operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
-        ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
+        ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
+            receive_unstaked_tokens(deps, env, info, batch_id)
+        }
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
-        ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
+        ExecuteMsg::ResumeContract {
+            total_native_token,
+            total_liquid_stake_token,
+            total_reward_amount,
+        } => resume_contract(
+            deps,
+            env,
+            info,
+            total_native_token,
+            total_liquid_stake_token,
+            total_reward_amount,
+        ),
         ExecuteMsg::RecoverPendingIbcTransfers { paginated } => {
             recover(deps, env, info, paginated.unwrap_or(false))
         }
+        ExecuteMsg::FeeWithdraw { amount } => fee_withdraw(deps, env, info, amount),
     }
 }
 

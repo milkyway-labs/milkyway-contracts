@@ -62,11 +62,20 @@ pub enum ExecuteMsg {
         operators: Option<Vec<String>>,
     },
     ReceiveRewards {},
-    ReceiveUnstakedTokens {},
+    ReceiveUnstakedTokens {
+        batch_id: u64,
+    },
     CircuitBreaker {},
-    ResumeContract {},
+    ResumeContract {
+        total_native_token: Uint128,
+        total_liquid_stake_token: Uint128,
+        total_reward_amount: Uint128,
+    },
     RecoverPendingIbcTransfers {
         paginated: Option<bool>,
+    },
+    FeeWithdraw {
+        amount: Uint128,
     },
 }
 
@@ -82,6 +91,7 @@ pub struct ConfigResponse {
     pub minimum_liquid_stake_amount: Uint128,
     pub staker_address: String,
     pub reward_collector_address: String,
+    pub protocol_fee_config: ProtocolFeeConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
