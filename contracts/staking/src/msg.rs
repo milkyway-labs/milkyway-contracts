@@ -80,6 +80,7 @@ pub struct ConfigResponse {
     pub minimum_liquid_stake_amount: Uint128,
     pub staker_address: String,
     pub reward_collector_address: String,
+    pub protocol_fee_config: ProtocolFeeConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]

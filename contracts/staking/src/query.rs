@@ -34,6 +34,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .multisig_address_config
             .reward_collector_address
             .to_string(),
+        protocol_fee_config: config.protocol_fee_config,
     };
     Ok(res)
 }
