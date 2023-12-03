@@ -227,11 +227,11 @@ mod staking_tests {
 
         let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
-            expected_mint_amount: Some(Uint128::from(1_000u128)),
+            expected_mint_amount: Some(Uint128::from(2_000_000u128)),
         };
         let res: Result<cosmwasm_std::Response, ContractError> =
             execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
-        assert!(res.is_err());
+        assert!(res.is_err()); // minted amount is lower than expected
 
         let msg = ExecuteMsg::LiquidStake {
             expected_mint_amount: Some(Uint128::from(1_000_000u128)),
