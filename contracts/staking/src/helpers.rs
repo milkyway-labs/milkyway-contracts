@@ -1,4 +1,5 @@
-use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, Order, StdError, StdResult, Uint128};
+use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
@@ -97,4 +98,133 @@ pub fn derive_intermediate_sender(
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32.to_base32();
     bech32_no_std::encode(bech32_prefix, sender)
+}
+
+/// Generic function for paginating a list of (K, V) pairs in a
+/// CosmWasm Map.
+pub fn paginate_map<'a, 'b, K, V, R: 'static>(
+    deps: Deps,
+    map: &Map<'a, K, V>,
+    start_after: Option<K>,
+    limit: Option<u32>,
+    order: Order,
+    filter: Option<fn(&V) -> bool>,
+) -> StdResult<Vec<V>>
+where
+    K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
+    V: serde::de::DeserializeOwned + serde::Serialize,
+{
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
+
+    let items = map.range(deps.storage, range_min, range_max, order);
+    let mut taken = 0;
+    match limit {
+        Some(limit) => Ok(items
+            .map(|i| i.unwrap().1)
+            .take_while(|i| {
+                if taken >= limit {
+                    return false;
+                }
+                taken += 1;
+                if let Some(filter) = filter {
+                    filter(&i)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>()),
+        None => Ok(items
+            .map(|i| i.unwrap().1)
+            .take_while(|i| {
+                if let Some(filter) = filter {
+                    filter(&i)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_addresses_success() {
+        let addresses = vec![
+            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
+            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
+        ];
+
+        let result = validate_addresses(&addresses, &"osmo".to_string()).unwrap();
+
+        assert_eq!(2, result.len());
+    }
+
+    #[test]
+    fn validate_addresses_duplicate() {
+        let addresses = vec![
+            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
+            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
+        ];
+
+        let result = validate_addresses(&addresses, &"osmo".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_addresses_invalid() {
+        let addresses = vec![
+            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
+            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
+        ];
+
+        let result = validate_addresses(&addresses, &"osmo".to_string());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_addresses_invalid_prefix() {
+        let addresses = vec![
+            "a".to_string(),
+            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
+        ];
+
+        let result = validate_addresses(&addresses, &"celestia".to_string());
+
+        assert!(result.is_err());
+    }
+
+    // Basic test - based on figures from excalidraw
+    #[test]
+    fn test_compute_mint_amount() {
+        let total_native_token = Uint128::from(2_000_000_000u128);
+        let total_liquid_stake_token = Uint128::from(1_800_000_000u128);
+        let native_to_stake = Uint128::from(100_000_000u128);
+        let mint_amount = compute_mint_amount(
+            total_native_token,
+            total_liquid_stake_token,
+            native_to_stake,
+        );
+
+        assert_eq!(mint_amount, Uint128::from(90_000_000u128));
+    }
+
+    // Basic test - based on figures from excalidraw
+    #[test]
+    fn test_compute_unbond_amount() {
+        let total_native_token = Uint128::from(2_000_000_000u128);
+        let total_liquid_stake_token = Uint128::from(1_800_000_000u128);
+        let batch_unstake = Uint128::from(90_000_000u128);
+        let unbond_amount =
+            compute_unbond_amount(total_native_token, total_liquid_stake_token, batch_unstake);
+
+        assert_eq!(unbond_amount, Uint128::from(100_000_000u128));
+    }
 }

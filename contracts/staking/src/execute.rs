@@ -1,8 +1,8 @@
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
-    validate_addresses,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, paginate_map,
+    validate_address, validate_addresses,
 };
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
@@ -543,32 +543,41 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn recover(mut deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Response, ContractError> {
+pub fn recover(
+    mut deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    page: bool,
+) -> Result<Response, ContractError> {
+    let page_size = 10;
+
     // timed out and failed packets
-    let all_packages = INFLIGHT_PACKETS
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap().1);
-    let packets = all_packages
-        .filter(|p| {
-            p.status == PacketLifecycleStatus::AckFailure
-                || p.status == PacketLifecycleStatus::TimedOut
-        })
-        .collect::<Vec<IBCTransfer>>();
+    let packets: Vec<IBCTransfer> = paginate_map(
+        deps.as_ref(),
+        &INFLIGHT_PACKETS,
+        None,
+        if page { Some(page_size) } else { None },
+        Order::Ascending,
+        Some(|r| {
+            r.status == PacketLifecycleStatus::AckFailure
+                || r.status == PacketLifecycleStatus::TimedOut
+        }),
+    )?;
 
     if packets.is_empty() {
         return Err(ContractError::NoInflightPackets {});
     }
 
     let max_submessage_id = INFLIGHT_PACKETS
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap().0)
-        .max()
-        .unwrap();
+        .range(deps.storage, None, None, Order::Descending)
+        .take(1)
+        .next()
+        .unwrap()
+        .unwrap()
+        .0;
 
     let total_amount = packets
-        .into_iter()
+        .iter()
         .map(|r| {
             INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
             r.amount
@@ -588,6 +597,7 @@ pub fn recover(mut deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Respon
 
     Ok(Response::new()
         .add_attribute("action", "recover")
+        .add_attribute("packets", packets.len().to_string())
         .add_submessage(sub_msg))
 }
 

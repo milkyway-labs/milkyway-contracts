@@ -366,6 +366,8 @@ mod staking_tests {
             mock_env(),
             QueryMsg::ClaimableBatches {
                 user: Addr::unchecked("bob"),
+                start_after: None,
+                limit: None,
             },
         );
         assert!(claimable_batches_res.is_ok());
@@ -406,6 +408,8 @@ mod staking_tests {
             mock_env(),
             QueryMsg::ClaimableBatches {
                 user: Addr::unchecked("bob"),
+                start_after: None,
+                limit: None,
             },
         );
         assert!(claimable_batches_res.is_ok());
