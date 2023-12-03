@@ -1,7 +1,7 @@
 use crate::contract::{instantiate, IBC_TIMEOUT};
 use crate::msg::InstantiateMsg;
 use crate::state::{
-    Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, State, CONFIG, IBC_CONFIG, STATE,
+    Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, CONFIG, IBC_CONFIG,
 };
 
 use cosmwasm_std::testing::{

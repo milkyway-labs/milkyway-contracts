@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{StdError, Timestamp, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 use milky_way::staking::BatchStatus;
@@ -20,6 +20,9 @@ pub enum ContractError {
 
     #[error("No pending owner")]
     NoPendingOwner {},
+
+    #[error("Ownership transfer not ready")]
+    OwnershipTransferNotReady { time_to_claim: Timestamp },
 
     #[error("Payment error: {0}")]
     Payment(#[from] PaymentError),
@@ -51,6 +54,9 @@ pub enum ContractError {
     #[error("No IBC channel found")]
     IbcChannelNotFound {},
 
+    #[error("The prvoided IBC channel and reserve token config is wrong")]
+    IbcChannelConfigWrong {},
+
     #[error("Batch is not ready to be submitted")]
     BatchNotReady { actual: u64, expected: u64 },
 
@@ -80,6 +86,12 @@ pub enum ContractError {
 
     #[error("Invalid reply id")]
     InvalidReplyID { id: u64 },
+
+    #[error("No inflight packages to recover")]
+    NoInflightPackets {},
+
+    #[error("Error recovering failed ibc transactions")]
+    RecoverError {},
 
     #[error("unexpected batch status")]
     UnexpecedBatchStatus {
@@ -113,4 +125,7 @@ pub enum ContractError {
 
     #[error("No liquid stake to distribute rewards to")]
     NoLiquidStake {},
+
+    #[error("Insufficient funds")]
+    InsufficientFunds {},
 }

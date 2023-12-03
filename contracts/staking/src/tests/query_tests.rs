@@ -157,7 +157,10 @@ mod query_tests {
     fn get_batches() {
         let mut deps = init();
         let mut env = mock_env();
-        let msg = QueryMsg::Batches {};
+        let msg = QueryMsg::Batches {
+            start_after: None,
+            limit: None,
+        };
         let mut bin = query(deps.as_ref(), env.clone(), msg.clone()).unwrap();
         let mut result = from_binary::<BatchesResponse>(&bin);
 

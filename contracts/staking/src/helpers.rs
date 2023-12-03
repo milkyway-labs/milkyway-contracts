@@ -1,4 +1,5 @@
-use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, Order, StdError, StdResult, Uint128};
+use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
@@ -97,6 +98,55 @@ pub fn derive_intermediate_sender(
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32.to_base32();
     bech32_no_std::encode(bech32_prefix, sender)
+}
+
+/// Generic function for paginating a list of (K, V) pairs in a
+/// CosmWasm Map.
+pub fn paginate_map<'a, 'b, K, V, R: 'static>(
+    deps: Deps,
+    map: &Map<'a, K, V>,
+    start_after: Option<K>,
+    limit: Option<u32>,
+    order: Order,
+    filter: Option<fn(&V) -> bool>,
+) -> StdResult<Vec<V>>
+where
+    K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
+    V: serde::de::DeserializeOwned + serde::Serialize,
+{
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
+
+    let items = map.range(deps.storage, range_min, range_max, order);
+    let mut taken = 0;
+    match limit {
+        Some(limit) => Ok(items
+            .map(|i| i.unwrap().1)
+            .take_while(|i| {
+                if taken >= limit {
+                    return false;
+                }
+                taken += 1;
+                if let Some(filter) = filter {
+                    filter(&i)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>()),
+        None => Ok(items
+            .map(|i| i.unwrap().1)
+            .take_while(|i| {
+                if let Some(filter) = filter {
+                    filter(&i)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>()),
+    }
 }
 
 #[cfg(test)]
