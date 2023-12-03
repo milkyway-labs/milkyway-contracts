@@ -238,9 +238,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
-        QueryMsg::Batches { start_after, limit } => {
-            to_binary(&query_batches(deps, start_after, limit)?)
-        }
+        QueryMsg::Batches {
+            start_after,
+            limit,
+            status,
+        } => to_binary(&query_batches(deps, start_after, limit, status)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
         QueryMsg::ClaimableBatches {
             user,

@@ -582,10 +582,10 @@ pub fn recover(
         None,
         if page { Some(page_size) } else { None },
         Order::Ascending,
-        Some(|r| {
+        Some(Box::new(|r: &IBCTransfer| {
             r.status == PacketLifecycleStatus::AckFailure
                 || r.status == PacketLifecycleStatus::TimedOut
-        }),
+        })),
     )?;
 
     if packets.is_empty() {

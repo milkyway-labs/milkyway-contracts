@@ -8,7 +8,7 @@ use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
-use milky_way::staking::Batch;
+use milky_way::staking::{Batch, BatchStatus};
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
@@ -91,14 +91,18 @@ pub fn query_batches(
     deps: Deps,
     start_after: Option<u64>,
     limit: Option<u32>,
+    status: Option<BatchStatus>,
 ) -> StdResult<BatchesResponse> {
+    let filter_closure =
+        status.map(|s| Box::new(move |v: &Batch| v.status == s) as Box<dyn Fn(&Batch) -> bool>);
+
     let batches = paginate_map(
         deps,
         &BATCHES,
         start_after,
         limit,
         cosmwasm_std::Order::Ascending,
-        None,
+        filter_closure,
     )?;
 
     let res = BatchesResponse {
@@ -167,7 +171,9 @@ pub fn query_claimable(
         start_after,
         limit,
         cosmwasm_std::Order::Ascending,
-        Some(|b| return b.status == milky_way::staking::BatchStatus::Received),
+        Some(Box::new(|b: &Batch| {
+            return b.status == milky_way::staking::BatchStatus::Received;
+        })),
     )?
     .into_iter()
     .filter(|b| {
