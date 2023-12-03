@@ -70,6 +70,9 @@ pub enum ExecuteMsg {
         total_reward_amount: Uint128,
     },
     RecoverPendingIbcTransfers {},
+    FeeWithdraw {
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
