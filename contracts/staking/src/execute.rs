@@ -139,7 +139,7 @@ pub fn execute_liquid_stake(
     }
     if let Some(expected_mint_amount) = expected_mint_amount {
         ensure!(
-            mint_amount == expected_mint_amount,
+            mint_amount >= expected_mint_amount,
             ContractError::MintAmountMismatch {
                 expected: expected_mint_amount,
                 actual: mint_amount
