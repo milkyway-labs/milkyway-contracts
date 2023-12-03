@@ -635,9 +635,10 @@ pub fn update_config(
     minimum_liquid_stake_amount: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
-    reserve_token: Option<String>,
+    native_token_denom: Option<String>,
     channel_id: Option<String>,
     operators: Option<Vec<String>>,
+    treasury_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -662,30 +663,34 @@ pub fn update_config(
         validate_addresses(&operators, "osmo")?;
         config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
     }
+    if let Some(treasury_address) = treasury_address {
+        validate_address(&treasury_address, "osmo")?;
+        config.treasury_address = Addr::unchecked(treasury_address);
+    }
 
     // TODO get reserve token from channel? Maybe leave as safeguard?
-    if channel_id.is_some() || reserve_token.is_some() {
-        if channel_id.is_none() || reserve_token.is_none() {
+    if channel_id.is_some() || native_token_denom.is_some() {
+        if channel_id.is_none() || native_token_denom.is_none() {
             return Err(ContractError::IbcChannelNotFound {});
         }
 
         let channel_id = channel_id.unwrap();
-        let reserve_token = reserve_token.unwrap();
+        let native_token_denom = native_token_denom.unwrap();
         let channel_id_correct = channel_id.starts_with("channel-")
             && channel_id
                 .strip_prefix("channel-")
                 .unwrap()
                 .parse::<u64>()
                 .is_ok();
-        let reserve_token_correct = reserve_token.starts_with("ibc/")
-            && reserve_token.strip_prefix("ibc/").unwrap().len() == 64;
+        let native_token_denom_correct = native_token_denom.starts_with("ibc/")
+            && native_token_denom.strip_prefix("ibc/").unwrap().len() == 64;
 
-        if !channel_id_correct || !reserve_token_correct {
+        if !channel_id_correct || !native_token_denom_correct {
             return Err(ContractError::IbcChannelConfigWrong {});
         }
 
         config.ibc_channel_id = channel_id;
-        config.native_token_denom = reserve_token;
+        config.native_token_denom = native_token_denom;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -799,6 +804,13 @@ pub fn receive_unstaked_tokens(
     let amount = coin.unwrap().amount;
 
     let mut batch: Batch = BATCHES.load(deps.storage, batch_id)?;
+
+    if batch.status != BatchStatus::Submitted {
+        return Err(ContractError::BatchNotClaimable {
+            batch_id: batch.id,
+            status: batch.status,
+        });
+    }
 
     if batch.next_batch_action_time.is_none() {
         return Err(ContractError::BatchNotClaimable {

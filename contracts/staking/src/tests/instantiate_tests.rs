@@ -153,6 +153,7 @@ mod tests {
             ),
             channel_id: Some("channel-0".to_string()),
             operators: Some(vec![OSMO3.to_string()]),
+            treasury_address: Some(OSMO3.to_string()),
         };
 
         let res = crate::contract::execute(
@@ -165,6 +166,7 @@ mod tests {
         let config: Config = CONFIG.load(&deps.storage).unwrap();
         assert!(config.operators.len() == 1);
         assert!(config.operators.get(0).unwrap().to_string() == OSMO3.to_string());
+        assert!(config.treasury_address == OSMO3.to_string());
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -180,6 +182,7 @@ mod tests {
             reserve_token: Some("".to_string()),
             channel_id: Some("channel-0".to_string()),
             operators: None,
+            treasury_address: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -203,6 +206,7 @@ mod tests {
             reserve_token: Some("ibc/abc".to_string()),
             channel_id: Some("".to_string()),
             operators: None,
+            treasury_address: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -226,6 +230,7 @@ mod tests {
             reserve_token: Some("".to_string()),
             channel_id: Some("".to_string()),
             operators: None,
+            treasury_address: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),

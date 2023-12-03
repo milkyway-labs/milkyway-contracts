@@ -203,10 +203,23 @@ mod staking_tests {
                 denom: config.native_token_denom.clone(),
             }],
         );
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        assert!(res.is_err());
 
         let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
+        batch.update_status(BatchStatus::Pending, Some(env.block.time.seconds() - 1));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let res: Result<cosmwasm_std::Response, crate::error::ContractError> =
+            execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err()); // batch not submitted
+
+        batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() + 1));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err()); // batch not ready
+
         batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() - 1));
         let res = BATCHES.save(&mut deps.storage, 1, &batch);
         assert!(res.is_ok());

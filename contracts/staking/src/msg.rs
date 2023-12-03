@@ -62,6 +62,7 @@ pub enum ExecuteMsg {
         reserve_token: Option<String>,
         channel_id: Option<String>,
         operators: Option<Vec<String>>,
+        treasury_address: Option<String>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {

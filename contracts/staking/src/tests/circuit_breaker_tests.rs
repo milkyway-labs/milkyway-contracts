@@ -4,7 +4,7 @@ mod circuit_breaker_tests {
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
     use crate::state::{State, BATCHES, CONFIG, STATE};
-    use crate::tests::test_helper::{init, OSMO2};
+    use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO2};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, Addr, Coin, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
@@ -132,7 +132,7 @@ mod circuit_breaker_tests {
         assert_eq!(state.total_reward_amount, Uint128::from(10000u128));
 
         // test enabled
-        let info = mock_info("creator", &coins(1000, "osmoTIA"));
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             expected_mint_amount: None,
         };
