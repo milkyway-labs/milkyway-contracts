@@ -842,8 +842,10 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if !config.operators.iter().any(|v| *v == sender) {
-        return Err(ContractError::Unauthorized { sender });
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
+        if !config.operators.iter().any(|v| *v == sender) {
+            return Err(ContractError::Unauthorized { sender });
+        }
     }
 
     config.stopped = true;
