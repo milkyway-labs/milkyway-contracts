@@ -30,7 +30,13 @@ mod circuit_breaker_tests {
 
         assert!(res.is_err());
 
-        // correct sender
+        // correct sender (admin)
+        let info = mock_info("creator", &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+
+        assert!(res.is_ok());
+
+        // correct sender (operator)
         let info = mock_info(&OSMO2.to_string(), &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
