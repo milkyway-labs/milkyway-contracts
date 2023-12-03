@@ -22,7 +22,9 @@ mod staking_tests {
         let mut deps = init();
         let env = mock_env();
         let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
 
         let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
@@ -167,7 +169,9 @@ mod staking_tests {
     fn liquid_stake_less_than_minimum() {
         let mut deps = init();
         let info = mock_info("creator", &coins(10, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         match res {
@@ -213,6 +217,31 @@ mod staking_tests {
 
         assert!(resp.is_err());
     }
+    #[test]
+    fn mint_amount_divergence() {
+        let mut deps = init();
+        let mut state: State = STATE.load(&deps.storage).unwrap();
+        state.total_liquid_stake_token = Uint128::from(1_000_000_000u128);
+        state.total_native_token = Uint128::from(1_000_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: Some(Uint128::from(1_000u128)),
+        };
+        let res: Result<cosmwasm_std::Response, ContractError> =
+            execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+        assert!(res.is_err());
+
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: Some(Uint128::from(1_000_000u128)),
+        };
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+        if res.is_err() {
+            panic!("Unexpected error: {:?}", res);
+        }
+        assert!(res.is_ok());
+    }
 
     #[test]
     fn zero_liquid_stake_but_native_tokens() {
@@ -225,7 +254,9 @@ mod staking_tests {
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {};
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
         assert!(res.is_ok());
 
