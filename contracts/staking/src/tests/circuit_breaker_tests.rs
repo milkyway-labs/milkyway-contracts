@@ -3,7 +3,7 @@ mod circuit_breaker_tests {
     use crate::contract::execute;
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, CONFIG, STATE};
+    use crate::state::{State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, OSMO2};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, Addr, Coin, Uint128};
@@ -105,7 +105,11 @@ mod circuit_breaker_tests {
         assert!(res.is_err());
 
         // reenable
-        let msg = ExecuteMsg::ResumeContract {};
+        let msg = ExecuteMsg::ResumeContract {
+            total_native_token: Uint128::from(100000u128),
+            total_liquid_stake_token: Uint128::from(200000u128),
+            total_reward_amount: Uint128::from(10000u128),
+        };
 
         // not correct sender
         let info = mock_info(&contract, &[]);
@@ -118,6 +122,12 @@ mod circuit_breaker_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
         assert!(res.is_ok());
+
+        // test accounting update
+        let state: State = STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_liquid_stake_token, Uint128::from(200000u128));
+        assert_eq!(state.total_native_token, Uint128::from(100000u128));
+        assert_eq!(state.total_reward_amount, Uint128::from(10000u128));
 
         // test enabled
         let info = mock_info("creator", &coins(1000, "osmoTIA"));

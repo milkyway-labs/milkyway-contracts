@@ -64,7 +64,11 @@ pub enum ExecuteMsg {
     ReceiveRewards {},
     ReceiveUnstakedTokens {},
     CircuitBreaker {},
-    ResumeContract {},
+    ResumeContract {
+        total_native_token: Uint128,
+        total_liquid_stake_token: Uint128,
+        total_reward_amount: Uint128,
+    },
     RecoverPendingIbcTransfers {},
 }
 

@@ -203,7 +203,18 @@ pub fn execute(
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
-        ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
+        ExecuteMsg::ResumeContract {
+            total_native_token,
+            total_liquid_stake_token,
+            total_reward_amount,
+        } => resume_contract(
+            deps,
+            env,
+            info,
+            total_native_token,
+            total_liquid_stake_token,
+            total_reward_amount,
+        ),
         ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
     }
 }
