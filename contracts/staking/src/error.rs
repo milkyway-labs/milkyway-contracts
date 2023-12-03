@@ -51,6 +51,9 @@ pub enum ContractError {
     #[error("No IBC channel found")]
     IbcChannelNotFound {},
 
+    #[error("The prvoided IBC channel and reserve token config is wrong")]
+    IbcChannelConfigWrong {},
+
     #[error("Batch is not ready to be submitted")]
     BatchNotReady { actual: u64, expected: u64 },
 
@@ -80,6 +83,12 @@ pub enum ContractError {
 
     #[error("Invalid reply id")]
     InvalidReplyID { id: u64 },
+
+    #[error("No inflight packages to recover")]
+    NoInflightPackets {},
+
+    #[error("Error recovering failed ibc transactions")]
+    RecoverError {},
 
     #[error("unexpected batch status")]
     UnexpecedBatchStatus {
@@ -116,4 +125,7 @@ pub enum ContractError {
 
     #[error("Calculated mint amount not as expected")]
     MintAmountMismatch { expected: Uint128, actual: Uint128 },
+
+    #[error("Insufficient funds")]
+    InsufficientFunds {},
 }

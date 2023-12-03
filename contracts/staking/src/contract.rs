@@ -1,5 +1,5 @@
 use crate::execute::{
-    circuit_breaker, execute_submit_batch, handle_ibc_reply, receive_rewards,
+    circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::{validate_address, validate_addresses};
@@ -22,14 +22,15 @@ use crate::{
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
+use semver::Version;
 
 // Version information for migration
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -203,10 +204,26 @@ pub fn execute(
             operators,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
-        ExecuteMsg::ReceiveUnstakedTokens {} => receive_unstaked_tokens(deps, env, info),
+        ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
+            receive_unstaked_tokens(deps, env, info, batch_id)
+        }
         ExecuteMsg::CircuitBreaker {} => circuit_breaker(deps, env, info),
-        ExecuteMsg::ResumeContract {} => resume_contract(deps, env, info),
-        ExecuteMsg::RecoverPendingIbcTransfers {} => recover(deps, env, info),
+        ExecuteMsg::ResumeContract {
+            total_native_token,
+            total_liquid_stake_token,
+            total_reward_amount,
+        } => resume_contract(
+            deps,
+            env,
+            info,
+            total_native_token,
+            total_liquid_stake_token,
+            total_reward_amount,
+        ),
+        ExecuteMsg::RecoverPendingIbcTransfers { paginated } => {
+            recover(deps, env, info, paginated.unwrap_or(false))
+        }
+        ExecuteMsg::FeeWithdraw { amount } => fee_withdraw(deps, env, info, amount),
     }
 }
 
@@ -220,13 +237,23 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
-        QueryMsg::Batches {} => to_binary(&query_batches(deps)?),
+        QueryMsg::Batches { start_after, limit } => {
+            to_binary(&query_batches(deps, start_after, limit)?)
+        }
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
-        QueryMsg::ClaimableBatches { user } => to_binary(&query_claimable(deps, user)?),
+        QueryMsg::ClaimableBatches {
+            user,
+            start_after,
+            limit,
+        } => to_binary(&query_claimable(deps, user, start_after, limit)?),
 
         // dev only, depr
-        QueryMsg::IbcQueue {} => to_binary(&query_ibc_queue(deps)?),
-        QueryMsg::IbcReplyQueue {} => to_binary(&query_reply_queue(deps)?),
+        QueryMsg::IbcQueue { start_after, limit } => {
+            to_binary(&query_ibc_queue(deps, start_after, limit)?)
+        }
+        QueryMsg::IbcReplyQueue { start_after, limit } => {
+            to_binary(&query_reply_queue(deps, start_after, limit)?)
+        }
     }
 }
 
@@ -234,9 +261,35 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 /// MIGRATE ///
 ///////////////
 
-#[entry_point]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
-    // TODO: note implement yet
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let current_version = cw2::get_contract_version(deps.storage)?;
+    if &CONTRACT_NAME != &current_version.contract.as_str() {
+        return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
+    }
+
+    let version: Version = current_version
+        .version
+        .parse()
+        .map_err(|_| StdError::generic_err("Invalid contract version"))?;
+    let new_version: Version = CONTRACT_VERSION
+        .parse()
+        .map_err(|_| StdError::generic_err("Invalid contract version"))?;
+
+    // current version not launchpad v2
+    if version > new_version {
+        return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
+    }
+    // if same version return
+    if version == new_version {
+        return Err(StdError::generic_err("Cannot migrate to the same version.").into());
+    }
+
+    // migrate data
+    // NONE currently
+
+    // set new contract version
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new())
 }
 

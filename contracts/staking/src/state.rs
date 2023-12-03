@@ -33,6 +33,7 @@ pub struct State {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct ProtocolFeeConfig {
     pub dao_treasury_fee: Uint128, // not using a fraction, fee percentage=x/100000
 }

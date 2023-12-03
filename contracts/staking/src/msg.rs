@@ -64,10 +64,21 @@ pub enum ExecuteMsg {
         operators: Option<Vec<String>>,
     },
     ReceiveRewards {},
-    ReceiveUnstakedTokens {},
+    ReceiveUnstakedTokens {
+        batch_id: u64,
+    },
     CircuitBreaker {},
-    ResumeContract {},
-    RecoverPendingIbcTransfers {},
+    ResumeContract {
+        total_native_token: Uint128,
+        total_liquid_stake_token: Uint128,
+        total_reward_amount: Uint128,
+    },
+    RecoverPendingIbcTransfers {
+        paginated: Option<bool>,
+    },
+    FeeWithdraw {
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -82,6 +93,7 @@ pub struct ConfigResponse {
     pub minimum_liquid_stake_amount: Uint128,
     pub staker_address: String,
     pub reward_collector_address: String,
+    pub protocol_fee_config: ProtocolFeeConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -131,15 +143,28 @@ pub enum QueryMsg {
     #[returns(BatchResponse)]
     Batch { id: u64 },
     #[returns(BatchesResponse)]
-    Batches {},
+    Batches {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(BatchResponse)]
     PendingBatch {},
     #[returns(BatchesResponse)]
-    ClaimableBatches { user: Addr },
+    ClaimableBatches {
+        user: Addr,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(IBCQueueResponse)]
-    IbcQueue {},
+    IbcQueue {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(IBCReplyQueueResponse)]
-    IbcReplyQueue {},
+    IbcReplyQueue {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

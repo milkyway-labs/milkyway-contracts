@@ -218,7 +218,7 @@ mod staking_tests {
         assert!(resp.is_err());
     }
     #[test]
-    fn nint_amount_divergence() {
+    fn mint_amount_divergence() {
         let mut deps = init();
         let mut state: State = STATE.load(&deps.storage).unwrap();
         state.total_liquid_stake_token = Uint128::from(1_000_000_000u128);
@@ -241,5 +241,28 @@ mod staking_tests {
             panic!("Unexpected error: {:?}", res);
         }
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn zero_liquid_stake_but_native_tokens() {
+        let mut deps = init();
+
+        let mut state: State = STATE.load(&deps.storage).unwrap();
+        state.total_native_token = Uint128::from(1000u128);
+        state.total_liquid_stake_token = Uint128::from(0u128);
+        state.total_fees = Uint128::from(100u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let msg = ExecuteMsg::LiquidStake {
+            expected_mint_amount: None,
+        };
+        let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+        assert!(res.is_ok());
+
+        let state: State = STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_native_token, Uint128::from(1000u128));
+        assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
+        assert_eq!(state.total_fees, Uint128::from(1100u128));
     }
 }
