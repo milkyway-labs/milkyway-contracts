@@ -72,7 +72,7 @@ mod circuit_breaker_tests {
         assert!(res.is_err());
 
         // receive unstaked tokens
-        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
         let info = mock_info(
             &sender,
             &[Coin {
