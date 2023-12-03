@@ -162,6 +162,7 @@ mod query_tests {
         let msg = QueryMsg::Batches {
             start_after: None,
             limit: None,
+            status: None,
         };
         let mut bin = query(deps.as_ref(), env.clone(), msg.clone()).unwrap();
         let mut result = from_binary::<BatchesResponse>(&bin);
@@ -256,6 +257,17 @@ mod query_tests {
                 _ => panic!("Unexpected error: {:?}", e),
             },
         }
+
+        // query only submitted batches
+        let msg = QueryMsg::Batches {
+            start_after: None,
+            limit: None,
+            status: Some(milky_way::staking::BatchStatus::Submitted),
+        };
+        bin = query(deps.as_ref(), env.clone(), msg).unwrap();
+        result = from_binary::<BatchesResponse>(&bin);
+        let result = result.unwrap();
+        assert_eq!(result.batches.len(), 1);
     }
 
     #[test]

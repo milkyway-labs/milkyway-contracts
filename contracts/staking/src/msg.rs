@@ -3,6 +3,7 @@ use crate::state::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
+use milky_way::staking::BatchStatus;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -147,6 +148,7 @@ pub enum QueryMsg {
     Batches {
         start_after: Option<u64>,
         limit: Option<u32>,
+        status: Option<BatchStatus>,
     },
     #[returns(BatchResponse)]
     PendingBatch {},

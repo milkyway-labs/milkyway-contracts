@@ -108,7 +108,7 @@ pub fn paginate_map<'a, 'b, K, V, R: 'static>(
     start_after: Option<K>,
     limit: Option<u32>,
     order: Order,
-    filter: Option<fn(&V) -> bool>,
+    filter: Option<Box<dyn Fn(&V) -> bool>>,
 ) -> StdResult<Vec<V>>
 where
     K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
@@ -129,7 +129,7 @@ where
                     return false;
                 }
                 taken += 1;
-                if let Some(filter) = filter {
+                if let Some(filter) = &filter {
                     filter(&i)
                 } else {
                     true
@@ -139,7 +139,7 @@ where
         None => Ok(items
             .map(|i| i.unwrap().1)
             .take_while(|i| {
-                if let Some(filter) = filter {
+                if let Some(filter) = &filter {
                     filter(&i)
                 } else {
                     true
