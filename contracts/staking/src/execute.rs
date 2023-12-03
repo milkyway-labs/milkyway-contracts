@@ -4,7 +4,6 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
     validate_addresses,
 };
-use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -24,7 +23,7 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
 pub fn transfer_stake_msg(
-    deps: Deps,
+    deps: &Deps,
     env: &Env,
     amount: Uint128,
 ) -> Result<MsgTransfer, ContractError> {
@@ -62,6 +61,34 @@ pub fn transfer_stake_msg(
     Ok(ibc_msg)
 }
 
+fn transfer_stake_sub_msg(
+    deps: &mut DepsMut,
+    env: &Env,
+    amount: Uint128,
+    sub_msg_id: Option<u64>,
+) -> Result<SubMsg, ContractError> {
+    let ibc_msg = transfer_stake_msg(&deps.as_ref(), env, amount)?;
+    let sub_msg_id = sub_msg_id.unwrap_or({
+        match env.transaction {
+            Some(ref tx) => tx.index as u64 + env.block.time.nanos(),
+            None => env.block.time.nanos(),
+        }
+    });
+
+    let ibc_waiting_for_reply = IbcWaitingForReply {
+        amount: amount.into(),
+    };
+
+    save_ibc_waiting_for_reply(deps, sub_msg_id, ibc_waiting_for_reply)?;
+
+    Ok(SubMsg {
+        id: sub_msg_id,
+        msg: ibc_msg.into(),
+        gas_limit: None,
+        reply_on: ReplyOn::Always,
+    })
+}
+
 pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
     if config.stopped {
         return Err(ContractError::Halted {});
@@ -73,7 +100,7 @@ pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
 // Payment validation handled by caller (not sure what this means)
 // Denom validation handled by caller (done in contract.rs)
 pub fn execute_liquid_stake(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
@@ -116,35 +143,16 @@ pub fn execute_liquid_stake(
     };
 
     // Transfer native token to multisig address
-    let ibc_msg = transfer_stake_msg(deps.as_ref(), &env, amount)?;
+    let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
-    // message id will be dependendent on block and transaction index, and will therefor always be unique
-    let sub_msg_id = if env.transaction.is_none() {
-        env.block.time.nanos()
-    } else {
-        env.block.time.nanos() + env.transaction.unwrap().index as u64
-    };
 
     STATE.save(deps.storage, &state)?;
 
-    save_ibc_waiting_for_reply(
-        deps,
-        sub_msg_id,
-        IbcWaitingForReply {
-            amount: Uint128::from(amount).into(),
-        },
-    )?;
-
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_submessage(SubMsg {
-            msg: ibc_msg.into(),
-            id: sub_msg_id,
-            reply_on: ReplyOn::Always,
-            gas_limit: None,
-        })
+        .add_submessage(sub_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("amount", amount))
@@ -531,9 +539,7 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Response> {
-    let config: Config = CONFIG.load(deps.storage)?;
-
+pub fn recover(mut deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Response, ContractError> {
     // timed out and failed packets
     let all_packages = INFLIGHT_PACKETS
         .range(deps.storage, None, None, Order::Ascending)
@@ -546,34 +552,39 @@ pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Re
         })
         .collect::<Vec<IBCTransfer>>();
 
-    let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
-    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
-    ));
+    if packets.is_empty() {
+        return Err(ContractError::NoInflightPackets {});
+    }
 
-    let msgs = packets.into_iter().map(|r| {
-        INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
-        MsgTransfer {
-            source_channel: ibc_config.channel_id.clone(),
-            source_port: "transfer".to_string(),
-            token: Some(Coin {
-                denom: config.native_token_denom.clone(),
-                amount: r.amount.to_string(),
-            }),
-            receiver: config.multisig_address_config.staker_address.to_string(),
-            sender: env.contract.address.to_string(),
-            timeout_height: None,
-            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-            memo: format!(
-                "{{\"ibc_callback\":\"{}\"}}",
-                env.contract.address.to_string()
-            ),
-        }
-    });
+    let max_submessage_id = INFLIGHT_PACKETS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter(|r| r.is_ok())
+        .map(|r| r.unwrap().0)
+        .max()
+        .unwrap();
+
+    let total_amount = packets
+        .into_iter()
+        .map(|r| {
+            INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
+            r.amount
+        })
+        .reduce(|a, b| a + b)
+        .unwrap();
+
+    // this shouldn't collide. any committed submessage package should have enough upper room in the indexes
+    // they are based on block times in nano seconds
+    // we are fusing all pending transfers into one
+    let sub_msg = transfer_stake_sub_msg(
+        &mut deps,
+        &env,
+        Uint128::from(total_amount),
+        Some(max_submessage_id + 1),
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "recover")
-        .add_messages(msgs))
+        .add_submessage(sub_msg))
 }
 
 // Update the config; callable by the owner
@@ -699,7 +710,7 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), &env, amount_after_fees.clone())?;
+    let ibc_transfer_msg = transfer_stake_msg(&deps.as_ref(), &env, amount_after_fees.clone())?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
@@ -865,7 +876,7 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
 }
 
 fn save_ibc_waiting_for_reply(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     id: u64,
     ibc_msg: IbcWaitingForReply,
 ) -> Result<(), ContractError> {
