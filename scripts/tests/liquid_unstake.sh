@@ -4,13 +4,13 @@ CODE_ID=$(osmosisd query wasm list-code --output json | jq -r '.code_infos[-1].c
 CONTRACT=$(osmosisd query wasm list-contract-by-code $CODE_ID --output json | jq -r '.contracts[-1]')
 
 # assert that balance has stTIA
-if [ -z "$(osmosisd query bank balances $ADMIN_OSMOSIS | grep "factory/$CONTRACT/mlk")" ]; then
+if [ -z "$(osmosisd query bank balances $ADMIN_OSMOSIS | grep "factory/$CONTRACT/milkTIA")" ]; then
     echo "stTIA not found"
 fi
 
 # liquid unstake
 osmosisd tx wasm execute $CONTRACT '{"liquid_unstake":{}}' \
-    --amount 1000factory/$CONTRACT/mlk \
+    --amount 1000factory/$CONTRACT/milkTIA \
     --from test_master --keyring-backend test -y \
     --node http://localhost:26657 -y -b block \
     --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
