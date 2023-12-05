@@ -37,6 +37,7 @@ mod query_tests {
                 assert_eq!(res.unbonding_period, 1209600);
                 assert_eq!(res.minimum_liquid_stake_amount, Uint128::from(100u128));
                 assert_eq!(res.ibc_channel_id, CHANNEL_ID.to_string());
+                assert_eq!(res.stopped, false);
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),

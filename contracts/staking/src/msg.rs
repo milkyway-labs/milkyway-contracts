@@ -97,6 +97,7 @@ pub struct ConfigResponse {
     pub reward_collector_address: String,
     pub protocol_fee_config: ProtocolFeeConfig,
     pub ibc_channel_id: String,
+    pub stopped: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
