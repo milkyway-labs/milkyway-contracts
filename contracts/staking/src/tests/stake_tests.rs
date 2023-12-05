@@ -44,7 +44,8 @@ mod staking_tests {
                     vec![
                         attr("action", "liquid_stake"),
                         attr("sender", "creator"),
-                        attr("amount", "1000")
+                        attr("in_amount", "1000"),
+                        attr("mint_amount", "1000"),
                     ]
                 );
                 assert_eq!(result.messages.len(), 2);
