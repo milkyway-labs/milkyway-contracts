@@ -304,6 +304,14 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
+    // safe guard so this code doesn't stay in the contract
+    if version != Version::new(0, 1, 0) {
+        return Err(StdError::generic_err(format!(
+            "Unsupported migration from version {}",
+            version
+        ))
+        .into());
+    }
     let mut config: Config = CONFIG.load(deps.storage)?;
     if config.operators.is_some() && config.monitors.is_none() {
         config.monitors = config.operators.clone();
