@@ -60,7 +60,7 @@ pub enum ExecuteMsg {
         minimum_liquid_stake_amount: Option<Uint128>,
         multisig_address_config: Option<MultisigAddressConfig>,
         protocol_fee_config: Option<ProtocolFeeConfig>,
-        reserve_token: Option<String>,
+        native_token_denom: Option<String>,
         channel_id: Option<String>,
         operators: Option<Vec<String>>,
         treasury_address: Option<String>,
