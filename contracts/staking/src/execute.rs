@@ -173,7 +173,8 @@ pub fn execute_liquid_stake(
         .add_submessage(sub_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
-        .add_attribute("amount", amount))
+        .add_attribute("in_amount", amount)
+        .add_attribute("mint_amount", mint_amount))
 }
 
 pub fn execute_liquid_unstake(

@@ -1,6 +1,6 @@
 # cargo install --git https://github.com/cmoog/bech32         
 
-RES=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --output json --node http://localhost:26657 -y -b block --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto --chain-id osmosis-dev-1)
+RES=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --keyring-backend test --output json --node http://localhost:26657 -y -b block --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto --chain-id osmosis-dev-1)
 CODE_ID=$(osmosisd query wasm list-code --output json | jq -r '.code_infos[-1].code_id')
 ADMIN_OSMOSIS=osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge
 ADMIN_CELESTIA=celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx
@@ -14,12 +14,20 @@ OSMOSIS_VALIDATOR_1=$(echo $VALIDATORS | cut -d',' -f1 | bech32 --decode | bech3
 CELESTIA_VALIDATOR_1=$(celestia-appd query staking validators --node http://localhost:26661 --output json | jq -r '.validators[] | select(.description.moniker == "validator1") | .operator_address')
 CELESTIA_VALIDATOR_2=$(celestia-appd query staking validators --node http://localhost:26661 --output json | jq -r '.validators[] | select(.description.moniker == "validator2") | .operator_address')
 CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node http://localhost:26661 --output json | jq -r '.validators[] | select(.description.moniker == "validator3") | .operator_address')
-UNBONDING_PERIOD=$(celestia-appd query staking params --node http://localhost:26661 --output json | jq -r '.params.unbonding_time')
-INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"mlk\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"controller_address\":\"$ADMIN_CELESTIA\",\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"minimum_rewards_to_collect\":\"10\",\"ibc_channel_id\":\"channel-0\"}
+UNBONDING_PERIOD=$(celestia-appd query staking params --node http://localhost:26661 --output json | jq -r '.unbonding_time | .[:-1]')
+BATCH_PERIOD=$(echo "scale=2; ($UNBONDING_PERIOD + 6) / 7" | bc)
+BATCH_PERIOD=${BATCH_PERIOD%.*}
+INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\"}
 osmosisd tx wasm instantiate $CODE_ID $INIT \
-    --from test_master --label "milkyway test" -y \
+    --from test_master --keyring-backend test --label "milkyway test" -y \
     --admin "$ADMIN_OSMOSIS" --node http://localhost:26657 -y -b block \
     --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
     --chain-id osmosis-dev-1
 CONTRACT=$(osmosisd query wasm list-contract-by-code $CODE_ID --node http://localhost:26657 --output json | jq -r '.contracts[-1]')
 echo $CONTRACT
+
+osmosisd tx wasm execute $CONTRACT '{"resume_contract":{"total_native_token":"0","total_liquid_stake_token":"0","total_reward_amount":"0"}}' \
+    --from test_master --keyring-backend test -y \
+    --node http://localhost:26657 -y -b block \
+    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+    --chain-id osmosis-dev-1
