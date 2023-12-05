@@ -661,7 +661,7 @@ pub fn update_config(
     }
     if let Some(operators) = operators {
         validate_addresses(&operators, "osmo")?;
-        config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
+        config.monitors = Some(operators.into_iter().map(|o| Addr::unchecked(o)).collect());
     }
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;
@@ -843,7 +843,13 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
-        if !config.operators.iter().any(|v| *v == sender) {
+        if !config
+            .clone()
+            .monitors
+            .unwrap_or(vec![])
+            .iter()
+            .any(|v| *v == sender)
+        {
             return Err(ContractError::Unauthorized { sender });
         }
     }

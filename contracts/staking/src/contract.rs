@@ -78,7 +78,8 @@ pub fn instantiate(
             env.contract.address, msg.liquid_stake_token_denom
         ),
         treasury_address: Addr::unchecked(""),
-        operators: vec![],
+        operators: None,
+        monitors: Some(vec![]),
         validators,
         batch_period: 0,
         unbonding_period: 0,
@@ -107,7 +108,7 @@ pub fn instantiate(
         Some(msg.protocol_fee_config),
         Some(msg.native_token_denom),
         Some(msg.ibc_channel_id.clone()),
-        Some(msg.operators),
+        Some(msg.monitors),
         Some(msg.treasury_address),
     )?;
 
@@ -202,7 +203,7 @@ pub fn execute(
             protocol_fee_config,
             native_token_denom,
             channel_id,
-            operators,
+            monitors,
             treasury_address,
         } => update_config(
             deps,
@@ -215,7 +216,7 @@ pub fn execute(
             protocol_fee_config,
             native_token_denom,
             channel_id,
-            operators,
+            monitors,
             treasury_address,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
@@ -303,7 +304,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
-    // NONE currently
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    if config.operators.is_some() && config.monitors.is_none() {
+        config.monitors = config.operators.clone();
+    }
+    config.operators = None;
+    CONFIG.save(deps.storage, &config)?;
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

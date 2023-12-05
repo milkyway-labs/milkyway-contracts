@@ -17,8 +17,9 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         native_token_denom: config.native_token_denom,
         liquid_stake_token_denom: config.liquid_stake_token_denom,
         treasury_address: config.treasury_address.to_string(),
-        operators: config
-            .operators
+        monitors: config
+            .monitors
+            .unwrap()
             .into_iter()
             .map(|v| v.to_string())
             .collect(),

@@ -9,7 +9,8 @@ pub struct Config {
     pub native_token_denom: String,
     pub liquid_stake_token_denom: String,
     pub treasury_address: Addr,
-    pub operators: Vec<Addr>,
+    pub operators: Option<Vec<Addr>>, //depr
+    pub monitors: Option<Vec<Addr>>,
     pub validators: Vec<Addr>,
     pub batch_period: u64,
     pub unbonding_period: u64,

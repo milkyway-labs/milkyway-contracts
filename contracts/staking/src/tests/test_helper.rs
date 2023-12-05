@@ -27,7 +27,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         native_token_denom: NATIVE_TOKEN.to_string(),
         liquid_stake_token_denom: "stTIA".to_string(),
         treasury_address: OSMO1.to_string(),
-        operators: vec![OSMO2.to_string(), OSMO3.to_string()],
+        monitors: vec![OSMO2.to_string(), OSMO3.to_string()],
         validators: vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()],
         batch_period: 86400,
         unbonding_period: 1209600,

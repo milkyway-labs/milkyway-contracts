@@ -15,8 +15,8 @@ pub struct InstantiateMsg {
     pub liquid_stake_token_denom: String,
     /// Treasury contract address
     pub treasury_address: String,
-    /// Set of node operators who will operate the protocol
-    pub operators: Vec<String>,
+    /// Set of addresses allowed to trigger a circuit break
+    pub monitors: Vec<String>,
     /// Set of validators who will receive the delegations
     pub validators: Vec<String>,
     /// How often the unbonding queue is to be executed in seconds
@@ -62,7 +62,7 @@ pub enum ExecuteMsg {
         protocol_fee_config: Option<ProtocolFeeConfig>,
         native_token_denom: Option<String>,
         channel_id: Option<String>,
-        operators: Option<Vec<String>>,
+        monitors: Option<Vec<String>>,
         treasury_address: Option<String>,
     },
     ReceiveRewards {},
@@ -88,7 +88,7 @@ pub struct ConfigResponse {
     pub native_token_denom: String,
     pub liquid_stake_token_denom: String,
     pub treasury_address: String,
-    pub operators: Vec<String>,
+    pub monitors: Vec<String>,
     pub validators: Vec<String>,
     pub batch_period: u64,
     pub unbonding_period: u64,
