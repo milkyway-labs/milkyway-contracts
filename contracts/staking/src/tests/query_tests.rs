@@ -9,7 +9,7 @@ mod query_tests {
     use crate::query::query_pending_batch;
     use crate::state::{CONFIG, STATE};
     use crate::tests::test_helper::{
-        init, CELESTIAVAL1, CELESTIAVAL2, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
+        init, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, Decimal, Uint128};
@@ -36,6 +36,7 @@ mod query_tests {
                 assert_eq!(res.batch_period, 86400);
                 assert_eq!(res.unbonding_period, 1209600);
                 assert_eq!(res.minimum_liquid_stake_amount, Uint128::from(100u128));
+                assert_eq!(res.ibc_channel_id, CHANNEL_ID.to_string());
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),
