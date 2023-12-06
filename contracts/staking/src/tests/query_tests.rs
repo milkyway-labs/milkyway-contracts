@@ -28,7 +28,7 @@ mod query_tests {
                     "factory/cosmos2contract/stTIA".to_string()
                 );
                 assert_eq!(res.treasury_address, OSMO1.to_string());
-                assert_eq!(res.operators, vec![OSMO2.to_string(), OSMO3.to_string()]);
+                assert_eq!(res.monitors, vec![OSMO2.to_string(), OSMO3.to_string()]);
                 assert_eq!(
                     res.validators,
                     vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
