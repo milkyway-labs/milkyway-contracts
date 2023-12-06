@@ -96,6 +96,7 @@ pub struct ConfigResponse {
     pub staker_address: String,
     pub reward_collector_address: String,
     pub protocol_fee_config: ProtocolFeeConfig,
+    pub ibc_channel_id: String,
     pub stopped: bool,
 }
 

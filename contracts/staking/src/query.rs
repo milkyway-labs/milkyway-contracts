@@ -37,6 +37,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .reward_collector_address
             .to_string(),
         protocol_fee_config: config.protocol_fee_config,
+        ibc_channel_id: config.ibc_channel_id,
         stopped: config.stopped,
     };
     Ok(res)
