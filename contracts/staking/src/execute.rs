@@ -672,7 +672,7 @@ pub fn update_config(
     // TODO get reserve token from channel? Maybe leave as safeguard?
     if channel_id.is_some() || native_token_denom.is_some() {
         if channel_id.is_none() || native_token_denom.is_none() {
-            return Err(ContractError::IbcChannelNotFound {});
+            return Err(ContractError::IbcChannelConfigWrong {});
         }
 
         let channel_id = channel_id.unwrap();
@@ -699,7 +699,7 @@ pub fn update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
     let mut state: State = STATE.load(deps.storage)?;
 
@@ -758,14 +758,15 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(&deps.as_ref(), &env, amount_after_fees.clone())?;
+    let ibc_transfer_msg =
+        transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
-        .add_message(ibc_transfer_msg))
+        .add_submessage(ibc_transfer_msg))
 }
 
 pub fn receive_unstaked_tokens(
