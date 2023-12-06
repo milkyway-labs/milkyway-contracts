@@ -416,7 +416,7 @@ pub fn execute_withdraw(
     // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let send_msg: MsgSend = MsgSend {
+    let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
         to_address: info.sender.to_string(),
         amount: vec![Coin {
