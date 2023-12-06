@@ -17,7 +17,7 @@ CELESTIA_VALIDATOR_3=$(celestia-appd query staking validators --node http://loca
 UNBONDING_PERIOD=$(celestia-appd query staking params --node http://localhost:26661 --output json | jq -r '.unbonding_time | .[:-1]')
 BATCH_PERIOD=$(echo "scale=2; ($UNBONDING_PERIOD + 6) / 7" | bc)
 BATCH_PERIOD=${BATCH_PERIOD%.*}
-INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"operators\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\"}
+INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"monitors\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\"}
 osmosisd tx wasm instantiate $CODE_ID $INIT \
     --from test_master --keyring-backend test --label "milkyway test" -y \
     --admin "$ADMIN_OSMOSIS" --node http://localhost:26657 -y -b block \

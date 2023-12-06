@@ -638,7 +638,7 @@ pub fn update_config(
     protocol_fee_config: Option<ProtocolFeeConfig>,
     native_token_denom: Option<String>,
     channel_id: Option<String>,
-    operators: Option<Vec<String>>,
+    monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -660,9 +660,9 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
-    if let Some(operators) = operators {
-        validate_addresses(&operators, "osmo")?;
-        config.monitors = Some(operators.into_iter().map(|o| Addr::unchecked(o)).collect());
+    if let Some(monitors) = monitors {
+        validate_addresses(&monitors, "osmo")?;
+        config.monitors = Some(monitors.into_iter().map(|o| Addr::unchecked(o)).collect());
     }
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;
