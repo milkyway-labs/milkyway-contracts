@@ -1,3 +1,4 @@
+use crate::helpers::paginate_map;
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
     LiquidUnstakeRequestResponse, StateResponse,
@@ -7,7 +8,7 @@ use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
-use milky_way::staking::Batch;
+use milky_way::staking::{Batch, BatchStatus};
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
@@ -16,8 +17,9 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         native_token_denom: config.native_token_denom,
         liquid_stake_token_denom: config.liquid_stake_token_denom,
         treasury_address: config.treasury_address.to_string(),
-        operators: config
-            .operators
+        monitors: config
+            .monitors
+            .unwrap()
             .into_iter()
             .map(|v| v.to_string())
             .collect(),
@@ -34,6 +36,9 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .multisig_address_config
             .reward_collector_address
             .to_string(),
+        protocol_fee_config: config.protocol_fee_config,
+        ibc_channel_id: config.ibc_channel_id,
+        stopped: config.stopped,
     };
     Ok(res)
 }
@@ -85,11 +90,26 @@ pub fn query_batch(deps: Deps, id: u64) -> StdResult<BatchResponse> {
     Ok(batch_to_response(batch))
 }
 
-pub fn query_batches(deps: Deps) -> StdResult<BatchesResponse> {
-    let batches = BATCHES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending);
+pub fn query_batches(
+    deps: Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    status: Option<BatchStatus>,
+) -> StdResult<BatchesResponse> {
+    let filter_closure =
+        status.map(|s| Box::new(move |v: &Batch| v.status == s) as Box<dyn Fn(&Batch) -> bool>);
+
+    let batches = paginate_map(
+        deps,
+        &BATCHES,
+        start_after,
+        limit,
+        cosmwasm_std::Order::Ascending,
+        filter_closure,
+    )?;
 
     let res = BatchesResponse {
-        batches: batches.map(|v| batch_to_response(v.unwrap().1)).collect(),
+        batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
     };
     Ok(res)
 }
@@ -101,11 +121,19 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     Ok(batch_to_response(pending_batch))
 }
 
-pub fn query_ibc_queue(deps: Deps) -> StdResult<IBCQueueResponse> {
-    let inflight_packets: Vec<IBCTransfer> = INFLIGHT_PACKETS
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .map(|v| v.unwrap().1)
-        .collect();
+pub fn query_ibc_queue(
+    deps: Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<IBCQueueResponse> {
+    let inflight_packets: Vec<IBCTransfer> = paginate_map(
+        deps,
+        &INFLIGHT_PACKETS,
+        start_after,
+        limit,
+        cosmwasm_std::Order::Ascending,
+        None,
+    )?;
     let res = IBCQueueResponse {
         ibc_queue: inflight_packets,
     };
@@ -113,33 +141,52 @@ pub fn query_ibc_queue(deps: Deps) -> StdResult<IBCQueueResponse> {
     Ok(res)
 }
 
-// Depr?
-pub fn query_reply_queue(deps: Deps) -> StdResult<IBCReplyQueueResponse> {
-    let ibc_messages_waiting = IBC_WAITING_FOR_REPLY
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .map(|v| v.unwrap().1)
-        .collect();
+pub fn query_reply_queue(
+    deps: Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<IBCReplyQueueResponse> {
+    let ibc_messages_waiting = paginate_map(
+        deps,
+        &IBC_WAITING_FOR_REPLY,
+        start_after,
+        limit,
+        cosmwasm_std::Order::Ascending,
+        None,
+    )?;
     let res = IBCReplyQueueResponse {
         ibc_queue: ibc_messages_waiting,
     };
     Ok(res)
 }
 
-pub fn query_claimable(deps: Deps, user: Addr) -> StdResult<BatchesResponse> {
+pub fn query_claimable(
+    deps: Deps,
+    user: Addr,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<BatchesResponse> {
     deps.api.addr_validate(&user.to_string())?;
 
-    let batches = BATCHES
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .map(|v| v.unwrap().1)
-        .filter(|v| v.status == milky_way::staking::BatchStatus::Received)
-        .filter(|v| {
-            !v.liquid_unstake_requests
-                .get(&user.to_string())
-                .unwrap()
-                .redeemed
-        })
-        .map(|v| batch_to_response(v))
-        .collect();
+    let batches = paginate_map(
+        deps,
+        &BATCHES,
+        start_after,
+        limit,
+        cosmwasm_std::Order::Ascending,
+        Some(Box::new(|b: &Batch| {
+            return b.status == milky_way::staking::BatchStatus::Received;
+        })),
+    )?
+    .into_iter()
+    .filter(|b| {
+        !b.liquid_unstake_requests
+            .get(&user.to_string())
+            .unwrap()
+            .redeemed
+    })
+    .map(|v| batch_to_response(v))
+    .collect();
 
     let res = BatchesResponse { batches };
     Ok(res)

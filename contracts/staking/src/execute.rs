@@ -1,10 +1,9 @@
 use crate::contract::CELESTIA_VALIDATOR_PREFIX;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, validate_address,
-    validate_addresses,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, paginate_map,
+    validate_address, validate_addresses,
 };
-use crate::state::IbcConfig;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -24,7 +23,7 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
 pub fn transfer_stake_msg(
-    deps: Deps,
+    deps: &Deps,
     env: &Env,
     amount: Uint128,
 ) -> Result<MsgTransfer, ContractError> {
@@ -62,6 +61,34 @@ pub fn transfer_stake_msg(
     Ok(ibc_msg)
 }
 
+fn transfer_stake_sub_msg(
+    deps: &mut DepsMut,
+    env: &Env,
+    amount: Uint128,
+    sub_msg_id: Option<u64>,
+) -> Result<SubMsg, ContractError> {
+    let ibc_msg = transfer_stake_msg(&deps.as_ref(), env, amount)?;
+    let sub_msg_id = sub_msg_id.unwrap_or({
+        match env.transaction {
+            Some(ref tx) => tx.index as u64 + env.block.time.nanos(),
+            None => env.block.time.nanos(),
+        }
+    });
+
+    let ibc_waiting_for_reply = IbcWaitingForReply {
+        amount: amount.into(),
+    };
+
+    save_ibc_waiting_for_reply(deps, sub_msg_id, ibc_waiting_for_reply)?;
+
+    Ok(SubMsg {
+        id: sub_msg_id,
+        msg: ibc_msg.into(),
+        gas_limit: None,
+        reply_on: ReplyOn::Always,
+    })
+}
+
 pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
     if config.stopped {
         return Err(ContractError::Halted {});
@@ -73,11 +100,12 @@ pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
 // Payment validation handled by caller (not sure what this means)
 // Denom validation handled by caller (done in contract.rs)
 pub fn execute_liquid_stake(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: Uint128,
     original_sender: Option<String>,
+    expected_mint_amount: Option<Uint128>,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -113,7 +141,7 @@ pub fn execute_liquid_stake(
         info.sender.to_string()
     };
 
-    let mut state = STATE.load(deps.storage)?;
+    let mut state: State = STATE.load(deps.storage)?;
     ensure!(
         amount >= config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
@@ -121,6 +149,14 @@ pub fn execute_liquid_stake(
             sent_amount: (amount)
         }
     );
+
+    // this handles a special case that through slashing and redeeming chaining we get into a state
+    // where the total liquid stake is zero but the total native stake is not
+    // nobody can claim the native stake, so we need to claim it to the DAO
+    if state.total_liquid_stake_token.is_zero() && !state.total_native_token.is_zero() {
+        state.total_fees += state.total_native_token;
+        state.total_native_token = Uint128::zero();
+    }
 
     // Compute mint amount
     let mint_amount = compute_mint_amount(
@@ -131,6 +167,15 @@ pub fn execute_liquid_stake(
     // If mint amount is zero it is likely there was a an issue with rounding, return error and do not mint
     if mint_amount.is_zero() {
         return Err(ContractError::MintError {});
+    }
+    if let Some(expected_mint_amount) = expected_mint_amount {
+        ensure!(
+            mint_amount >= expected_mint_amount,
+            ContractError::MintAmountMismatch {
+                expected: expected_mint_amount,
+                actual: mint_amount
+            }
+        );
     }
 
     // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
@@ -147,38 +192,20 @@ pub fn execute_liquid_stake(
     };
 
     // Transfer native token to multisig address
-    let ibc_msg = transfer_stake_msg(deps.as_ref(), &env, amount)?;
+    let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
-    // message id will be dependendent on block and transaction index, and will therefor always be unique
-    let sub_msg_id = if env.transaction.is_none() {
-        env.block.time.nanos()
-    } else {
-        env.block.time.nanos() + env.transaction.unwrap().index as u64
-    };
 
     STATE.save(deps.storage, &state)?;
 
-    save_ibc_waiting_for_reply(
-        deps,
-        sub_msg_id,
-        IbcWaitingForReply {
-            amount: Uint128::from(amount).into(),
-        },
-    )?;
-
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_submessage(SubMsg {
-            msg: ibc_msg.into(),
-            id: sub_msg_id,
-            reply_on: ReplyOn::Always,
-            gas_limit: None,
-        })
+        .add_submessage(sub_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
-        .add_attribute("amount", amount))
+        .add_attribute("in_amount", amount)
+        .add_attribute("mint_amount", mint_amount))
 }
 
 pub fn execute_liquid_unstake(
@@ -194,12 +221,8 @@ pub fn execute_liquid_unstake(
     STATE.load(deps.storage)?;
 
     // Load current pending batch
-    let mut pending_batch: Batch = BATCHES
-        .range(deps.storage, None, None, Order::Descending)
-        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
-        .unwrap()
-        .unwrap()
-        .1;
+    let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
+    let mut pending_batch: Batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     // Add unstake request to pending batch
     match pending_batch
@@ -293,7 +316,6 @@ pub fn execute_submit_batch(
         }
     );
 
-    let config = CONFIG.load(deps.storage)?;
     // Update batch status
     batch.update_status(
         BatchStatus::Submitted,
@@ -499,6 +521,7 @@ pub fn execute_remove_validator(
 // Transfer ownership to another account; callable by the owner
 // This will require the new owner to accept to take effect.
 // No need to handle case of overwriting the pending owner
+// Ownership can only be claimed after 7 days to mitigate fat finger errors
 pub fn execute_transfer_ownership(
     deps: DepsMut,
     _env: Env,
@@ -507,8 +530,11 @@ pub fn execute_transfer_ownership(
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let mut state = STATE.load(deps.storage)?;
+    let mut state: State = STATE.load(deps.storage)?;
     state.pending_owner = Some(deps.api.addr_validate(&new_owner)?);
+    state.owner_transfer_min_time = Some(Timestamp::from_seconds(
+        _env.block.time.seconds() + 60 * 60 * 24 * 7,
+    )); // 7 days
 
     STATE.save(deps.storage, &state)?;
 
@@ -528,6 +554,7 @@ pub fn execute_revoke_ownership_transfer(
 
     let mut state = STATE.load(deps.storage)?;
     state.pending_owner = None;
+    state.owner_transfer_min_time = None;
 
     STATE.save(deps.storage, &state)?;
 
@@ -539,8 +566,18 @@ pub fn execute_accept_ownership(
     _env: Env,
     info: MessageInfo,
 ) -> ContractResult<Response> {
+    let mut state: State = STATE.load(deps.storage)?;
+    if state.owner_transfer_min_time.is_some()
+        && state.owner_transfer_min_time.unwrap().seconds() > _env.block.time.seconds()
+    {
+        return Err(ContractError::OwnershipTransferNotReady {
+            time_to_claim: Timestamp::from_seconds(
+                state.owner_transfer_min_time.unwrap().seconds(),
+            ),
+        });
+    }
+
     let new_owner = {
-        let mut state = STATE.load(deps.storage)?;
         match state.pending_owner {
             Some(pending_owner) if pending_owner == info.sender => {
                 state.pending_owner = None;
@@ -562,49 +599,62 @@ pub fn execute_accept_ownership(
     }
 }
 
-pub fn recover(deps: DepsMut, env: Env, _info: MessageInfo) -> ContractResult<Response> {
-    let config: Config = CONFIG.load(deps.storage)?;
+pub fn recover(
+    mut deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    page: bool,
+) -> Result<Response, ContractError> {
+    let page_size = 10;
 
     // timed out and failed packets
-    let all_packages = INFLIGHT_PACKETS
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap().1);
-    let packets = all_packages
-        .filter(|p| {
-            p.status == PacketLifecycleStatus::AckFailure
-                || p.status == PacketLifecycleStatus::TimedOut
+    let packets: Vec<IBCTransfer> = paginate_map(
+        deps.as_ref(),
+        &INFLIGHT_PACKETS,
+        None,
+        if page { Some(page_size) } else { None },
+        Order::Ascending,
+        Some(Box::new(|r: &IBCTransfer| {
+            r.status == PacketLifecycleStatus::AckFailure
+                || r.status == PacketLifecycleStatus::TimedOut
+        })),
+    )?;
+
+    if packets.is_empty() {
+        return Err(ContractError::NoInflightPackets {});
+    }
+
+    let max_submessage_id = INFLIGHT_PACKETS
+        .range(deps.storage, None, None, Order::Descending)
+        .take(1)
+        .next()
+        .unwrap()
+        .unwrap()
+        .0;
+
+    let total_amount = packets
+        .iter()
+        .map(|r| {
+            INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
+            r.amount
         })
-        .collect::<Vec<IBCTransfer>>();
+        .reduce(|a, b| a + b)
+        .unwrap();
 
-    let ibc_config: IbcConfig = IBC_CONFIG.load(deps.storage)?;
-    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
-    ));
-
-    let msgs = packets.into_iter().map(|r| {
-        INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
-        MsgTransfer {
-            source_channel: ibc_config.channel_id.clone(),
-            source_port: "transfer".to_string(),
-            token: Some(Coin {
-                denom: config.native_token_denom.clone(),
-                amount: r.amount.to_string(),
-            }),
-            receiver: config.multisig_address_config.staker_address.to_string(),
-            sender: env.contract.address.to_string(),
-            timeout_height: None,
-            timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-            memo: format!(
-                "{{\"ibc_callback\":\"{}\"}}",
-                env.contract.address.to_string()
-            ),
-        }
-    });
+    // this shouldn't collide. any committed submessage package should have enough upper room in the indexes
+    // they are based on block times in nano seconds
+    // we are fusing all pending transfers into one
+    let sub_msg = transfer_stake_sub_msg(
+        &mut deps,
+        &env,
+        Uint128::from(total_amount),
+        Some(max_submessage_id + 1),
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "recover")
-        .add_messages(msgs))
+        .add_attribute("packets", packets.len().to_string())
+        .add_submessage(sub_msg))
 }
 
 // Update the config; callable by the owner
@@ -617,9 +667,10 @@ pub fn update_config(
     minimum_liquid_stake_amount: Option<Uint128>,
     multisig_address_config: Option<MultisigAddressConfig>,
     protocol_fee_config: Option<ProtocolFeeConfig>,
-    reserve_token: Option<String>,
+    native_token_denom: Option<String>,
     channel_id: Option<String>,
-    operators: Option<Vec<String>>,
+    monitors: Option<Vec<String>>,
+    treasury_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -640,30 +691,38 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
-    if let Some(operators) = operators {
-        validate_addresses(&operators, "osmo")?;
-        config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
+    if let Some(monitors) = monitors {
+        validate_addresses(&monitors, "osmo")?;
+        config.monitors = Some(monitors.into_iter().map(|o| Addr::unchecked(o)).collect());
+    }
+    if let Some(treasury_address) = treasury_address {
+        validate_address(&treasury_address, "osmo")?;
+        config.treasury_address = Addr::unchecked(treasury_address);
     }
 
-    if channel_id.is_some() && reserve_token.is_none() {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    let channel_regexp = regex::Regex::new(r"^channel-[0-9]+$").unwrap();
-    if channel_id.is_some() && !channel_regexp.is_match(&channel_id.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    let ibc_token_regexp = regex::Regex::new(r"^ibc/[A-Z0-9]{64}$").unwrap();
-    if reserve_token.is_some() && !ibc_token_regexp.is_match(&reserve_token.clone().unwrap()) {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_none()
-        || channel_id.is_some() && reserve_token.is_none()
-    {
-        return Err(ContractError::IbcChannelNotFound {});
-    }
-    if reserve_token.is_some() && channel_id.is_some() {
-        config.ibc_channel_id = channel_id.unwrap();
-        config.native_token_denom = reserve_token.unwrap();
+    // TODO get reserve token from channel? Maybe leave as safeguard?
+    if channel_id.is_some() || native_token_denom.is_some() {
+        if channel_id.is_none() || native_token_denom.is_none() {
+            return Err(ContractError::IbcChannelConfigWrong {});
+        }
+
+        let channel_id = channel_id.unwrap();
+        let native_token_denom = native_token_denom.unwrap();
+        let channel_id_correct = channel_id.starts_with("channel-")
+            && channel_id
+                .strip_prefix("channel-")
+                .unwrap()
+                .parse::<u64>()
+                .is_ok();
+        let native_token_denom_correct = native_token_denom.starts_with("ibc/")
+            && native_token_denom.strip_prefix("ibc/").unwrap().len() == 64;
+
+        if !channel_id_correct || !native_token_denom_correct {
+            return Err(ContractError::IbcChannelConfigWrong {});
+        }
+
+        config.ibc_channel_id = channel_id;
+        config.native_token_denom = native_token_denom;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -671,7 +730,7 @@ pub fn update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
     let mut state: State = STATE.load(deps.storage)?;
 
@@ -730,20 +789,22 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(deps.as_ref(), &env, amount_after_fees.clone())?;
+    let ibc_transfer_msg =
+        transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
-        .add_message(ibc_transfer_msg))
+        .add_submessage(ibc_transfer_msg))
 }
 
 pub fn receive_unstaked_tokens(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    batch_id: u64,
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -775,17 +836,14 @@ pub fn receive_unstaked_tokens(
 
     let amount = coin.unwrap().amount;
 
-    // get the oldest submitted batch
-    let _batch: Option<Batch> = BATCHES
-        .range(deps.storage, None, None, Order::Ascending)
-        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Submitted)
-        .map(|r| r.unwrap().1);
+    let mut batch: Batch = BATCHES.load(deps.storage, batch_id)?;
 
-    if _batch.is_none() {
-        return Err(ContractError::BatchEmpty {});
+    if batch.status != BatchStatus::Submitted {
+        return Err(ContractError::BatchNotClaimable {
+            batch_id: batch.id,
+            status: batch.status,
+        });
     }
-
-    let mut batch = _batch.unwrap();
 
     if batch.next_batch_action_time.is_none() {
         return Err(ContractError::BatchNotClaimable {
@@ -808,6 +866,7 @@ pub fn receive_unstaked_tokens(
 
     Ok(Response::new()
         .add_attribute("action", "receive_unstaked_tokens")
+        .add_attribute("batch", batch_id.to_string())
         .add_attribute("amount", amount))
 }
 
@@ -816,8 +875,16 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if !config.operators.iter().any(|v| *v == sender) {
-        return Err(ContractError::Unauthorized { sender });
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
+        if !config
+            .clone()
+            .monitors
+            .unwrap_or(vec![])
+            .iter()
+            .any(|v| *v == sender)
+        {
+            return Err(ContractError::Unauthorized { sender });
+        }
     }
 
     config.stopped = true;
@@ -826,7 +893,14 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     Ok(Response::new().add_attribute("action", "circuit_breaker"))
 }
 
-pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn resume_contract(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    total_native_token: Uint128,
+    total_liquid_stake_token: Uint128,
+    total_reward_amount: Uint128,
+) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config: Config = CONFIG.load(deps.storage)?;
@@ -834,7 +908,19 @@ pub fn resume_contract(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "resume_contract"))
+    let mut state: State = STATE.load(deps.storage)?;
+
+    state.total_native_token = total_native_token;
+    state.total_liquid_stake_token = total_liquid_stake_token;
+    state.total_reward_amount = total_reward_amount;
+
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "resume_contract")
+        .add_attribute("total_native_token", total_native_token)
+        .add_attribute("total_liquid_stake_token", total_liquid_stake_token)
+        .add_attribute("total_reward_amount", total_reward_amount))
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {
@@ -877,7 +963,7 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
 }
 
 fn save_ibc_waiting_for_reply(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     id: u64,
     ibc_msg: IbcWaitingForReply,
 ) -> Result<(), ContractError> {
@@ -895,4 +981,38 @@ fn save_ibc_waiting_for_reply(
     // so that it can be handled by the response
     IBC_WAITING_FOR_REPLY.save(deps.storage, id, &ibc_msg)?;
     Ok(())
+}
+
+pub fn fee_withdraw(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let config: Config = CONFIG.load(deps.storage)?;
+    let mut state: State = STATE.load(deps.storage)?;
+
+    if state.total_fees < amount {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
+    state.total_fees = state.total_fees.checked_sub(amount).unwrap();
+    STATE.save(deps.storage, &state)?;
+
+    let send_msg = MsgSend {
+        from_address: env.contract.address.to_string(),
+        to_address: config.treasury_address.to_string(),
+        amount: vec![Coin {
+            denom: config.native_token_denom,
+            amount: amount.to_string(),
+        }],
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "fee_withdraw")
+        .add_attribute("receiver", config.treasury_address.to_string())
+        .add_attribute("amount", amount)
+        .add_message(send_msg))
 }

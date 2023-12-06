@@ -3,6 +3,7 @@ use crate::state::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
+use milky_way::staking::BatchStatus;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -14,8 +15,8 @@ pub struct InstantiateMsg {
     pub liquid_stake_token_denom: String,
     /// Treasury contract address
     pub treasury_address: String,
-    /// Set of node operators who will operate the protocol
-    pub operators: Vec<String>,
+    /// Set of addresses allowed to trigger a circuit break
+    pub monitors: Vec<String>,
     /// Set of validators who will receive the delegations
     pub validators: Vec<String>,
     /// How often the unbonding queue is to be executed in seconds
@@ -36,6 +37,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {
         original_sender: Option<String>,
+        expected_mint_amount: Option<Uint128>,
     },
     LiquidUnstake {},
     SubmitBatch {},
@@ -59,15 +61,27 @@ pub enum ExecuteMsg {
         minimum_liquid_stake_amount: Option<Uint128>,
         multisig_address_config: Option<MultisigAddressConfig>,
         protocol_fee_config: Option<ProtocolFeeConfig>,
-        reserve_token: Option<String>,
+        native_token_denom: Option<String>,
         channel_id: Option<String>,
-        operators: Option<Vec<String>>,
+        monitors: Option<Vec<String>>,
+        treasury_address: Option<String>,
     },
     ReceiveRewards {},
-    ReceiveUnstakedTokens {},
+    ReceiveUnstakedTokens {
+        batch_id: u64,
+    },
     CircuitBreaker {},
-    ResumeContract {},
-    RecoverPendingIbcTransfers {},
+    ResumeContract {
+        total_native_token: Uint128,
+        total_liquid_stake_token: Uint128,
+        total_reward_amount: Uint128,
+    },
+    RecoverPendingIbcTransfers {
+        paginated: Option<bool>,
+    },
+    FeeWithdraw {
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -75,13 +89,16 @@ pub struct ConfigResponse {
     pub native_token_denom: String,
     pub liquid_stake_token_denom: String,
     pub treasury_address: String,
-    pub operators: Vec<String>,
+    pub monitors: Vec<String>,
     pub validators: Vec<String>,
     pub batch_period: u64,
     pub unbonding_period: u64,
     pub minimum_liquid_stake_amount: Uint128,
     pub staker_address: String,
     pub reward_collector_address: String,
+    pub protocol_fee_config: ProtocolFeeConfig,
+    pub ibc_channel_id: String,
+    pub stopped: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -131,15 +148,29 @@ pub enum QueryMsg {
     #[returns(BatchResponse)]
     Batch { id: u64 },
     #[returns(BatchesResponse)]
-    Batches {},
+    Batches {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        status: Option<BatchStatus>,
+    },
     #[returns(BatchResponse)]
     PendingBatch {},
     #[returns(BatchesResponse)]
-    ClaimableBatches { user: Addr },
+    ClaimableBatches {
+        user: Addr,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(IBCQueueResponse)]
-    IbcQueue {},
+    IbcQueue {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     #[returns(IBCReplyQueueResponse)]
-    IbcReplyQueue {},
+    IbcReplyQueue {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

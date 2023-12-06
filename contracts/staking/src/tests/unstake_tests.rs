@@ -187,7 +187,7 @@ mod staking_tests {
         state.total_liquid_stake_token = Uint128::from(100_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
 
         let sender = derive_intermediate_sender(
             &config.ibc_channel_id,
@@ -203,10 +203,23 @@ mod staking_tests {
                 denom: config.native_token_denom.clone(),
             }],
         );
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        assert!(res.is_err());
 
         let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
+        batch.update_status(BatchStatus::Pending, Some(env.block.time.seconds() - 1));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let res: Result<cosmwasm_std::Response, crate::error::ContractError> =
+            execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err()); // batch not submitted
+
+        batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() + 1));
+        let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(res.is_err()); // batch not ready
+
         batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() - 1));
         let res = BATCHES.save(&mut deps.storage, 1, &batch);
         assert!(res.is_ok());
@@ -366,6 +379,8 @@ mod staking_tests {
             mock_env(),
             QueryMsg::ClaimableBatches {
                 user: Addr::unchecked("bob"),
+                start_after: None,
+                limit: None,
             },
         );
         assert!(claimable_batches_res.is_ok());
@@ -380,7 +395,7 @@ mod staking_tests {
         let res = BATCHES.save(&mut deps.storage, 1, &batch);
         assert!(res.is_ok());
 
-        let msg = ExecuteMsg::ReceiveUnstakedTokens {};
+        let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
         let info = mock_info(
             &derive_intermediate_sender(
                 &CONFIG.load(&deps.storage).unwrap().ibc_channel_id,
@@ -406,6 +421,8 @@ mod staking_tests {
             mock_env(),
             QueryMsg::ClaimableBatches {
                 user: Addr::unchecked("bob"),
+                start_after: None,
+                limit: None,
             },
         );
         assert!(claimable_batches_res.is_ok());

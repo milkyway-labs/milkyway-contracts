@@ -9,7 +9,7 @@ mod query_tests {
     use crate::query::query_pending_batch;
     use crate::state::{CONFIG, STATE};
     use crate::tests::test_helper::{
-        init, CELESTIAVAL1, CELESTIAVAL2, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
+        init, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, Decimal, Uint128};
@@ -22,13 +22,13 @@ mod query_tests {
         let result = from_binary::<ConfigResponse>(&bin);
         match result {
             Ok(res) => {
-                assert_eq!(res.native_token_denom, "osmoTIA".to_string());
+                assert_eq!(res.native_token_denom, NATIVE_TOKEN.to_string());
                 assert_eq!(
                     res.liquid_stake_token_denom,
                     "factory/cosmos2contract/stTIA".to_string()
                 );
                 assert_eq!(res.treasury_address, OSMO1.to_string());
-                assert_eq!(res.operators, vec![OSMO2.to_string(), OSMO3.to_string()]);
+                assert_eq!(res.monitors, vec![OSMO2.to_string(), OSMO3.to_string()]);
                 assert_eq!(
                     res.validators,
                     vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
@@ -36,6 +36,8 @@ mod query_tests {
                 assert_eq!(res.batch_period, 86400);
                 assert_eq!(res.unbonding_period, 1209600);
                 assert_eq!(res.minimum_liquid_stake_amount, Uint128::from(100u128));
+                assert_eq!(res.ibc_channel_id, CHANNEL_ID.to_string());
+                assert_eq!(res.stopped, false);
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),
@@ -64,9 +66,10 @@ mod query_tests {
         }
 
         // stake
-        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
         let stake_msg = ExecuteMsg::LiquidStake {
             original_sender: None,
+            expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info, stake_msg);
         assert!(res.is_ok());
@@ -159,7 +162,11 @@ mod query_tests {
     fn get_batches() {
         let mut deps = init();
         let mut env = mock_env();
-        let msg = QueryMsg::Batches {};
+        let msg = QueryMsg::Batches {
+            start_after: None,
+            limit: None,
+            status: None,
+        };
         let mut bin = query(deps.as_ref(), env.clone(), msg.clone()).unwrap();
         let mut result = from_binary::<BatchesResponse>(&bin);
 
@@ -253,6 +260,17 @@ mod query_tests {
                 _ => panic!("Unexpected error: {:?}", e),
             },
         }
+
+        // query only submitted batches
+        let msg = QueryMsg::Batches {
+            start_after: None,
+            limit: None,
+            status: Some(milky_way::staking::BatchStatus::Submitted),
+        };
+        bin = query(deps.as_ref(), env.clone(), msg).unwrap();
+        result = from_binary::<BatchesResponse>(&bin);
+        let result = result.unwrap();
+        assert_eq!(result.batches.len(), 1);
     }
 
     #[test]

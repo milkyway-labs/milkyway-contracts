@@ -4,7 +4,7 @@ mod staking_tests {
     use crate::error::ContractError;
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, STATE};
+    use crate::state::{State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{
         init, resolve_replies, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3,
     };
@@ -15,7 +15,7 @@ mod staking_tests {
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
-    use osmosis_std::types::ibc::applications::transfer::v1::{MsgTransfer, MsgTransferResponse};
+    use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgMint;
     use std::vec::Vec;
 
@@ -26,6 +26,7 @@ mod staking_tests {
         let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: None,
+            expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
 
@@ -46,7 +47,8 @@ mod staking_tests {
                     vec![
                         attr("action", "liquid_stake"),
                         attr("sender", OSMO3),
-                        attr("amount", "1000")
+                        attr("in_amount", "1000"),
+                        attr("mint_amount", "1000"),
                     ]
                 );
                 assert_eq!(result.messages.len(), 2);
@@ -173,6 +175,7 @@ mod staking_tests {
         let info = mock_info(OSMO3, &coins(10, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: None,
+            expected_mint_amount: None,
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -201,6 +204,7 @@ mod staking_tests {
         let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: Some(CELESTIA1.to_string()),
+            expected_mint_amount: None,
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -211,6 +215,7 @@ mod staking_tests {
         let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: Some(OSMO3.to_string()),
+            expected_mint_amount: None,
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -245,5 +250,56 @@ mod staking_tests {
         );
 
         assert!(resp.is_err());
+    }
+    #[test]
+    fn mint_amount_divergence() {
+        let mut deps = init();
+        let mut state: State = STATE.load(&deps.storage).unwrap();
+        state.total_liquid_stake_token = Uint128::from(1_000_000_000u128);
+        state.total_native_token = Uint128::from(1_000_000u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let msg = ExecuteMsg::LiquidStake {
+            original_sender: None,
+            expected_mint_amount: Some(Uint128::from(2_000_000u128)),
+        };
+        let res: Result<cosmwasm_std::Response, ContractError> =
+            execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+        assert!(res.is_err()); // minted amount is lower than expected
+
+        let msg = ExecuteMsg::LiquidStake {
+            original_sender: None,
+            expected_mint_amount: Some(Uint128::from(1_000_000u128)),
+        };
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+        if res.is_err() {
+            panic!("Unexpected error: {:?}", res);
+        }
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn zero_liquid_stake_but_native_tokens() {
+        let mut deps = init();
+
+        let mut state: State = STATE.load(&deps.storage).unwrap();
+        state.total_native_token = Uint128::from(1000u128);
+        state.total_liquid_stake_token = Uint128::from(0u128);
+        state.total_fees = Uint128::from(100u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
+        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let msg = ExecuteMsg::LiquidStake {
+            original_sender: None,
+            expected_mint_amount: None,
+        };
+        let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
+        assert!(res.is_ok());
+
+        let state: State = STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_native_token, Uint128::from(1000u128));
+        assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
+        assert_eq!(state.total_fees, Uint128::from(1100u128));
     }
 }

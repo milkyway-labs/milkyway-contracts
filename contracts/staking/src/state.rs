@@ -9,7 +9,8 @@ pub struct Config {
     pub native_token_denom: String,
     pub liquid_stake_token_denom: String,
     pub treasury_address: Addr,
-    pub operators: Vec<Addr>,
+    pub operators: Option<Vec<Addr>>, //depr
+    pub monitors: Option<Vec<Addr>>,
     pub validators: Vec<Addr>,
     pub batch_period: u64,
     pub unbonding_period: u64,
@@ -26,6 +27,7 @@ pub struct State {
     pub total_native_token: Uint128,
     pub total_liquid_stake_token: Uint128,
     pub pending_owner: Option<Addr>,
+    pub owner_transfer_min_time: Option<Timestamp>,
     pub total_reward_amount: Uint128,
     pub rate: Uint128,
     pub total_fees: Uint128,
@@ -33,6 +35,7 @@ pub struct State {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct ProtocolFeeConfig {
     pub dao_treasury_fee: Uint128, // not using a fraction, fee percentage=x/100000
 }
