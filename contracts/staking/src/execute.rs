@@ -104,11 +104,27 @@ pub fn execute_liquid_stake(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
+    mint_to: Option<String>,
     expected_mint_amount: Option<Uint128>,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
+
+    // a native user address is 43 chars long
+    if mint_to.is_none() && info.sender.as_str().len() != 43 {
+        return Err(ContractError::MissingMintAddress {});
+    }
+
+    // if sent via IBC or the sender is a contract the user needs to provide an osmosis address to mint to
+    let mint_to_address = if mint_to.is_some() && info.sender.as_str().len() != 43 {
+        let mint_to_addr = mint_to.unwrap();
+        validate_address(&mint_to_addr, "osmo")?;
+
+        mint_to_addr
+    } else {
+        info.sender.to_string()
+    };
 
     let mut state: State = STATE.load(deps.storage)?;
     ensure!(
@@ -157,7 +173,7 @@ pub fn execute_liquid_stake(
             denom: config.liquid_stake_token_denom,
             amount: mint_amount.to_string(),
         }),
-        mint_to_address: info.sender.to_string(),
+        mint_to_address,
     };
 
     // Transfer native token to multisig address

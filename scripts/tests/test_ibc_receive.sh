@@ -28,3 +28,8 @@ tmux capture-pane -pS -1000 -t osmosis1 | grep -A 2 "error-context"
 osmosisd query txs --events "recv_packet.packet_sequence=$PACKET_SEQUENCE" --output json | jq -r '.txs[-1].raw_log'
 osmosisd query bank balances $CONTRACT
 celestia-appd query bank balances $ADMIN_CELESTIA --node http://localhost:26661
+
+# stake via IBC
+MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"liquid_stake":{"mint_to":"'$ADMIN_CELESTIA'"}}}}'
+PACKET_SEQUENCE=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 1000utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log | fromjson | .[0].events[] | select(.type == "send_packet") | .attributes[] | select(.key == "packet_sequence") | .value')
+test_success && echo "success" || echo "failure"

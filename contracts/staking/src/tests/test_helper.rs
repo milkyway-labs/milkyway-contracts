@@ -41,7 +41,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         minimum_liquid_stake_amount: Uint128::from(100u128),
         ibc_channel_id: CHANNEL_ID.to_string(),
     };
-    let info = mock_info("creator", &coins(1000, "uosmo"));
+    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
 
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
     if res.is_err() {

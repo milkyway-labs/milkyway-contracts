@@ -131,4 +131,7 @@ pub enum ContractError {
 
     #[error("Insufficient funds")]
     InsufficientFunds {},
+
+    #[error("If liquid staking is done from a non native Osmosis address you need to provide an address via 'mint_to'")]
+    MissingMintAddress {},
 }
