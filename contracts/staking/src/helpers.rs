@@ -124,7 +124,7 @@ where
     match limit {
         Some(limit) => Ok(items
             .map(|i| i.unwrap().1)
-            .take_while(|i| {
+            .filter(|i| {
                 if taken >= limit {
                     return false;
                 }
@@ -138,7 +138,7 @@ where
             .collect::<Vec<_>>()),
         None => Ok(items
             .map(|i| i.unwrap().1)
-            .take_while(|i| {
+            .filter(|i| {
                 if let Some(filter) = &filter {
                     filter(&i)
                 } else {

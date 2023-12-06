@@ -269,8 +269,17 @@ mod query_tests {
         };
         bin = query(deps.as_ref(), env.clone(), msg).unwrap();
         result = from_binary::<BatchesResponse>(&bin);
-        let result = result.unwrap();
-        assert_eq!(result.batches.len(), 1);
+        assert_eq!(result.unwrap().batches.len(), 1);
+
+        // query only pending batches - there must always be 1
+        let msg = QueryMsg::Batches {
+            start_after: None,
+            limit: None,
+            status: Some(milky_way::staking::BatchStatus::Pending),
+        };
+        bin = query(deps.as_ref(), env.clone(), msg).unwrap();
+        result = from_binary::<BatchesResponse>(&bin);
+        assert_eq!(result.unwrap().batches.len(), 1);
     }
 
     #[test]
