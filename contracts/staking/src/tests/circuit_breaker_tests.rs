@@ -45,7 +45,7 @@ mod circuit_breaker_tests {
         // liquid stake
         let info = mock_info(OSMO3, &coins(1000, "osmoTIA"));
         let msg = ExecuteMsg::LiquidStake {
-            original_sender: None,
+            mint_to: None,
             expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -142,7 +142,7 @@ mod circuit_breaker_tests {
         let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             expected_mint_amount: None,
-            original_sender: None,
+            mint_to: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());

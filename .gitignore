@@ -30,3 +30,4 @@ testdata
 
 node_modules
 pool.json
+.env

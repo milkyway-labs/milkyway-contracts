@@ -171,18 +171,11 @@ pub fn execute(
     let config = CONFIG.load(deps.storage)?;
     match msg {
         ExecuteMsg::LiquidStake {
-            original_sender,
+            mint_to,
             expected_mint_amount,
         } => {
             let payment = must_pay(&info, &config.native_token_denom)?;
-            execute_liquid_stake(
-                deps,
-                env,
-                info,
-                payment,
-                original_sender,
-                expected_mint_amount,
-            )
+            execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
         }
         ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;

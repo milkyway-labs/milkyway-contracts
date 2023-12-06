@@ -36,7 +36,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     LiquidStake {
-        original_sender: Option<String>,
+        mint_to: Option<String>,
         expected_mint_amount: Option<Uint128>,
     },
     LiquidUnstake {},

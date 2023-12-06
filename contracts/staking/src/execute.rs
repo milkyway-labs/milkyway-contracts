@@ -104,44 +104,24 @@ pub fn execute_liquid_stake(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
-    original_sender: Option<String>,
+    mint_to: Option<String>,
     expected_mint_amount: Option<Uint128>,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
 
-    // a non ibc address is 43 chars long
-    if original_sender.is_none() && info.sender.as_str().len() != 43 {
-        return Err(ContractError::MissingIbcStakeAddress {});
+    // a native user address is 43 chars long
+    if mint_to.is_none() && info.sender.as_str().len() != 43 {
+        return Err(ContractError::MissingMintAddress {});
     }
 
-    // if sent via IBC the user needs to provide his osmosis address which we validate and use
-    let mint_to_address = if original_sender.is_some() && info.sender.as_str().len() != 43 {
-        let original_addr_base = bech32_no_std::decode(original_sender.as_ref().unwrap());
-        if original_addr_base.is_err() {
-            return Err(ContractError::InvalidAddress {});
-        }
+    // if sent via IBC or the sender is a contract the user needs to provide an osmosis address to mint to
+    let mint_to_address = if mint_to.is_some() && info.sender.as_str().len() != 43 {
+        let mint_to_addr = mint_to.unwrap();
+        validate_address(&mint_to_addr, "osmo")?;
 
-        // we are calculating both to allow osmo and celestia address in request
-        let osmosis_addr =
-            bech32_no_std::encode("osmo", original_addr_base.as_ref().unwrap().1.clone());
-        let celestia_addr =
-            bech32_no_std::encode("celestia", original_addr_base.as_ref().unwrap().1.clone());
-        if osmosis_addr.is_err() || celestia_addr.is_err() {
-            return Err(ContractError::InvalidAddress {});
-        }
-
-        // test if sender fits ibc sender
-        let derived_sender =
-            derive_intermediate_sender(&config.ibc_channel_id, &celestia_addr.unwrap(), "osmo")
-                .unwrap_or("".to_string());
-
-        if derived_sender != info.sender {
-            return Err(ContractError::InvalidAddress {});
-        }
-
-        osmosis_addr.unwrap()
+        mint_to_addr
     } else {
         info.sender.to_string()
     };

@@ -5,9 +5,7 @@ mod staking_tests {
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
     use crate::state::{State, BATCHES, CONFIG, STATE};
-    use crate::tests::test_helper::{
-        init, resolve_replies, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3,
-    };
+    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
         attr, coins, Addr, CosmosMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg, SubMsgResponse,
@@ -25,7 +23,7 @@ mod staking_tests {
         let env = mock_env();
         let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
-            original_sender: None,
+            mint_to: None,
             expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
@@ -174,7 +172,7 @@ mod staking_tests {
         let mut deps = init();
         let info = mock_info(OSMO3, &coins(10, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
-            original_sender: None,
+            mint_to: None,
             expected_mint_amount: None,
         };
 
@@ -201,20 +199,10 @@ mod staking_tests {
         let mut deps = init();
         let intermediate_sender =
             derive_intermediate_sender(CHANNEL_ID, &CELESTIA1.to_string(), "osmo").unwrap();
-        let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {
-            original_sender: Some(CELESTIA1.to_string()),
-            expected_mint_amount: None,
-        };
-
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
-        assert!(res.is_ok());
-
-        resolve_replies(deps.as_mut());
 
         let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
-        let msg = ExecuteMsg::LiquidStake {
-            original_sender: Some(OSMO3.to_string()),
+        let msg: ExecuteMsg = ExecuteMsg::LiquidStake {
+            mint_to: Some(OSMO3.to_string()),
             expected_mint_amount: None,
         };
 
@@ -261,7 +249,7 @@ mod staking_tests {
 
         let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
-            original_sender: None,
+            mint_to: None,
             expected_mint_amount: Some(Uint128::from(2_000_000u128)),
         };
         let res: Result<cosmwasm_std::Response, ContractError> =
@@ -269,7 +257,7 @@ mod staking_tests {
         assert!(res.is_err()); // minted amount is lower than expected
 
         let msg = ExecuteMsg::LiquidStake {
-            original_sender: None,
+            mint_to: None,
             expected_mint_amount: Some(Uint128::from(1_000_000u128)),
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -291,7 +279,7 @@ mod staking_tests {
 
         let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
-            original_sender: None,
+            mint_to: None,
             expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg.clone());

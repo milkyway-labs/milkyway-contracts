@@ -24,7 +24,7 @@ osmosisd tx wasm execute $CONTRACT '{"liquid_stake":{}}' \
     --chain-id osmosis-dev-1 --output json | jq -r '.raw_log'
 
 # liquid stake IBC
-MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"liquid_stake":{"original_sender":"'$ADMIN_CELESTIA'"}}}}'
+MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"liquid_stake":{"mint_to":"'$ADMIN_CELESTIA'"}}}}'
 celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 1000utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log'
 
 # check balances

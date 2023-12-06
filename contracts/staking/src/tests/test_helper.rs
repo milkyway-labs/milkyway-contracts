@@ -2,13 +2,12 @@ use crate::contract::{instantiate, IBC_TIMEOUT};
 use crate::msg::InstantiateMsg;
 use crate::state::{
     Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, CONFIG, IBC_CONFIG,
-    IBC_WAITING_FOR_REPLY,
 };
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{coins, Addr, DepsMut, Order, OwnedDeps, Uint128};
+use cosmwasm_std::{coins, Addr, OwnedDeps, Uint128};
 
 pub static OSMO1: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
 pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
@@ -61,15 +60,4 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     CONFIG.save(&mut deps.storage, &config).unwrap();
 
     deps
-}
-
-pub fn resolve_replies(deps: DepsMut) {
-    let mut reply_id = 0;
-    IBC_WAITING_FOR_REPLY
-        .range(deps.storage, None, None, Order::Ascending)
-        .for_each(|r| {
-            let (k, _) = r.unwrap();
-            reply_id = k;
-        });
-    IBC_WAITING_FOR_REPLY.remove(deps.storage, reply_id);
 }
