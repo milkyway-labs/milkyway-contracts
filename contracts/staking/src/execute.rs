@@ -111,6 +111,11 @@ pub fn execute_liquid_stake(
 
     check_stopped(&config)?;
 
+    // a non ibc address is 43 chars long
+    if original_sender.is_none() && info.sender.as_str().len() != 43 {
+        return Err(ContractError::MissingIbcStakeAddress {});
+    }
+
     // if sent via IBC the user needs to provide his osmosis address which we validate and use
     let mint_to_address = if original_sender.is_some() && info.sender.as_str().len() != 43 {
         let original_addr_base = bech32_no_std::decode(original_sender.as_ref().unwrap());

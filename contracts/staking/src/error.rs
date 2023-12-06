@@ -131,4 +131,7 @@ pub enum ContractError {
 
     #[error("Insufficient funds")]
     InsufficientFunds {},
+
+    #[error("Liquid staking over IBC requires to confirm the Osmosis address")]
+    MissingIbcStakeAddress {},
 }

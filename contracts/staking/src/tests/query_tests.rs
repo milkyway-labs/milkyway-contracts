@@ -66,7 +66,7 @@ mod query_tests {
         }
 
         // stake
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let stake_msg = ExecuteMsg::LiquidStake {
             original_sender: None,
             expected_mint_amount: None,

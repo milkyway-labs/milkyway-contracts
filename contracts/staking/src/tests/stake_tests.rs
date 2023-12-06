@@ -259,7 +259,7 @@ mod staking_tests {
         state.total_native_token = Uint128::from(1_000_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: None,
             expected_mint_amount: Some(Uint128::from(2_000_000u128)),
@@ -289,7 +289,7 @@ mod staking_tests {
         state.total_fees = Uint128::from(100u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             original_sender: None,
             expected_mint_amount: None,

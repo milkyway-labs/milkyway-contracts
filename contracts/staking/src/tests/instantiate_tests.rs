@@ -48,7 +48,7 @@ mod tests {
             }
         }
 
-        let info = cosmwasm_std::testing::mock_info("creator", &[]);
+        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
 
         let mut msg = get_msg();
         msg.native_token_denom = "".to_string();
@@ -135,7 +135,7 @@ mod tests {
     fn update_config() {
         let mut deps = init();
 
-        let info = cosmwasm_std::testing::mock_info("creator", &[]);
+        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),

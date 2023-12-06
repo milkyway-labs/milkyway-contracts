@@ -3,7 +3,7 @@ mod withdraw_tests {
     use crate::contract::{execute, query};
     use crate::msg::{BatchResponse, ExecuteMsg, QueryMsg};
     use crate::state::{BATCHES, CONFIG, STATE};
-    use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO1};
+    use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO1, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
     use milky_way::staking::{Batch, LiquidUnstakeRequest};
@@ -268,14 +268,14 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_err()); // because not admin
 
-        let info = mock_info("creator", &[]);
+        let info = mock_info(OSMO3, &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_err()); // because too high amount
 
         let msg = ExecuteMsg::FeeWithdraw {
             amount: Uint128::from(1000u128),
         };
-        let info = mock_info("creator", &[]);
+        let info = mock_info(OSMO3, &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         assert_eq!(
