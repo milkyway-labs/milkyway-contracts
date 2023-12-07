@@ -32,7 +32,7 @@ mod tests {
                 native_token_denom: NATIVE_TOKEN.to_string(),
                 liquid_stake_token_denom: "stTIA".to_string(),
                 treasury_address: OSMO1.to_string(),
-                operators: vec![OSMO2.to_string(), OSMO3.to_string()],
+                monitors: vec![OSMO2.to_string(), OSMO3.to_string()],
                 validators: vec![CELESTIA1.to_string(), CELESTIA2.to_string()],
                 batch_period: 86400,
                 unbonding_period: 1209600,
@@ -48,7 +48,7 @@ mod tests {
             }
         }
 
-        let info = cosmwasm_std::testing::mock_info("creator", &[]);
+        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
 
         let mut msg = get_msg();
         msg.native_token_denom = "".to_string();
@@ -81,7 +81,7 @@ mod tests {
         assert!(res.is_err());
 
         let mut msg = get_msg();
-        msg.operators[1] = "".to_string();
+        msg.monitors[1] = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -91,7 +91,7 @@ mod tests {
         assert!(res.is_err());
 
         let mut msg = get_msg();
-        msg.operators[1] = CELESTIA1.to_string();
+        msg.monitors[1] = CELESTIA1.to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -135,7 +135,7 @@ mod tests {
     fn update_config() {
         let mut deps = init();
 
-        let info = cosmwasm_std::testing::mock_info("creator", &[]);
+        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -148,11 +148,11 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            reserve_token: Some(
+            native_token_denom: Some(
                 "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA".to_string(),
             ),
             channel_id: Some("channel-0".to_string()),
-            operators: Some(vec![OSMO3.to_string()]),
+            monitors: Some(vec![OSMO3.to_string()]),
             treasury_address: Some(OSMO3.to_string()),
         };
 
@@ -164,8 +164,8 @@ mod tests {
         );
         assert!(res.is_ok());
         let config: Config = CONFIG.load(&deps.storage).unwrap();
-        assert!(config.operators.len() == 1);
-        assert!(config.operators.get(0).unwrap().to_string() == OSMO3.to_string());
+        assert!(config.clone().monitors.unwrap().len() == 1);
+        assert!(config.clone().monitors.unwrap().get(0).unwrap().to_string() == OSMO3.to_string());
         assert!(config.treasury_address == OSMO3.to_string());
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
@@ -179,9 +179,9 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            reserve_token: Some("".to_string()),
+            native_token_denom: Some("".to_string()),
             channel_id: Some("channel-0".to_string()),
-            operators: None,
+            monitors: None,
             treasury_address: None,
         };
         let res = crate::contract::execute(
@@ -203,9 +203,9 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            reserve_token: Some("ibc/abc".to_string()),
+            native_token_denom: Some("ibc/abc".to_string()),
             channel_id: Some("".to_string()),
-            operators: None,
+            monitors: None,
             treasury_address: None,
         };
         let res = crate::contract::execute(
@@ -227,9 +227,9 @@ mod tests {
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
             minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            reserve_token: Some("".to_string()),
+            native_token_denom: Some("".to_string()),
             channel_id: Some("".to_string()),
-            operators: None,
+            monitors: None,
             treasury_address: None,
         };
         let res = crate::contract::execute(

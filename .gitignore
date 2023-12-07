@@ -29,3 +29,5 @@ testdata
 .idea
 
 node_modules
+pool.json
+.env

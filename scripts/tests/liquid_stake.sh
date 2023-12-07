@@ -7,21 +7,25 @@ CONTRACT=$(osmosisd query wasm list-contract-by-code $CODE_ID --output json | jq
 celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --keyring-backend test --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge 10000000utia  --broadcast-mode block | jq -r '.raw_log'
 
 # check ibc token denom and if tokens have arrived
-RESERVE_TOKEN=""
-while [ -z "$RESERVE_TOKEN" ]; do
+NATIVE_TOKEN_DENOM=""
+while [ -z "$NATIVE_TOKEN_DENOM" ]; do
     BALANCES=$(osmosisd query bank balances $ADMIN_OSMOSIS --output json)
     echo $BALANCES
-    RESERVE_TOKEN=$(echo $BALANCES | jq -r '.balances[].denom | select(. | contains("ibc/"))')
+    NATIVE_TOKEN_DENOM=$(echo $BALANCES | jq -r '.balances[].denom | select(. | contains("ibc/"))')
     sleep 3
 done;
 
 # liquid stake
 osmosisd tx wasm execute $CONTRACT '{"liquid_stake":{}}' \
-    --amount 1000$RESERVE_TOKEN \
+    --amount 1000$NATIVE_TOKEN_DENOM \
     --from test_master --keyring-backend test \
     -y -b block \
     --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
     --chain-id osmosis-dev-1 --output json | jq -r '.raw_log'
+
+# liquid stake IBC
+MEMO='{"wasm":{"contract":"'$CONTRACT'","msg":{"liquid_stake":{"mint_to":"'$ADMIN_CELESTIA'"}}}}'
+celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $CONTRACT 1000utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log'
 
 # check balances
 # osmosisd query bank balances $ADMIN_OSMOSIS

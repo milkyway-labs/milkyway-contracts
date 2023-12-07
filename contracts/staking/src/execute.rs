@@ -105,11 +105,27 @@ pub fn execute_liquid_stake(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
+    mint_to: Option<String>,
     expected_mint_amount: Option<Uint128>,
 ) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     check_stopped(&config)?;
+
+    // a native user address is 43 chars long
+    if mint_to.is_none() && info.sender.as_str().len() != 43 {
+        return Err(ContractError::MissingMintAddress {});
+    }
+
+    // if sent via IBC or the sender is a contract the user needs to provide an osmosis address to mint to
+    let mint_to_address = if mint_to.is_some() && info.sender.as_str().len() != 43 {
+        let mint_to_addr = mint_to.unwrap();
+        validate_address(&mint_to_addr, "osmo")?;
+
+        mint_to_addr
+    } else {
+        info.sender.to_string()
+    };
 
     let mut state: State = STATE.load(deps.storage)?;
     ensure!(
@@ -158,7 +174,7 @@ pub fn execute_liquid_stake(
             denom: config.liquid_stake_token_denom,
             amount: mint_amount.to_string(),
         }),
-        mint_to_address: info.sender.to_string(),
+        mint_to_address,
     };
 
     // Transfer native token to multisig address
@@ -645,7 +661,7 @@ pub fn update_config(
     protocol_fee_config: Option<ProtocolFeeConfig>,
     native_token_denom: Option<String>,
     channel_id: Option<String>,
-    operators: Option<Vec<String>>,
+    monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -667,9 +683,9 @@ pub fn update_config(
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config;
     }
-    if let Some(operators) = operators {
-        validate_addresses(&operators, "osmo")?;
-        config.operators = operators.into_iter().map(|o| Addr::unchecked(o)).collect();
+    if let Some(monitors) = monitors {
+        validate_addresses(&monitors, "osmo")?;
+        config.monitors = Some(monitors.into_iter().map(|o| Addr::unchecked(o)).collect());
     }
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;
@@ -679,7 +695,7 @@ pub fn update_config(
     // TODO get reserve token from channel? Maybe leave as safeguard?
     if channel_id.is_some() || native_token_denom.is_some() {
         if channel_id.is_none() || native_token_denom.is_none() {
-            return Err(ContractError::IbcChannelNotFound {});
+            return Err(ContractError::IbcChannelConfigWrong {});
         }
 
         let channel_id = channel_id.unwrap();
@@ -706,7 +722,7 @@ pub fn update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
+pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
     let mut state: State = STATE.load(deps.storage)?;
 
@@ -765,14 +781,15 @@ pub fn receive_rewards(deps: DepsMut, env: Env, info: MessageInfo) -> ContractRe
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_msg(&deps.as_ref(), &env, amount_after_fees.clone())?;
+    let ibc_transfer_msg =
+        transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
-        .add_message(ibc_transfer_msg))
+        .add_submessage(ibc_transfer_msg))
 }
 
 pub fn receive_unstaked_tokens(
@@ -857,7 +874,13 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
-        if !config.operators.iter().any(|v| *v == sender) {
+        if !config
+            .clone()
+            .monitors
+            .unwrap_or(vec![])
+            .iter()
+            .any(|v| *v == sender)
+        {
             return Err(ContractError::Unauthorized { sender });
         }
     }

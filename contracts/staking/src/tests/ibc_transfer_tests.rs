@@ -4,7 +4,7 @@ mod ibc_transfer_tests {
     use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
     use crate::query::query_ibc_queue;
     use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
-    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
+    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{
         attr, coins, Addr, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse,
@@ -19,8 +19,9 @@ mod ibc_transfer_tests {
     fn success_ibc_queue() {
         let mut deps = init();
         let env = mock_env();
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
+            mint_to: None,
             expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -41,7 +42,7 @@ mod ibc_transfer_tests {
                     result.attributes,
                     vec![
                         attr("action", "liquid_stake"),
-                        attr("sender", "creator"),
+                        attr("sender", OSMO3),
                         attr("in_amount", "1000"),
                         attr("mint_amount", "1000"),
                     ]
@@ -172,8 +173,9 @@ mod ibc_transfer_tests {
     fn fail_ibc_queue() {
         let mut deps = init();
         let env = mock_env();
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
+            mint_to: None,
             expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -184,7 +186,7 @@ mod ibc_transfer_tests {
                     result.attributes,
                     vec![
                         attr("action", "liquid_stake"),
-                        attr("sender", "creator"),
+                        attr("sender", OSMO3),
                         attr("in_amount", "1000"),
                         attr("mint_amount", "1000"),
                     ]
@@ -254,8 +256,9 @@ mod ibc_transfer_tests {
     fn timeout_ibc_queue() {
         let mut deps = init();
         let env = mock_env();
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
+            mint_to: None,
             expected_mint_amount: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -266,7 +269,7 @@ mod ibc_transfer_tests {
                     result.attributes,
                     vec![
                         attr("action", "liquid_stake"),
-                        attr("sender", "creator"),
+                        attr("sender", OSMO3),
                         attr("in_amount", "1000"),
                         attr("mint_amount", "1000"),
                     ]
@@ -333,7 +336,7 @@ mod ibc_transfer_tests {
     #[test]
     fn recover_non_paginated() {
         let mut deps = init();
-        let info = mock_info("creator", &[]);
+        let info = mock_info(OSMO3, &[]);
 
         for i in 1..=15 {
             let res = INFLIGHT_PACKETS.save(
@@ -359,7 +362,7 @@ mod ibc_transfer_tests {
     #[test]
     fn recover_paginated() {
         let mut deps = init();
-        let info = mock_info("creator", &[]);
+        let info = mock_info(OSMO3, &[]);
 
         for i in 1..=15 {
             let res = INFLIGHT_PACKETS.save(
@@ -388,7 +391,7 @@ mod ibc_transfer_tests {
     fn recover_multiple() {
         let mut deps = init();
         let env = mock_env();
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
 
         let res = INFLIGHT_PACKETS.save(
             &mut deps.storage,
@@ -445,7 +448,7 @@ mod ibc_transfer_tests {
     #[test]
     fn recover_recursive() {
         let mut deps = init();
-        let info = mock_info("creator", &coins(1000, NATIVE_TOKEN));
+        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
 
         let res = INFLIGHT_PACKETS.save(
             &mut deps.storage,

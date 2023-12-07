@@ -2,14 +2,14 @@
 mod validator_tests {
     use crate::contract::execute;
     use crate::msg::ExecuteMsg;
-    use crate::tests::test_helper::{init, CELESTIAVAL1, CELESTIAVAL3};
+    use crate::tests::test_helper::{init, CELESTIAVAL1, CELESTIAVAL3, OSMO3};
     use cosmwasm_std::coins;
     use cosmwasm_std::testing::{mock_env, mock_info};
 
     #[test]
     fn proper_add_validator() {
         let mut deps = init();
-        let info = mock_info("creator", &coins(1000, "uosmo"));
+        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
             new_validator: CELESTIAVAL3.to_string(),
         };
@@ -25,7 +25,7 @@ mod validator_tests {
     #[test]
     fn duplicate_add_validator() {
         let mut deps = init();
-        let info = mock_info("creator", &coins(1000, "uosmo"));
+        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::AddValidator {
             new_validator: CELESTIAVAL1.to_string(),
         };
@@ -36,7 +36,7 @@ mod validator_tests {
     #[test]
     fn proper_remove_validator() {
         let mut deps = init();
-        let info = mock_info("creator", &coins(1000, "uosmo"));
+        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
             validator: CELESTIAVAL1.to_string(),
         };
@@ -52,7 +52,7 @@ mod validator_tests {
     #[test]
     fn invalid_remove_validator() {
         let mut deps = init();
-        let info = mock_info("creator", &coins(1000, "uosmo"));
+        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RemoveValidator {
             validator: CELESTIAVAL3.to_string(),
         };

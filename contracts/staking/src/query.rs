@@ -18,8 +18,9 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         native_token_denom: config.native_token_denom,
         liquid_stake_token_denom: config.liquid_stake_token_denom,
         treasury_address: config.treasury_address.to_string(),
-        operators: config
-            .operators
+        monitors: config
+            .monitors
+            .unwrap()
             .into_iter()
             .map(|v| v.to_string())
             .collect(),
@@ -37,6 +38,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .reward_collector_address
             .to_string(),
         protocol_fee_config: config.protocol_fee_config,
+        ibc_channel_id: config.ibc_channel_id,
         stopped: config.stopped,
     };
     Ok(res)

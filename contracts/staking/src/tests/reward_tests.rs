@@ -1,13 +1,14 @@
 #[cfg(test)]
 mod reward_tests {
-    use crate::contract::execute;
+    use crate::contract::{execute, IBC_TIMEOUT};
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
     use crate::state::{CONFIG, STATE};
-    use crate::tests::test_helper::init;
+    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
 
     use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{Coin, Uint128};
+    use cosmwasm_std::{Addr, CosmosMsg, ReplyOn, Uint128};
+    use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 
     #[test]
     fn receive_rewards() {
@@ -38,7 +39,7 @@ mod reward_tests {
 
         let info = mock_info(
             &sender,
-            &[Coin {
+            &[cosmwasm_std::Coin {
                 amount: Uint128::from(100u128),
                 denom: "uosmo".to_string(),
             }],
@@ -49,7 +50,7 @@ mod reward_tests {
 
         let info = mock_info(
             &contract,
-            &[Coin {
+            &[cosmwasm_std::Coin {
                 amount: Uint128::from(100u128),
                 denom: config.native_token_denom.clone(),
             }],
@@ -60,7 +61,7 @@ mod reward_tests {
 
         let info = mock_info(
             &sender,
-            &[Coin {
+            &[cosmwasm_std::Coin {
                 amount: Uint128::from(100u128),
                 denom: config.native_token_denom.clone(),
             }],
@@ -68,7 +69,28 @@ mod reward_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
         assert!(res.is_ok());
-        assert!(res.unwrap().messages.len() == 1); // transfer messages as sub message
+        let res = res.unwrap();
+        assert!(res.messages.len() == 1); // transfer messages as sub message
+        assert_eq!(res.messages[0].reply_on, ReplyOn::Always);
+        assert_eq!(
+            res.messages[0].msg,
+            CosmosMsg::from(MsgTransfer {
+                source_channel: CHANNEL_ID.to_string(),
+                source_port: "transfer".to_string(),
+                sender: env.contract.address.to_string(),
+                receiver: Addr::unchecked(CELESTIA1).to_string(),
+                token: Some(osmosis_std::types::cosmos::base::v1beta1::Coin {
+                    denom: NATIVE_TOKEN.to_string(),
+                    amount: "90".to_string(),
+                }),
+                timeout_height: None,
+                timeout_timestamp: env.block.time.nanos() + IBC_TIMEOUT.nanos(),
+                memo: format!(
+                    "{{\"ibc_callback\":\"{}\"}}",
+                    env.contract.address.to_string()
+                ),
+            })
+        );
 
         let state = STATE.load(&deps.storage).unwrap();
 
