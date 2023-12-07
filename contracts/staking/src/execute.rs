@@ -308,7 +308,9 @@ pub fn execute_submit_batch(
         Some(env.block.time.seconds() + config.unbonding_period),
     );
     let mut submitted_batches = SUBMITTED_BATCH_IDS.load(deps.storage).unwrap_or(vec![]);
-    submitted_batches.push(pending_batch_id);
+    if !submitted_batches.contains(&pending_batch_id) {
+        submitted_batches.push(pending_batch_id);
+    }
     SUBMITTED_BATCH_IDS.save(deps.storage, &submitted_batches)?;
 
     // Move pending batch to batches
@@ -363,7 +365,9 @@ pub fn execute_submit_batch(
         Some(env.block.time.seconds() + config.unbonding_period),
     );
     let mut submitted_batches = SUBMITTED_BATCH_IDS.load(deps.storage).unwrap_or(vec![]);
-    submitted_batches.push(pending_batch_id);
+    if !submitted_batches.contains(&pending_batch_id) {
+        submitted_batches.push(pending_batch_id);
+    }
     SUBMITTED_BATCH_IDS.save(deps.storage, &submitted_batches)?;
 
     BATCHES.save(deps.storage, batch.id, &batch)?;

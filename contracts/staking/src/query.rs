@@ -122,7 +122,7 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     Ok(batch_to_response(pending_batch))
 }
 
-pub fn query_submitted_batches(deps: Deps) -> StdResult<Vec<BatchResponse>> {
+pub fn query_submitted_batches(deps: Deps) -> StdResult<BatchesResponse> {
     let submitted_batch_ids = SUBMITTED_BATCH_IDS.load(deps.storage)?;
     let submitted_batches: Vec<BatchResponse> = submitted_batch_ids
         .iter()
@@ -134,7 +134,10 @@ pub fn query_submitted_batches(deps: Deps) -> StdResult<Vec<BatchResponse>> {
         })
         .collect();
 
-    Ok(submitted_batches)
+    let res = BatchesResponse {
+        batches: submitted_batches,
+    };
+    Ok(res)
 }
 
 pub fn query_ibc_queue(

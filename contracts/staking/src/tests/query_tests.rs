@@ -271,6 +271,13 @@ mod query_tests {
         result = from_binary::<BatchesResponse>(&bin);
         let result = result.unwrap();
         assert_eq!(result.batches.len(), 1);
+
+        // query only submitted batches
+        let msg = QueryMsg::SubmittedBatches {};
+        bin = query(deps.as_ref(), env.clone(), msg).unwrap();
+        let result = from_binary::<BatchesResponse>(&bin);
+        let result = result.unwrap();
+        assert_eq!(result.batches.len(), 1);
     }
 
     #[test]
