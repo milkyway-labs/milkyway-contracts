@@ -159,6 +159,8 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+    #[returns(BatchesResponse)]
+    SubmittedBatches {},
     #[returns(IBCQueueResponse)]
     IbcQueue {
         start_after: Option<u64>,

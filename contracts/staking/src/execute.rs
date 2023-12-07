@@ -4,6 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, paginate_map,
     validate_address, validate_addresses,
 };
+use crate::state::SUBMITTED_BATCH_IDS;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -290,6 +291,9 @@ pub fn execute_submit_batch(
         BatchStatus::Submitted,
         Some(env.block.time.seconds() + config.unbonding_period),
     );
+    let mut submitted_batches = SUBMITTED_BATCH_IDS.load(deps.storage).unwrap_or(vec![]);
+    submitted_batches.push(pending_batch_id);
+    SUBMITTED_BATCH_IDS.save(deps.storage, &submitted_batches)?;
 
     // Move pending batch to batches
     BATCHES.save(deps.storage, batch.id, &batch)?;
@@ -342,6 +346,9 @@ pub fn execute_submit_batch(
         BatchStatus::Submitted,
         Some(env.block.time.seconds() + config.unbonding_period),
     );
+    let mut submitted_batches = SUBMITTED_BATCH_IDS.load(deps.storage).unwrap_or(vec![]);
+    submitted_batches.push(pending_batch_id);
+    SUBMITTED_BATCH_IDS.save(deps.storage, &submitted_batches)?;
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
@@ -829,6 +836,12 @@ pub fn receive_unstaked_tokens(
 
     batch.received_native_unstaked = Some(amount.clone());
     batch.update_status(BatchStatus::Received, None);
+    let mut submitted_batches = SUBMITTED_BATCH_IDS.load(deps.storage)?;
+    submitted_batches = submitted_batches
+        .into_iter()
+        .filter(|v| v != &batch.id)
+        .collect();
+    SUBMITTED_BATCH_IDS.save(deps.storage, &submitted_batches)?;
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 

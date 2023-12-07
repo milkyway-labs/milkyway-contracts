@@ -6,6 +6,7 @@ mod staking_tests {
     use crate::msg::BatchesResponse;
     use crate::msg::ExecuteMsg;
     use crate::msg::QueryMsg;
+    use crate::state::SUBMITTED_BATCH_IDS;
     use crate::state::{Config, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::from_binary;
@@ -217,6 +218,9 @@ mod staking_tests {
         let res = BATCHES.save(&mut deps.storage, 1, &batch);
         assert!(res.is_ok());
 
+        let res = SUBMITTED_BATCH_IDS.save(&mut deps.storage, &vec![1]);
+        assert!(res.is_ok());
+
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
         assert!(res.is_err()); // batch not ready
 
@@ -393,6 +397,8 @@ mod staking_tests {
         let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
         batch.update_status(BatchStatus::Submitted, Some(1000));
         let res = BATCHES.save(&mut deps.storage, 1, &batch);
+        assert!(res.is_ok());
+        let res = SUBMITTED_BATCH_IDS.save(&mut deps.storage, &vec![1]);
         assert!(res.is_ok());
 
         let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };

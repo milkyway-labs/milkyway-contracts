@@ -6,7 +6,7 @@ use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
     query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
-    query_pending_batch, query_reply_queue, query_state,
+    query_pending_batch, query_reply_queue, query_state, query_submitted_batches,
 };
 use crate::state::{
     Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
@@ -263,6 +263,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         } => to_binary(&query_claimable(deps, user, start_after, limit)?),
+        QueryMsg::SubmittedBatches {} => to_binary(&query_submitted_batches(deps)?),
 
         // dev only, depr
         QueryMsg::IbcQueue { start_after, limit } => {

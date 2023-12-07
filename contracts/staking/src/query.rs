@@ -6,6 +6,7 @@ use crate::msg::{
 use crate::state::ibc::IBCTransfer;
 use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    SUBMITTED_BATCH_IDS,
 };
 use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::{Batch, BatchStatus};
@@ -117,6 +118,21 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     let pending_batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     Ok(batch_to_response(pending_batch))
+}
+
+pub fn query_submitted_batches(deps: Deps) -> StdResult<Vec<BatchResponse>> {
+    let submitted_batch_ids = SUBMITTED_BATCH_IDS.load(deps.storage)?;
+    let submitted_batches: Vec<BatchResponse> = submitted_batch_ids
+        .iter()
+        .map(|v| {
+            BATCHES
+                .load(deps.storage, v.clone())
+                .map(|b| batch_to_response(b))
+                .unwrap()
+        })
+        .collect();
+
+    Ok(submitted_batches)
 }
 
 pub fn query_ibc_queue(

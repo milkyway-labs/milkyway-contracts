@@ -58,6 +58,7 @@ pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
+pub const SUBMITTED_BATCH_IDS: Item<Vec<u64>> = Item::new("submitted_batches");
 pub const IBC_CONFIG: Item<IbcConfig> = Item::new("ibc_config");
 
 #[cw_serde]
