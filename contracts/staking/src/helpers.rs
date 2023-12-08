@@ -119,34 +119,34 @@ where
         Order::Descending => (None, start_after.map(Bound::exclusive)),
     };
 
-    let items = map.range(deps.storage, range_min, range_max, order);
+    let mut items = map.range(deps.storage, range_min, range_max, order);
     let mut taken = 0;
-    match limit {
-        Some(limit) => Ok(items
-            .map(|i| i.unwrap().1)
-            .take_while(|i| {
-                if taken >= limit {
-                    return false;
+    let mut result = Vec::new();
+    let limit = limit.unwrap_or(u32::MAX);
+    while taken < limit {
+        let item = items.next();
+        match item {
+            None => break,
+            Some(r) => {
+                if r.is_err() {
+                    continue;
                 }
-                taken += 1;
+                let (_, v) = r.unwrap();
                 if let Some(filter) = &filter {
-                    filter(&i)
+                    if filter(&v) {
+                        taken += 1;
+                        result.push(v);
+                    } else {
+                        continue;
+                    }
                 } else {
-                    true
+                    taken += 1;
+                    result.push(v);
                 }
-            })
-            .collect::<Vec<_>>()),
-        None => Ok(items
-            .map(|i| i.unwrap().1)
-            .take_while(|i| {
-                if let Some(filter) = &filter {
-                    filter(&i)
-                } else {
-                    true
-                }
-            })
-            .collect::<Vec<_>>()),
+            }
+        }
     }
+    Ok(result)
 }
 
 #[cfg(test)]
