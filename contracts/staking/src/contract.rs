@@ -231,9 +231,16 @@ pub fn execute(
             total_liquid_stake_token,
             total_reward_amount,
         ),
-        ExecuteMsg::RecoverPendingIbcTransfers { paginated } => {
-            recover(deps, env, info, paginated.unwrap_or(false))
-        }
+        ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated,
+            selected_packets,
+        } => recover(
+            deps,
+            env,
+            info,
+            selected_packets,
+            paginated.unwrap_or(false),
+        ),
         ExecuteMsg::FeeWithdraw { amount } => fee_withdraw(deps, env, info, amount),
     }
 }

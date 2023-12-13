@@ -587,22 +587,34 @@ pub fn recover(
     mut deps: DepsMut,
     env: Env,
     _info: MessageInfo,
+    selected_packets: Option<Vec<u64>>,
     page: bool,
 ) -> Result<Response, ContractError> {
     let page_size = 10;
 
     // timed out and failed packets
-    let packets: Vec<IBCTransfer> = paginate_map(
-        deps.as_ref(),
-        &INFLIGHT_PACKETS,
-        None,
-        if page { Some(page_size) } else { None },
-        Order::Ascending,
-        Some(Box::new(|r: &IBCTransfer| {
-            r.status == PacketLifecycleStatus::AckFailure
-                || r.status == PacketLifecycleStatus::TimedOut
-        })),
-    )?;
+    let packets: Vec<IBCTransfer> = if selected_packets.is_some() {
+        let selected_packets = selected_packets.unwrap();
+        let mut packets: Vec<IBCTransfer> = vec![];
+        for packet_id in selected_packets {
+            let packet = INFLIGHT_PACKETS.load(deps.storage, packet_id)?;
+            packets.push(packet);
+        }
+        packets
+    } else {
+        let packets: Vec<IBCTransfer> = paginate_map(
+            deps.as_ref(),
+            &INFLIGHT_PACKETS,
+            None,
+            if page { Some(page_size) } else { None },
+            Order::Ascending,
+            Some(Box::new(|r: &IBCTransfer| {
+                r.status == PacketLifecycleStatus::AckFailure
+                    || r.status == PacketLifecycleStatus::TimedOut
+            })),
+        )?;
+        packets
+    };
 
     if packets.is_empty() {
         return Err(ContractError::NoInflightPackets {});

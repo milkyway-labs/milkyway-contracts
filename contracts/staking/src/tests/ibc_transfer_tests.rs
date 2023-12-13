@@ -130,7 +130,10 @@ mod ibc_transfer_tests {
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         // still the same
@@ -240,7 +243,10 @@ mod ibc_transfer_tests {
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         let inflight_packet = INFLIGHT_PACKETS
@@ -321,7 +327,10 @@ mod ibc_transfer_tests {
         assert!(res.unwrap().ibc_queue.len() == 1);
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
         let inflight_packet = INFLIGHT_PACKETS
@@ -352,7 +361,10 @@ mod ibc_transfer_tests {
         }
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
         let res = res.unwrap();
@@ -380,11 +392,41 @@ mod ibc_transfer_tests {
         // send recover message
         let msg = ExecuteMsg::RecoverPendingIbcTransfers {
             paginated: Some(true),
+            selected_packets: None,
         };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
         let res = res.unwrap();
         assert_eq!(res.attributes[1], attr("packets", "10"));
+    }
+
+    #[test]
+    fn recover_forced() {
+        let mut deps = init();
+        let info = mock_info(OSMO3, &[]);
+
+        for i in 1..=15 {
+            let res = INFLIGHT_PACKETS.save(
+                &mut deps.storage,
+                i,
+                &ibc::IBCTransfer {
+                    sequence: i.clone(),
+                    amount: 1000,
+                    status: ibc::PacketLifecycleStatus::Sent,
+                },
+            );
+            assert!(res.is_ok());
+        }
+
+        // send recover message
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: Some(true),
+            selected_packets: Some(vec![1, 2, 3]),
+        };
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.attributes[1], attr("packets", "3"));
     }
 
     #[test]
@@ -415,7 +457,10 @@ mod ibc_transfer_tests {
         assert!(res.is_ok());
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
         let res = res.unwrap();
@@ -462,7 +507,10 @@ mod ibc_transfer_tests {
         assert!(res.is_ok());
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
 
@@ -497,7 +545,10 @@ mod ibc_transfer_tests {
         );
 
         // send recover message
-        let msg = ExecuteMsg::RecoverPendingIbcTransfers { paginated: None };
+        let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+            paginated: None,
+            selected_packets: None,
+        };
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
         let res = res.unwrap();
