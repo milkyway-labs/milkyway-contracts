@@ -299,14 +299,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
-    // safe guard so this code doesn't stay in the contract
-    if version != Version::new(0, 3, 0) {
-        return Err(StdError::generic_err(format!(
-            "Unsupported migration from version {}",
-            version
-        ))
-        .into());
-    }
+    // none
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
