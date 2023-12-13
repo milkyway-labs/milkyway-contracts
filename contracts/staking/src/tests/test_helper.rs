@@ -1,8 +1,6 @@
-use crate::contract::{instantiate, IBC_TIMEOUT};
+use crate::contract::instantiate;
 use crate::msg::InstantiateMsg;
-use crate::state::{
-    Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, CONFIG, IBC_CONFIG,
-};
+use crate::state::{Config, MultisigAddressConfig, ProtocolFeeConfig, CONFIG};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -48,12 +46,6 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         panic!("error: {:?}", res);
     }
     assert!(res.is_ok());
-
-    let ibc_config = IbcConfig {
-        channel_id: "channel-123".to_string(),
-        default_timeout: IBC_TIMEOUT,
-    };
-    IBC_CONFIG.save(&mut deps.storage, &ibc_config).unwrap();
 
     let mut config: Config = CONFIG.load(&deps.storage).unwrap();
     config.stopped = false;

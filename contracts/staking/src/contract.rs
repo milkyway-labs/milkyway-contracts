@@ -9,8 +9,8 @@ use crate::query::{
     query_pending_batch, query_reply_queue, query_state,
 };
 use crate::state::{
-    Config, IbcConfig, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
+    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
+    IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -143,12 +143,6 @@ pub fn instantiate(
     // Set pending batch and batches
     BATCHES.save(deps.storage, 1, &pending_batch)?;
     PENDING_BATCH_ID.save(deps.storage, &1)?;
-
-    let ibc_config = IbcConfig {
-        channel_id: msg.ibc_channel_id.clone(),
-        default_timeout: IBC_TIMEOUT,
-    };
-    IBC_CONFIG.save(deps.storage, &ibc_config)?;
 
     // TODO: Update attributes
     Ok(Response::new()
@@ -305,20 +299,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
-    // safe guard so this code doesn't stay in the contract
-    if version != Version::new(0, 1, 0) {
-        return Err(StdError::generic_err(format!(
-            "Unsupported migration from version {}",
-            version
-        ))
-        .into());
-    }
-    let mut config: Config = CONFIG.load(deps.storage)?;
-    if config.operators.is_some() && config.monitors.is_none() {
-        config.monitors = config.operators.clone();
-    }
-    config.operators = None;
-    CONFIG.save(deps.storage, &config)?;
+    // none
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

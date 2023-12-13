@@ -37,6 +37,7 @@ pub fn receive_ack(
         // If the ack is not for this contract, return a success
         return Ok(Response::new()
             .add_attribute("action", "receive_ack")
+            .add_attribute("channel", source_channel)
             .add_attribute("error", "received ack for different channel"));
     }
 

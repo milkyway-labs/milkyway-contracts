@@ -1,4 +1,4 @@
-use crate::contract::CELESTIA_VALIDATOR_PREFIX;
+use crate::contract::{CELESTIA_VALIDATOR_PREFIX, IBC_TIMEOUT};
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, paginate_map,
@@ -7,7 +7,7 @@ use crate::helpers::{
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
-    CONFIG, IBC_CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
     ensure, Addr, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response, SubMsg,
@@ -27,10 +27,9 @@ pub fn transfer_stake_msg(
     env: &Env,
     amount: Uint128,
 ) -> Result<MsgTransfer, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let ibc_config = IBC_CONFIG.load(deps.storage)?;
+    let config: Config = CONFIG.load(deps.storage)?;
 
-    if ibc_config.channel_id.is_empty() {
+    if config.ibc_channel_id.is_empty() {
         return Err(ContractError::IbcChannelNotFound {});
     }
 
@@ -40,12 +39,12 @@ pub fn transfer_stake_msg(
     };
 
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
-        env.block.time.nanos() + ibc_config.default_timeout.nanos(),
+        env.block.time.nanos() + IBC_TIMEOUT.nanos(),
     ));
 
     let to_address = config.multisig_address_config.staker_address.to_string();
     let ibc_msg = MsgTransfer {
-        source_channel: ibc_config.channel_id,
+        source_channel: config.ibc_channel_id,
         source_port: "transfer".to_string(),
         token: Some(ibc_coin),
         receiver: to_address.clone(),
