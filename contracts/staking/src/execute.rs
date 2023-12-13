@@ -586,11 +586,16 @@ pub fn execute_accept_ownership(
 pub fn recover(
     mut deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     selected_packets: Option<Vec<u64>>,
     page: bool,
 ) -> Result<Response, ContractError> {
     let page_size = 10;
+
+    // forced recovery is dangerous and should only be done by the admin
+    if selected_packets.is_some() && page {
+        ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+    }
 
     // timed out and failed packets
     let packets: Vec<IBCTransfer> = if selected_packets.is_some() {

@@ -4,7 +4,7 @@ mod ibc_transfer_tests {
     use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
     use crate::query::query_ibc_queue;
     use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
-    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
+    use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{
         attr, coins, Addr, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse,
@@ -403,7 +403,6 @@ mod ibc_transfer_tests {
     #[test]
     fn recover_forced() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &[]);
 
         for i in 1..=15 {
             let res = INFLIGHT_PACKETS.save(
@@ -423,7 +422,12 @@ mod ibc_transfer_tests {
             paginated: Some(true),
             selected_packets: Some(vec![1, 2, 3]),
         };
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
+        let info = mock_info(OSMO1, &[]);
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+        assert!(res.is_err()); // not an admin
+
+        let info = mock_info(OSMO3, &[]);
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         assert!(res.is_ok());
         let res = res.unwrap();
         assert_eq!(res.attributes[1], attr("packets", "3"));
