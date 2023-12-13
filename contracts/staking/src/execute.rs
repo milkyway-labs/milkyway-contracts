@@ -593,7 +593,7 @@ pub fn recover(
     let page_size = 10;
 
     // forced recovery is dangerous and should only be done by the admin
-    if selected_packets.is_some() && page {
+    if selected_packets.is_some() {
         ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     }
 
