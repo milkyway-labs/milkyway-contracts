@@ -78,6 +78,7 @@ pub enum ExecuteMsg {
     },
     RecoverPendingIbcTransfers {
         paginated: Option<bool>,
+        selected_packets: Option<Vec<u64>>,
     },
     FeeWithdraw {
         amount: Uint128,
