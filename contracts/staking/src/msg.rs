@@ -109,6 +109,7 @@ pub struct StateResponse {
     pub rate: Decimal,
     pub pending_owner: String,
     pub total_reward_amount: Uint128,
+    pub total_fees: Uint128,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct LiquidUnstakeRequestResponse {
