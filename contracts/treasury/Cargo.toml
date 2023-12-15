@@ -46,11 +46,13 @@ cosmwasm-std = { version = "1.4.1", features = [
     # Enable this if you only deploy to chains that have CosmWasm 1.4 or higher
     # "cosmwasm_1_4",
 ] }
+cw-controllers = "1.1.2"
 cw-storage-plus = "1.1.0"
 cw2 = "1.1.0"
 schemars = "0.8.10"
 serde = { version = "1.0.145", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
+v = "0.1.0"
 
 [dev-dependencies]
 cw-multi-test = "0.17.0"
