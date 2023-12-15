@@ -1,9 +1,8 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Timestamp};
 
 use crate::{
-    error::ContractResult,
+    error::{ContractError, ContractResult},
     state::{State, ADMIN, STATE},
-    ContractError,
 };
 
 // Transfer ownership to another account; callable by the owner
