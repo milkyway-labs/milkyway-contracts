@@ -249,7 +249,7 @@ dependencies = [
  "cw-utils",
  "derivative",
  "itertools 0.11.0",
- "prost 0.12.1",
+ "prost 0.12.3",
  "schemars",
  "serde",
  "sha2 0.10.8",
@@ -566,7 +566,23 @@ dependencies = [
  "cosmwasm-std",
  "osmosis-std-derive",
  "prost 0.11.9",
- "prost-types",
+ "prost-types 0.11.9",
+ "schemars",
+ "serde",
+ "serde-cw-value",
+]
+
+[[package]]
+name = "osmosis-std"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e87adf61f03306474ce79ab322d52dfff6b0bcf3aed1e12d8864ac0400dec1bf"
+dependencies = [
+ "chrono",
+ "cosmwasm-std",
+ "osmosis-std-derive",
+ "prost 0.12.3",
+ "prost-types 0.12.3",
  "schemars",
  "serde",
  "serde-cw-value",
@@ -580,7 +596,7 @@ checksum = "c5ebdfd1bc8ed04db596e110c6baa9b174b04f6ed1ec22c666ddc5cb3fa91bd7"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
- "prost-types",
+ "prost-types 0.11.9",
  "quote",
  "syn 1.0.109",
 ]
@@ -616,9 +632,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.12.1"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4fdd22f3b9c31b53c060df4a0613a1c7f062d4115a2b984dd15b1858f7e340d"
+checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
 dependencies = [
  "bytes",
  "prost-derive 0.12.3",
@@ -657,6 +673,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213622a1460818959ac1181aaeb2dc9c7f63df720db7d788b3e24eacd1983e13"
 dependencies = [
  "prost 0.11.9",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
+dependencies = [
+ "prost 0.12.3",
 ]
 
 [[package]]
@@ -862,7 +887,7 @@ dependencies = [
  "cw2",
  "enum-repr",
  "milky_way",
- "osmosis-std",
+ "osmosis-std 0.20.1",
  "prost 0.11.9",
  "prost-derive 0.12.3",
  "schemars",
@@ -931,6 +956,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
+ "osmosis-std 0.21.0",
  "schemars",
  "serde",
  "thiserror",

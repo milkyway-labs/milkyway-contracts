@@ -1,9 +1,14 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Timestamp};
+use cosmwasm_std::{CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp};
+use osmosis_std::types::{
+    cosmos::base::v1beta1::Coin, ibc::applications::transfer::v1::MsgTransfer,
+};
 
 use crate::{
     error::{ContractError, ContractResult},
     state::{State, ADMIN, STATE},
 };
+
+pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
 // Transfer ownership to another account; callable by the owner
 // This will require the new owner to accept to take effect.
@@ -84,4 +89,57 @@ pub fn execute_accept_ownership(
         }
         None => Err(ContractError::NoPendingOwner {}),
     }
+}
+
+pub fn execute_spend_funds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: cosmwasm_std::Coin,
+    receiver: String,
+    channel_id: Option<String>,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let msg_send: CosmosMsg;
+
+    if channel_id.is_none() {
+        msg_send = cosmwasm_std::BankMsg::Send {
+            to_address: receiver.clone(),
+            amount: vec![amount.clone()],
+        }
+        .into();
+    } else {
+        // not using the ibc queue here. if this fails, we just reexecute
+        msg_send = MsgTransfer {
+            source_channel: channel_id.unwrap().clone(),
+            source_port: "transfer".to_string(),
+            token: Some(Coin {
+                denom: amount.denom,
+                amount: amount.amount.to_string(),
+            }),
+            receiver: receiver.clone(),
+            sender: env.contract.address.to_string(),
+            timeout_height: None,
+            timeout_timestamp: env.block.time.nanos() + IBC_TIMEOUT.nanos(),
+            memo: format!(
+                "{{\"ibc_callback\":\"{}\"}}",
+                env.contract.address.to_string()
+            ),
+        }
+        .into();
+    }
+
+    let res = Response::new()
+        .add_message(msg_send)
+        .add_attribute("action", "spend_funds")
+        .add_attribute("receiver", receiver.clone())
+        .add_attribute("amount", amount.amount)
+        .add_attribute("denom", amount.denom);
+
+    if channel_id.is_some() {
+        res.add_attribute("channel_id", channel_id.unwrap().clone());
+    }
+
+    Ok(res)
 }
