@@ -7,7 +7,7 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::execute::{
     execute_accept_ownership, execute_revoke_ownership_transfer, execute_spend_funds,
-    execute_spend_funds_ibc, execute_transfer_ownership,
+    execute_transfer_ownership,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, ADMIN, STATE};

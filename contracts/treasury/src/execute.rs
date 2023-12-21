@@ -1,4 +1,4 @@
-use cosmwasm_std::{CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp};
+use cosmwasm_std::{attr, CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp};
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin, ibc::applications::transfer::v1::MsgTransfer,
 };
@@ -112,11 +112,11 @@ pub fn execute_spend_funds(
     } else {
         // not using the ibc queue here. if this fails, we just reexecute
         msg_send = MsgTransfer {
-            source_channel: channel_id.unwrap().clone(),
+            source_channel: channel_id.clone().unwrap().clone(),
             source_port: "transfer".to_string(),
             token: Some(Coin {
-                denom: amount.denom,
-                amount: amount.amount.to_string(),
+                denom: amount.clone().denom,
+                amount: amount.clone().amount.to_string(),
             }),
             receiver: receiver.clone(),
             sender: env.contract.address.to_string(),
@@ -130,16 +130,19 @@ pub fn execute_spend_funds(
         .into();
     }
 
-    let res = Response::new()
-        .add_message(msg_send)
-        .add_attribute("action", "spend_funds")
-        .add_attribute("receiver", receiver.clone())
-        .add_attribute("amount", amount.amount)
-        .add_attribute("denom", amount.denom);
+    let mut attributes = vec![
+        attr("action", "spend_funds"),
+        attr("receiver", receiver.clone()),
+        attr("amount", amount.clone().amount),
+        attr("denom", amount.clone().denom.clone()),
+    ];
 
-    if channel_id.is_some() {
-        res.add_attribute("channel_id", channel_id.unwrap().clone());
+    if channel_id.clone().is_some() {
+        attributes.push(attr("channel_id", channel_id.unwrap().clone()));
     }
 
+    let res = Response::new()
+        .add_message(msg_send)
+        .add_attributes(attributes);
     Ok(res)
 }
