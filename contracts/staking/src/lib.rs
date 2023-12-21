@@ -5,6 +5,7 @@ pub mod execute;
 pub mod helpers;
 pub mod ibc;
 pub mod msg;
+pub mod oracle;
 pub mod query;
 pub mod state;
 

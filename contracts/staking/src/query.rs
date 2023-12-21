@@ -1,4 +1,4 @@
-use crate::helpers::paginate_map;
+use crate::helpers::{get_redemption_rate, paginate_map};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
     LiquidUnstakeRequestResponse, StateResponse,
@@ -49,11 +49,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let res = StateResponse {
         total_native_token: state.total_native_token,
         total_liquid_stake_token: state.total_liquid_stake_token,
-        rate: if state.total_native_token == Uint128::zero() {
-            Decimal::zero()
-        } else {
-            Decimal::from_ratio(state.total_liquid_stake_token, state.total_native_token)
-        },
+        rate: get_redemption_rate(&deps),
         pending_owner: state
             .pending_owner
             .map(|v| v.to_string())
