@@ -65,6 +65,7 @@ pub enum ExecuteMsg {
         channel_id: Option<String>,
         monitors: Option<Vec<String>>,
         treasury_address: Option<String>,
+        oracle_contract_address: Option<String>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {

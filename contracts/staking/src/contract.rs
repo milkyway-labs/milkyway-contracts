@@ -93,6 +93,7 @@ pub fn instantiate(
         minimum_liquid_stake_amount: Uint128::zero(),
         ibc_channel_id: "".to_string(),
         stopped: true, // we start stopped
+        oracle_contract_address: None,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -200,6 +201,7 @@ pub fn execute(
             channel_id,
             monitors,
             treasury_address,
+            oracle_contract_address,
         } => update_config(
             deps,
             env,
@@ -213,6 +215,7 @@ pub fn execute(
             channel_id,
             monitors,
             treasury_address,
+            oracle_contract_address,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {

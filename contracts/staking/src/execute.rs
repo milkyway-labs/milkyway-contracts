@@ -4,7 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_redemption_rate,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::oracle::{Oracle, ORACLE_KEY};
+use crate::oracle::{self, Oracle, ORACLE_KEY};
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -705,6 +705,7 @@ pub fn update_config(
     channel_id: Option<String>,
     monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
+    oracle_contract_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -759,7 +760,11 @@ pub fn update_config(
         config.native_token_denom = native_token_denom;
     }
 
-    if true {}
+    if oracle_contract_address.is_some() {
+        let oracle_contract_address = oracle_contract_address.unwrap();
+        validate_address(&oracle_contract_address, "osmo")?;
+        config.oracle_contract_address = Some(Addr::unchecked(oracle_contract_address));
+    }
 
     CONFIG.save(deps.storage, &config)?;
 
