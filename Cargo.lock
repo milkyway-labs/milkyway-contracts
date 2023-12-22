@@ -224,9 +224,9 @@ dependencies = [
 
 [[package]]
 name = "cw-controllers"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23b129ca74fa41111fd2e1727426532556dc63973420343b659f5c072b85d789"
+checksum = "57de8d3761e46be863e3ac1eba8c8a976362a48c6abf240df1e26c3e421ee9e8"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -528,7 +528,7 @@ checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
 name = "milky_way"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -849,7 +849,7 @@ dependencies = [
 
 [[package]]
 name = "staking"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "bech32",
  "bech32-no_std",
@@ -927,12 +927,14 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-controllers",
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
  "schemars",
  "serde",
  "thiserror",
+ "v",
 ]
 
 [[package]]
@@ -946,6 +948,12 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+
+[[package]]
+name = "v"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23bf1cdfefda84a01134d6a5a9815fbf66c8df618f03b8c2296e6d06041a2e75"
 
 [[package]]
 name = "version_check"

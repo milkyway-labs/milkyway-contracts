@@ -2,12 +2,13 @@
 mod query_tests {
     // use serde_json;
     use crate::contract::{execute, query};
+    use crate::helpers::derive_intermediate_sender;
     use crate::msg::{
         BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, LiquidUnstakeRequestResponse,
         QueryMsg, StateResponse,
     };
     use crate::query::query_pending_batch;
-    use crate::state::{CONFIG, STATE};
+    use crate::state::{State, CONFIG, STATE};
     use crate::tests::test_helper::{
         init, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
@@ -48,6 +49,7 @@ mod query_tests {
     #[test]
     fn get_state() {
         let mut deps = init();
+
         let msg = QueryMsg::State {};
         let mut bin = query(deps.as_ref(), mock_env(), msg.clone()).unwrap();
         let mut result = from_binary::<StateResponse>(&bin);
@@ -74,7 +76,12 @@ mod query_tests {
         let res = execute(deps.as_mut(), mock_env(), info, stake_msg);
         assert!(res.is_ok());
 
+        let mut state = STATE.load(&deps.storage).unwrap();
+        state.total_fees = Uint128::from(100u128);
+        STATE.save(&mut deps.storage, &state).unwrap();
+
         // check the state
+        let msg = QueryMsg::State {};
         bin = query(deps.as_ref(), mock_env(), msg.clone()).unwrap();
         result = from_binary::<StateResponse>(&bin);
         match result {
@@ -85,6 +92,7 @@ mod query_tests {
                     res.rate,
                     Decimal::from_ratio(res.total_liquid_stake_token, res.total_native_token)
                 );
+                assert_eq!(res.total_fees, Uint128::from(100u128))
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),

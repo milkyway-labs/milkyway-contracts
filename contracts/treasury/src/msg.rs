@@ -4,7 +4,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 pub struct InstantiateMsg {}
 
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    TransferOwnership { new_owner: String },
+    AcceptOwnership {},
+    RevokeOwnershipTransfer {},
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
