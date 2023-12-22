@@ -63,7 +63,7 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert_eq!(messages.len(), 1);
+        assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::Batch {
             id: pending_batch.id,
@@ -105,7 +105,7 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert_eq!(messages.len(), 1);
+        assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::Batch {
             id: pending_batch.id,
@@ -176,7 +176,7 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert_eq!(messages.len(), 1);
+        assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::Batch {
             id: pending_batch.id,
@@ -218,7 +218,7 @@ mod withdraw_tests {
         let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
         assert!(res.is_ok());
         let messages = res.unwrap().messages;
-        assert_eq!(messages.len(), 1);
+        assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::Batch {
             id: pending_batch.id,
