@@ -2,7 +2,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Decimal};
 
-pub const ORACLE_KEY: String = "milkTIA_redemption_rate".to_string();
+pub const ORACLE_KEY: &str = "milkTIA_redemption_rate";
 
 #[cw_serde]
 pub enum Oracle {
@@ -45,4 +45,11 @@ pub struct RedemptionRate {
 pub enum MetricType {
     RedemptionRate,
     Other(String),
+}
+
+/// For use in price oracles, the RedemptionRate metric requires the stToken denom
+/// as it appears on the controller chain (e.g. `stuosmo`)
+#[cw_serde]
+pub struct RedemptionRateAttributes {
+    pub sttoken_denom: String,
 }

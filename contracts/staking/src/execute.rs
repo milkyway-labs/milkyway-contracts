@@ -4,15 +4,15 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_redemption_rate,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::oracle::{self, Oracle, ORACLE_KEY};
+use crate::oracle::{Oracle, RedemptionRateAttributes, ORACLE_KEY};
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
     CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{
-    ensure, to_binary, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order,
-    ReplyOn, Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+    ensure, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn,
+    Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
@@ -90,20 +90,26 @@ fn transfer_stake_sub_msg(
     })
 }
 
-fn update_oracle_msg(deps: Deps, env: Env, config: Config) -> Result<CosmosMsg, ContractError> {
+fn update_oracle_msg(deps: Deps, env: Env, config: &Config) -> Result<CosmosMsg, ContractError> {
     let redemption_rate = get_redemption_rate(&deps);
     let update_oracle_execute_msg = Oracle::PostMetric {
-        key: ORACLE_KEY,
+        key: ORACLE_KEY.to_string(),
         value: redemption_rate.to_string(),
         metric_type: crate::oracle::MetricType::RedemptionRate,
         update_time: env.block.time.seconds(),
         block_height: env.block.height,
-        attributes: None,
+        attributes: Some(Binary::from(
+            serde_json::to_string(&RedemptionRateAttributes {
+                sttoken_denom: config.liquid_stake_token_denom.clone(),
+            })
+            .unwrap()
+            .into_bytes(),
+        )),
     };
     let update_oracle_execute_msg_json = serde_json::to_string(&update_oracle_execute_msg).unwrap();
     let update_oracle_msg = MsgExecuteContract {
         sender: env.contract.address.to_string(),
-        contract: config.oracle_contract_address.unwrap().to_string(),
+        contract: config.oracle_contract_address.clone().unwrap().to_string(),
         msg: update_oracle_execute_msg_json.as_bytes().to_vec(),
         funds: vec![],
     };
@@ -192,7 +198,7 @@ pub fn execute_liquid_stake(
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.liquid_stake_token_denom,
+            denom: config.liquid_stake_token_denom.clone(),
             amount: mint_amount.to_string(),
         }),
         mint_to_address,
@@ -200,7 +206,7 @@ pub fn execute_liquid_stake(
 
     // Transfer native token to multisig address
     let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, config)?;
+    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
@@ -350,7 +356,7 @@ pub fn execute_submit_batch(
     let tokenfactory_burn_msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.liquid_stake_token_denom,
+            denom: config.liquid_stake_token_denom.clone(),
             amount: batch.batch_total_liquid_stake.to_string(),
         }),
         burn_from_address: env.contract.address.to_string(),
@@ -385,7 +391,7 @@ pub fn execute_submit_batch(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, config)?;
+    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
 
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
@@ -448,13 +454,13 @@ pub fn execute_withdraw(
         from_address: env.contract.address.to_string(),
         to_address: info.sender.to_string(),
         amount: vec![Coin {
-            denom: config.native_token_denom,
+            denom: config.native_token_denom.clone(),
             amount: amount.to_string(),
         }],
     };
     messages.push(send_msg.into());
 
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, config)?;
+    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
     messages.push(update_oracle_msg.into());
 
     Ok(Response::new()
@@ -832,7 +838,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     // transfer the funds to Celestia to be staked
     let ibc_transfer_msg =
         transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, config)?;
+    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
@@ -957,7 +963,7 @@ pub fn resume_contract(
     state.total_liquid_stake_token = total_liquid_stake_token;
     state.total_reward_amount = total_reward_amount;
 
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, config)?;
+    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
 
     STATE.save(deps.storage, &state)?;
 

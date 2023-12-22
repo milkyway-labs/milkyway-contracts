@@ -111,6 +111,7 @@ pub fn instantiate(
         Some(msg.ibc_channel_id.clone()),
         Some(msg.monitors),
         Some(msg.treasury_address),
+        msg.oracle_contract_address,
     )?;
 
     // Init State

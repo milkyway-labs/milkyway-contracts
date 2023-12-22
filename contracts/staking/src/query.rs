@@ -7,7 +7,7 @@ use crate::state::ibc::IBCTransfer;
 use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
-use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::{Batch, BatchStatus};
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
@@ -39,6 +39,10 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         protocol_fee_config: config.protocol_fee_config,
         ibc_channel_id: config.ibc_channel_id,
         stopped: config.stopped,
+        oracle_contract_address: config
+            .oracle_contract_address
+            .map(|v| v.to_string())
+            .unwrap_or_default(),
     };
     Ok(res)
 }
