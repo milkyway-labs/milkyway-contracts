@@ -180,7 +180,9 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub oracle_contract_address: String,
+}
 
 #[cw_serde]
 pub enum IBCLifecycleComplete {
