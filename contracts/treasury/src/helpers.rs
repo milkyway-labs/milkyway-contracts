@@ -1,27 +1,15 @@
-// use schemars::JsonSchema;
-// use serde::{Deserialize, Serialize};
+use cosmwasm_std::{Addr, StdError, StdResult};
 
-// use cosmwasm_std::{to_binary, Addr, CosmosMsg, StdResult, WasmMsg};
+pub fn validate_address(address: &String, prefix: &str) -> StdResult<Addr> {
+    let validated_addr = bech32::decode(&address);
 
-// use crate::msg::ExecuteMsg;
+    if validated_addr.is_err() {
+        return Err(StdError::generic_err("Invalid address"));
+    }
 
-// /// CwTemplateContract is a wrapper around Addr that provides a lot of helpers
-// /// for working with this.
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-// pub struct CwTemplateContract(pub Addr);
+    if &validated_addr.unwrap().0 != prefix {
+        return Err(StdError::generic_err("Invalid address prefix"));
+    }
 
-// impl CwTemplateContract {
-//     pub fn addr(&self) -> Addr {
-//         self.0.clone()
-//     }
-
-//     pub fn call<T: Into<ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
-//         let msg = to_binary(&msg.into())?;
-//         Ok(WasmMsg::Execute {
-//             contract_addr: self.addr().into(),
-//             msg,
-//             funds: vec![],
-//         }
-//         .into())
-//     }
-// }
+    Ok(Addr::unchecked(address))
+}

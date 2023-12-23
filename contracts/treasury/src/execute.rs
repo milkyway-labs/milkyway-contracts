@@ -5,6 +5,7 @@ use osmosis_std::types::{
 
 use crate::{
     error::{ContractError, ContractResult},
+    helpers::validate_address,
     state::{State, ADMIN, STATE},
 };
 
@@ -104,12 +105,14 @@ pub fn execute_spend_funds(
     let msg_send: CosmosMsg;
 
     if channel_id.is_none() {
+        validate_address(&receiver, "osmo")?;
         msg_send = cosmwasm_std::BankMsg::Send {
             to_address: receiver.clone(),
             amount: vec![amount.clone()],
         }
         .into();
     } else {
+        validate_address(&receiver, "celestia")?;
         // not using the ibc queue here. if this fails, we just reexecute
         msg_send = MsgTransfer {
             source_channel: channel_id.clone().unwrap().clone(),
