@@ -950,6 +950,7 @@ dependencies = [
 name = "treasury"
 version = "0.1.0"
 dependencies = [
+ "bech32",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers",
