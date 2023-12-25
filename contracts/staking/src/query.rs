@@ -1,4 +1,4 @@
-use crate::helpers::paginate_map;
+use crate::helpers::{get_redemption_rate, paginate_map};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
     LiquidUnstakeRequestResponse, StateResponse,
@@ -7,7 +7,7 @@ use crate::state::ibc::IBCTransfer;
 use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
-use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Deps, StdResult, Timestamp, Uint128};
 use milky_way::staking::{Batch, BatchStatus};
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
@@ -39,6 +39,10 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         protocol_fee_config: config.protocol_fee_config,
         ibc_channel_id: config.ibc_channel_id,
         stopped: config.stopped,
+        oracle_contract_address: config
+            .oracle_contract_address
+            .map(|v| v.to_string())
+            .unwrap_or_default(),
     };
     Ok(res)
 }
@@ -49,11 +53,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let res = StateResponse {
         total_native_token: state.total_native_token,
         total_liquid_stake_token: state.total_liquid_stake_token,
-        rate: if state.total_native_token == Uint128::zero() {
-            Decimal::zero()
-        } else {
-            Decimal::from_ratio(state.total_liquid_stake_token, state.total_native_token)
-        },
+        rate: get_redemption_rate(&deps),
         pending_owner: state
             .pending_owner
             .map(|v| v.to_string())

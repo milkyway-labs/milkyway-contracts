@@ -1,7 +1,9 @@
-use cosmwasm_std::{Addr, Deps, Order, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, Order, StdError, StdResult, Uint128};
 use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
+
+use crate::state::STATE;
 
 pub fn validate_address(address: &String, prefix: &str) -> StdResult<Addr> {
     let validated_addr = bech32::decode(&address);
@@ -147,6 +149,17 @@ where
         }
     }
     Ok(result)
+}
+
+pub fn get_redemption_rate(deps: &Deps) -> Decimal {
+    let state = STATE.load(deps.storage).unwrap();
+    let total_native_token = state.total_native_token;
+    let total_liquid_stake_token = state.total_liquid_stake_token;
+    if total_liquid_stake_token.is_zero() {
+        Decimal::zero()
+    } else {
+        Decimal::from_ratio(total_native_token, total_liquid_stake_token)
+    }
 }
 
 #[cfg(test)]

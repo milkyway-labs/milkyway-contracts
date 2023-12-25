@@ -70,10 +70,10 @@ mod reward_tests {
 
         assert!(res.is_ok());
         let res = res.unwrap();
-        assert!(res.messages.len() == 1); // transfer messages as sub message
-        assert_eq!(res.messages[0].reply_on, ReplyOn::Always);
+        assert_eq!(res.messages.len(), 2); // transfer message and redemption rate update
+        assert_eq!(res.messages[1].reply_on, ReplyOn::Always);
         assert_eq!(
-            res.messages[0].msg,
+            res.messages[1].msg,
             CosmosMsg::from(MsgTransfer {
                 source_channel: CHANNEL_ID.to_string(),
                 source_port: "transfer".to_string(),

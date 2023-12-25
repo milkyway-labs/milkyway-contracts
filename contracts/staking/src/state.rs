@@ -19,6 +19,7 @@ pub struct Config {
     pub minimum_liquid_stake_amount: Uint128,
     pub ibc_channel_id: String,
     pub stopped: bool,
+    pub oracle_contract_address: Option<Addr>,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?

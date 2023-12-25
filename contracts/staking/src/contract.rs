@@ -2,7 +2,7 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
-use crate::helpers::validate_addresses;
+use crate::helpers::{validate_address, validate_addresses};
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
     query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
@@ -93,6 +93,7 @@ pub fn instantiate(
         minimum_liquid_stake_amount: Uint128::zero(),
         ibc_channel_id: "".to_string(),
         stopped: true, // we start stopped
+        oracle_contract_address: None,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -110,6 +111,7 @@ pub fn instantiate(
         Some(msg.ibc_channel_id.clone()),
         Some(msg.monitors),
         Some(msg.treasury_address),
+        msg.oracle_contract_address,
     )?;
 
     // Init State
@@ -200,6 +202,7 @@ pub fn execute(
             channel_id,
             monitors,
             treasury_address,
+            oracle_contract_address,
         } => update_config(
             deps,
             env,
@@ -213,6 +216,7 @@ pub fn execute(
             channel_id,
             monitors,
             treasury_address,
+            oracle_contract_address,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
@@ -282,7 +286,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 ///////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if &CONTRACT_NAME != &current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -307,6 +311,13 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
     // migrate data
     // none
+    if version != Version::new(0, 3, 2) {
+        return Err(StdError::generic_err("Cannot migrate from this version").into());
+    }
+    validate_address(&msg.oracle_contract_address, "osmo")?;
+    let mut config = CONFIG.load(deps.storage)?;
+    config.oracle_contract_address = Some(Addr::unchecked(msg.oracle_contract_address));
+    CONFIG.save(deps.storage, &config)?;
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

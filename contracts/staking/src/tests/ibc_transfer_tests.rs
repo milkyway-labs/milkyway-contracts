@@ -48,7 +48,7 @@ mod ibc_transfer_tests {
                     ]
                 );
                 assert_eq!(
-                    result.messages[1],
+                    result.messages[2],
                     SubMsg {
                         id: ibc_sub_msg_id.clone(),
                         msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
