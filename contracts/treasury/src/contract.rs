@@ -6,7 +6,8 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::execute::{
-    execute_accept_ownership, execute_revoke_ownership_transfer, execute_transfer_ownership,
+    execute_accept_ownership, execute_revoke_ownership_transfer, execute_spend_funds,
+    execute_transfer_ownership,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, ADMIN, STATE};
@@ -53,6 +54,11 @@ pub fn execute(
         ExecuteMsg::RevokeOwnershipTransfer {} => {
             execute_revoke_ownership_transfer(deps, env, info)
         }
+        ExecuteMsg::SpendFunds {
+            amount,
+            receiver,
+            channel_id,
+        } => execute_spend_funds(deps, env, info, amount, receiver, channel_id),
     }
 }
 

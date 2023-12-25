@@ -5,9 +5,16 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    TransferOwnership { new_owner: String },
+    TransferOwnership {
+        new_owner: String,
+    },
     AcceptOwnership {},
     RevokeOwnershipTransfer {},
+    SpendFunds {
+        amount: cosmwasm_std::Coin,
+        receiver: String,
+        channel_id: Option<String>,
+    },
 }
 
 #[cw_serde]
