@@ -92,7 +92,8 @@ pub fn instantiate(
         },
         minimum_liquid_stake_amount: Uint128::zero(),
         ibc_channel_id: "".to_string(),
-        stopped: true, // we start stopped
+        stopped: true,                                // we start stopped
+        oracle_contract_address: Addr::unchecked(""), // just for migration. This always needs to be set
     };
 
     CONFIG.save(deps.storage, &config)?;
