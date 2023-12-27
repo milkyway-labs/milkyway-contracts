@@ -17,6 +17,7 @@ mod withdraw_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(130_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let mut pending_batch: Batch =
@@ -147,6 +148,7 @@ mod withdraw_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(130_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let mut pending_batch: Batch =
