@@ -166,6 +166,7 @@ mod staking_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let info = mock_info("bob", &coins(1000, "factory/bob/stTIA"));
@@ -185,6 +186,7 @@ mod staking_tests {
         let config: Config = CONFIG.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
@@ -235,6 +237,7 @@ mod staking_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let info = mock_info(
@@ -274,7 +277,7 @@ mod staking_tests {
         // check the state
         state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(100000u128));
-        assert_eq!(state.total_native_token, Uint128::from(0u128));
+        assert_eq!(state.total_native_token, Uint128::from(300000u128));
 
         // check the batch
         let batch = BATCHES.load(&deps.storage, 1).unwrap();
@@ -292,6 +295,7 @@ mod staking_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(0u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let info = mock_info(
@@ -331,7 +335,7 @@ mod staking_tests {
         // check the state
         state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(0u128));
-        assert_eq!(state.total_native_token, Uint128::from(0u128));
+        assert_eq!(state.total_native_token, Uint128::from(300000u128));
 
         // check the batch
         let batch = BATCHES.load(&deps.storage, 1).unwrap();
@@ -349,6 +353,7 @@ mod staking_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let mut batch_1 = Batch::new(1, Uint128::from(1000u128), 1000);
