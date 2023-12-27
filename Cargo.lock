@@ -528,7 +528,7 @@ checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
 name = "milky_way"
-version = "0.4.0"
+version = "0.4.6"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -874,7 +874,7 @@ dependencies = [
 
 [[package]]
 name = "staking"
-version = "0.4.0"
+version = "0.4.6"
 dependencies = [
  "bech32",
  "bech32-no_std",
