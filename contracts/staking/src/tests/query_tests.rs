@@ -2,13 +2,12 @@
 mod query_tests {
     // use serde_json;
     use crate::contract::{execute, query};
-    use crate::helpers::derive_intermediate_sender;
     use crate::msg::{
         BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, LiquidUnstakeRequestResponse,
         QueryMsg, StateResponse,
     };
     use crate::query::query_pending_batch;
-    use crate::state::{State, CONFIG, STATE};
+    use crate::state::{CONFIG, STATE};
     use crate::tests::test_helper::{
         init, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };

@@ -331,15 +331,6 @@ pub fn execute_submit_batch(
         }
     );
 
-    // Update batch status
-    batch.update_status(
-        BatchStatus::Submitted,
-        Some(env.block.time.seconds() + config.unbonding_period),
-    );
-
-    // Move pending batch to batches
-    BATCHES.save(deps.storage, batch.id, &batch)?;
-
     // Create new pending batch
     let new_pending_batch = Batch::new(
         batch.id + 1,
