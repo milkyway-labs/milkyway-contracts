@@ -2,7 +2,7 @@
 members = ["contracts/*", "packages/*"]
 
 [workspace.package]
-version = "0.4.4"
+version = "0.4.5"
 authors = ["Decento Labs"]
 edition = "2021"
 rust-version = "1.68.0"
