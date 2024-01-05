@@ -158,7 +158,7 @@ pub fn get_redemption_rate(deps: &Deps) -> Decimal {
     if total_liquid_stake_token.is_zero() {
         Decimal::zero()
     } else {
-        Decimal::from_ratio(total_native_token, total_liquid_stake_token)
+        Decimal::from_ratio(total_liquid_stake_token, total_native_token)
     }
 }
 

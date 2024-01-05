@@ -182,6 +182,7 @@ mod query_tests {
         // 2. total_liquid_stake_token == 0
         let mut state = STATE.load(&deps.storage).unwrap();
         state.total_liquid_stake_token = Uint128::from(100_000_000u128);
+        state.total_native_token = Uint128::from(300_000_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         match result {
@@ -228,7 +229,10 @@ mod query_tests {
                 assert_eq!(res.batches.len(), 2);
                 if let Some(first_batch) = res.batches.get(0) {
                     assert_eq!(first_batch.batch_total_liquid_stake, Uint128::from(500u128));
-                    assert_eq!(first_batch.expected_native_unstaked, Uint128::from(0u128));
+                    assert_eq!(
+                        first_batch.expected_native_unstaked,
+                        Uint128::from(1500u128)
+                    );
                     assert_eq!(first_batch.status, "submitted".to_string());
                     assert_eq!(first_batch.requests.len(), 1);
                     assert_eq!(
@@ -302,6 +306,7 @@ mod query_tests {
         let mut state = STATE.load(&deps.storage).unwrap();
 
         state.total_liquid_stake_token = Uint128::from(100_000u128);
+        state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
         let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
