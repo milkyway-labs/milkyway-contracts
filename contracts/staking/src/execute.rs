@@ -10,12 +10,15 @@ use crate::state::{
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
     CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
+use crate::state::{
+    new_unstake_request, remove_unstake_request, UNSTAKE_REQUESTS, UNSTAKE_REQUEST_COUNTERS,
+};
 use cosmwasm_std::{
     ensure, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn,
     Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
-use milky_way::staking::{Batch, BatchStatus, LiquidUnstakeRequest};
+use milky_way::staking::{Batch, BatchStatus};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContract;
@@ -240,18 +243,16 @@ pub fn execute_liquid_unstake(
     let mut pending_batch: Batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     // Add unstake request to pending batch
-    match pending_batch
-        .liquid_unstake_requests
-        .get_mut(&info.sender.to_string())
-    {
-        Some(request) => {
-            request.shares += amount;
+    let pending_unstake_request =
+        UNSTAKE_REQUESTS.load(deps.storage, (pending_batch.id, info.sender.to_string()));
+    let mut amount: Uint128 = amount;
+    match pending_unstake_request {
+        Ok(current_amount) => {
+            amount = current_amount + amount;
         }
-        None => {
-            pending_batch.liquid_unstake_requests.insert(
-                info.sender.to_string(),
-                LiquidUnstakeRequest::new(info.sender.clone(), amount),
-            );
+        Err(_) => {
+            // amount = amount;
+            new_unstake_request(deps, info.sender.to_string(), pending_batch.id, amount)?;
         }
     }
 
@@ -259,6 +260,11 @@ pub fn execute_liquid_unstake(
     pending_batch.batch_total_liquid_stake += amount;
 
     BATCHES.save(deps.storage, pending_batch.id, &pending_batch)?;
+    UNSTAKE_REQUESTS.save(
+        deps.storage,
+        (pending_batch.id, info.sender.to_string()),
+        &amount,
+    )?;
 
     // let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
@@ -315,7 +321,9 @@ pub fn execute_submit_batch(
             expected: 0u64,
         });
     }
-    if batch.liquid_unstake_requests.is_empty() {
+    let unstake_requests = UNSTAKE_REQUEST_COUNTERS.load(deps.storage, batch.id)?;
+
+    if unstake_requests == 0 {
         return Err(ContractError::BatchEmpty {});
     }
 
@@ -417,28 +425,21 @@ pub fn execute_withdraw(
     }
     let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
-    let _liquid_unstake_request: Option<&mut LiquidUnstakeRequest> = batch
-        .liquid_unstake_requests
-        .get_mut(&info.sender.to_string());
+    let _liquid_unstake_request =
+        UNSTAKE_REQUESTS.load(deps.storage, (batch.id, info.sender.to_string()));
 
-    if _liquid_unstake_request.is_none() {
+    if _liquid_unstake_request.is_err() {
         return Err(ContractError::NoRequestInBatch {});
     }
 
     let liquid_unstake_request = _liquid_unstake_request.unwrap();
 
-    if liquid_unstake_request.redeemed {
-        return Err(ContractError::AlreadyRedeemed {});
-    }
-
-    liquid_unstake_request.redeemed = true;
-    let amount = received_native_unstaked.multiply_ratio(
-        liquid_unstake_request.shares,
-        batch.batch_total_liquid_stake,
-    );
+    let amount = received_native_unstaked
+        .multiply_ratio(liquid_unstake_request, batch.batch_total_liquid_stake);
 
     // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
     BATCHES.save(deps.storage, batch.id, &batch)?;
+    remove_unstake_request(deps, info.sender.to_string(), batch.id)?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
     let send_msg = MsgSend {

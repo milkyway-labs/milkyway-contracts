@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Timestamp, Uint128};
+use cosmwasm_std::{Addr, DepsMut, StdError, Timestamp, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 use milky_way::staking::Batch;
@@ -51,7 +51,33 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
+// <batch id, user address, request>
+pub const UNSTAKE_REQUESTS: Map<(u64, String), Uint128> = Map::new("unstake_requests");
+pub const UNSTAKE_REQUESTS_BY_USER: Map<(String, u64), bool> = Map::new("unstake_requests_by_user");
+pub const UNSTAKE_REQUEST_COUNTERS: Map<u64, u64> = Map::new("unstake_request_counters");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
+
+pub fn new_unstake_request(
+    deps: DepsMut,
+    user: String,
+    batch_id: u64,
+    amount: Uint128,
+) -> Result<(), StdError> {
+    UNSTAKE_REQUESTS.save(deps.storage, (batch_id, user.clone()), &amount)?;
+    UNSTAKE_REQUEST_COUNTERS.save(deps.storage, batch_id, &1u64)?;
+    UNSTAKE_REQUESTS_BY_USER.save(deps.storage, (user, batch_id), &true)?;
+    Ok(())
+}
+
+pub fn remove_unstake_request(deps: DepsMut, user: String, batch_id: u64) -> Result<(), StdError> {
+    UNSTAKE_REQUESTS.remove(deps.storage, (batch_id, user.clone()));
+    UNSTAKE_REQUEST_COUNTERS.update(deps.storage, batch_id, |c| match c {
+        Some(c) => Ok::<u64, StdError>(c - 1),
+        None => Ok(0),
+    })?;
+    UNSTAKE_REQUESTS_BY_USER.remove(deps.storage, (user, batch_id));
+    Ok(())
+}
 
 #[cw_serde]
 pub struct IbcWaitingForReply {

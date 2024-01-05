@@ -6,8 +6,10 @@ use crate::msg::{
 use crate::state::ibc::IBCTransfer;
 use crate::state::{
     BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    UNSTAKE_REQUESTS, UNSTAKE_REQUESTS_BY_USER,
 };
 use cosmwasm_std::{Addr, Deps, StdResult, Timestamp, Uint128};
+use cw_storage_plus::Bound;
 use milky_way::staking::{Batch, BatchStatus};
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
@@ -64,7 +66,12 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     Ok(res)
 }
 
-fn batch_to_response(batch: Batch) -> BatchResponse {
+fn batch_to_response(deps: Deps, batch: Batch) -> BatchResponse {
+    let unstake_requests = UNSTAKE_REQUESTS
+        .prefix(batch.id)
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|v| v.unwrap())
+        .collect::<Vec<_>>();
     BatchResponse {
         id: batch.id,
         batch_total_liquid_stake: batch.batch_total_liquid_stake,
@@ -74,13 +81,11 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
             batch.next_batch_action_time.unwrap_or(0u64),
         ),
         status: batch.status.as_str().to_string(),
-        requests: batch
-            .liquid_unstake_requests
+        requests: unstake_requests
             .into_iter()
             .map(|v| LiquidUnstakeRequestResponse {
-                user: v.1.user.to_string(),
-                amount: v.1.shares,
-                redeemed: v.1.redeemed,
+                user: v.0,
+                amount: v.1,
             })
             .collect(),
     }
@@ -88,7 +93,7 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
 
 pub fn query_batch(deps: Deps, id: u64) -> StdResult<BatchResponse> {
     let batch: Batch = BATCHES.load(deps.storage, id)?;
-    Ok(batch_to_response(batch))
+    Ok(batch_to_response(deps, batch))
 }
 
 pub fn query_batches(
@@ -110,7 +115,10 @@ pub fn query_batches(
     )?;
 
     let res = BatchesResponse {
-        batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
+        batches: batches
+            .into_iter()
+            .map(|v| batch_to_response(deps, v))
+            .collect(),
     };
     Ok(res)
 }
@@ -119,7 +127,7 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
     let pending_batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
-    Ok(batch_to_response(pending_batch))
+    Ok(batch_to_response(deps, pending_batch))
 }
 
 pub fn query_ibc_queue(
@@ -168,26 +176,30 @@ pub fn query_claimable(
     limit: Option<u32>,
 ) -> StdResult<BatchesResponse> {
     deps.api.addr_validate(&user.to_string())?;
+    let unstaking_requests = UNSTAKE_REQUESTS_BY_USER
+        .prefix(user.to_string())
+        .range(
+            deps.storage,
+            start_after.map(Bound::exclusive),
+            None,
+            cosmwasm_std::Order::Ascending,
+        )
+        .map(|v| v.unwrap())
+        .collect::<Vec<_>>();
 
-    let batches = paginate_map(
-        deps,
-        &BATCHES,
-        start_after,
-        limit,
-        cosmwasm_std::Order::Ascending,
-        Some(Box::new(|b: &Batch| {
-            return b.status == milky_way::staking::BatchStatus::Received;
-        })),
-    )?
-    .into_iter()
-    .filter(|b| {
-        !b.liquid_unstake_requests
-            .get(&user.to_string())
-            .unwrap()
-            .redeemed
-    })
-    .map(|v| batch_to_response(v))
-    .collect();
+    let batches = unstaking_requests
+        .into_iter()
+        .filter_map(|v| {
+            let batch_id = v.0 .1;
+            let batch = BATCHES.load(deps.storage, batch_id).ok()?;
+            if batch.status == BatchStatus::Received {
+                Some(batch)
+            } else {
+                None
+            }
+        })
+        .map(|v| batch_to_response(deps, v))
+        .collect();
 
     let res = BatchesResponse { batches };
     Ok(res)
