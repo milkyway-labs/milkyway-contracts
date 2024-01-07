@@ -240,28 +240,33 @@ pub fn execute_liquid_unstake(
 
     // Load current pending batch
     let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
-    let mut pending_batch: Batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
     // Add unstake request to pending batch
     let pending_unstake_request =
-        UNSTAKE_REQUESTS.load(deps.storage, (pending_batch.id, info.sender.to_string()));
+        UNSTAKE_REQUESTS.load(deps.storage, (pending_batch_id, info.sender.to_string()));
     match pending_unstake_request {
         Ok(current_amount) => {
             UNSTAKE_REQUESTS.save(
                 deps.storage,
-                (pending_batch.id, info.sender.to_string()),
+                (pending_batch_id, info.sender.to_string()),
                 &(current_amount + amount),
             )?;
         }
         Err(_) => {
-            new_unstake_request(&mut deps, info.sender.to_string(), pending_batch.id, amount)?;
+            new_unstake_request(&mut deps, info.sender.to_string(), pending_batch_id, amount)?;
         }
     }
 
     // Add amount to batch total (stTIA)
-    pending_batch.batch_total_liquid_stake += amount;
-
-    BATCHES.save(deps.storage, pending_batch.id, &pending_batch)?;
+    BATCHES.update(
+        deps.storage,
+        pending_batch_id,
+        |_batch| -> Result<Batch, ContractError> {
+            let mut batch = _batch.unwrap();
+            batch.batch_total_liquid_stake += amount;
+            Ok(batch)
+        },
+    )?;
 
     // let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
@@ -271,7 +276,7 @@ pub fn execute_liquid_unstake(
     //         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
     //             contract_addr: env.contract.address.to_string(),
     //             msg: to_binary(&ExecuteMsg::SubmitBatch {
-    //                 batch_id: pending_batch.id,
+    //                 batch_id: pending_batch_id,
     //             })?,
     //             funds: vec![],
     //         }))
@@ -284,7 +289,7 @@ pub fn execute_liquid_unstake(
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")
         .add_attribute("sender", info.sender.to_string())
-        .add_attribute("batch", pending_batch.id.to_string())
+        .add_attribute("batch", pending_batch_id.to_string())
         .add_attribute("amount", amount))
     // .add_messages(msgs))
 }

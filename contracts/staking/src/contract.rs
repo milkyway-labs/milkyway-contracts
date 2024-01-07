@@ -9,8 +9,8 @@ use crate::query::{
     query_pending_batch, query_reply_queue, query_state,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
+    new_unstake_request, Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
+    CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -286,7 +286,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 ///////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if &CONTRACT_NAME != &current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -310,7 +310,40 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
-    // none
+    // TODO add version safe guard
+    let batch_ids = BATCHES
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|v| {
+            let (k, _v) = v.unwrap();
+            return k;
+        })
+        .collect::<Vec<u64>>();
+    let requests = BATCHES
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|v| {
+            let (k, _v) = v.unwrap();
+            let _requests = _v.liquid_unstake_requests;
+            if _requests.is_some() {
+                let requests = _requests.unwrap().into_iter();
+                return requests
+                    .filter(|r| !r.1.redeemed)
+                    .map(|r| return (r.0, k.clone(), r.1.shares))
+                    .collect();
+            }
+            return vec![];
+        })
+        .flatten()
+        .collect::<Vec<(String, u64, Uint128)>>();
+    for request in requests {
+        new_unstake_request(&mut deps, request.0, request.1, request.2).unwrap();
+    }
+    for batch_id in batch_ids {
+        BATCHES.update(deps.storage, batch_id, |b| -> StdResult<Batch> {
+            let mut batch = b.unwrap();
+            batch.liquid_unstake_requests = None;
+            Ok(batch)
+        })?;
+    }
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
