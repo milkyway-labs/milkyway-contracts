@@ -227,7 +227,7 @@ pub fn execute_liquid_stake(
 }
 
 pub fn execute_liquid_unstake(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     amount: Uint128,
@@ -245,14 +245,16 @@ pub fn execute_liquid_unstake(
     // Add unstake request to pending batch
     let pending_unstake_request =
         UNSTAKE_REQUESTS.load(deps.storage, (pending_batch.id, info.sender.to_string()));
-    let mut amount: Uint128 = amount;
     match pending_unstake_request {
         Ok(current_amount) => {
-            amount = current_amount + amount;
+            UNSTAKE_REQUESTS.save(
+                deps.storage,
+                (pending_batch.id, info.sender.to_string()),
+                &(current_amount + amount),
+            )?;
         }
         Err(_) => {
-            // amount = amount;
-            new_unstake_request(deps, info.sender.to_string(), pending_batch.id, amount)?;
+            new_unstake_request(&mut deps, info.sender.to_string(), pending_batch.id, amount)?;
         }
     }
 
@@ -260,11 +262,6 @@ pub fn execute_liquid_unstake(
     pending_batch.batch_total_liquid_stake += amount;
 
     BATCHES.save(deps.storage, pending_batch.id, &pending_batch)?;
-    UNSTAKE_REQUESTS.save(
-        deps.storage,
-        (pending_batch.id, info.sender.to_string()),
-        &amount,
-    )?;
 
     // let mut msgs: Vec<CosmosMsg> = vec![];
     // if batch period has elapsed, submit batch
@@ -405,7 +402,7 @@ pub fn execute_submit_batch(
 // eventually we can move this to auto-withdraw all funds upon batch completion
 // Reasoning - any one issue in the batch will cause the entire batch to fail
 pub fn execute_withdraw(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     batch_id: u64,
@@ -418,7 +415,7 @@ pub fn execute_withdraw(
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
     }
-    let mut batch = _batch.unwrap();
+    let batch = _batch.unwrap();
 
     if batch.status != BatchStatus::Received {
         return Err(ContractError::TokensAlreadyClaimed { batch_id: batch.id });
@@ -439,7 +436,7 @@ pub fn execute_withdraw(
 
     // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
     BATCHES.save(deps.storage, batch.id, &batch)?;
-    remove_unstake_request(deps, info.sender.to_string(), batch.id)?;
+    remove_unstake_request(&mut deps, info.sender.to_string(), batch.id)?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
     let send_msg = MsgSend {

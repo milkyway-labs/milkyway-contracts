@@ -176,6 +176,7 @@ pub fn query_claimable(
     limit: Option<u32>,
 ) -> StdResult<BatchesResponse> {
     deps.api.addr_validate(&user.to_string())?;
+
     let unstaking_requests = UNSTAKE_REQUESTS_BY_USER
         .prefix(user.to_string())
         .range(
@@ -184,13 +185,14 @@ pub fn query_claimable(
             None,
             cosmwasm_std::Order::Ascending,
         )
+        .take(limit.unwrap_or(u32::MAX as u32) as usize)
         .map(|v| v.unwrap())
         .collect::<Vec<_>>();
 
     let batches = unstaking_requests
         .into_iter()
         .filter_map(|v| {
-            let batch_id = v.0 .1;
+            let batch_id = v.0;
             let batch = BATCHES.load(deps.storage, batch_id).ok()?;
             if batch.status == BatchStatus::Received {
                 Some(batch)

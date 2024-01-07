@@ -58,18 +58,25 @@ pub const UNSTAKE_REQUEST_COUNTERS: Map<u64, u64> = Map::new("unstake_request_co
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
 
 pub fn new_unstake_request(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     user: String,
     batch_id: u64,
     amount: Uint128,
 ) -> Result<(), StdError> {
     UNSTAKE_REQUESTS.save(deps.storage, (batch_id, user.clone()), &amount)?;
-    UNSTAKE_REQUEST_COUNTERS.save(deps.storage, batch_id, &1u64)?;
+    UNSTAKE_REQUEST_COUNTERS.update(deps.storage, batch_id, |c| match c {
+        Some(c) => Ok::<u64, StdError>(c + 1),
+        None => Ok(1),
+    })?;
     UNSTAKE_REQUESTS_BY_USER.save(deps.storage, (user, batch_id), &true)?;
     Ok(())
 }
 
-pub fn remove_unstake_request(deps: DepsMut, user: String, batch_id: u64) -> Result<(), StdError> {
+pub fn remove_unstake_request(
+    deps: &mut DepsMut,
+    user: String,
+    batch_id: u64,
+) -> Result<(), StdError> {
     UNSTAKE_REQUESTS.remove(deps.storage, (batch_id, user.clone()));
     UNSTAKE_REQUEST_COUNTERS.update(deps.storage, batch_id, |c| match c {
         Some(c) => Ok::<u64, StdError>(c - 1),
