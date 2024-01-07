@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod withdraw_tests {
     use crate::contract::{execute, query};
-    use crate::msg::{BatchResponse, ExecuteMsg, QueryMsg};
-    use crate::state::{BATCHES, CONFIG, STATE};
+    use crate::msg::{BatchesResponse, ExecuteMsg, QueryMsg};
+    use crate::state::{new_unstake_request, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO1, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
-    use milky_way::staking::{Batch, LiquidUnstakeRequest};
+    use milky_way::staking::Batch;
     use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
 
@@ -22,14 +22,20 @@ mod withdraw_tests {
 
         let mut pending_batch: Batch =
             Batch::new(1, Uint128::new(130_000), env.block.time.seconds() + 10_000);
-        pending_batch.liquid_unstake_requests.insert(
+        new_unstake_request(
+            &mut deps.as_mut(),
             "bob".to_string(),
-            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(40_000u128)),
-        );
-        pending_batch.liquid_unstake_requests.insert(
+            1,
+            Uint128::from(40_000u128),
+        )
+        .unwrap();
+        new_unstake_request(
+            &mut deps.as_mut(),
             "tom".to_string(),
-            LiquidUnstakeRequest::new(Addr::unchecked("tom"), Uint128::from(90_000u128)),
-        );
+            1,
+            Uint128::from(90_000u128),
+        )
+        .unwrap();
         let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
         assert!(res.is_ok());
 
@@ -66,14 +72,16 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::Batch {
-            id: pending_batch.id,
+        let msg = QueryMsg::ClaimableBatches {
+            user: Addr::unchecked("bob"),
+            start_after: None,
+            limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.requests.get(0).unwrap().redeemed);
+        assert!(resp.batches.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -108,14 +116,16 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::Batch {
-            id: pending_batch.id,
+        let msg = QueryMsg::ClaimableBatches {
+            user: Addr::unchecked("tom"),
+            start_after: None,
+            limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.requests.get(0).unwrap().redeemed);
+        assert!(resp.batches.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -153,14 +163,20 @@ mod withdraw_tests {
 
         let mut pending_batch: Batch =
             Batch::new(1, Uint128::new(130_000), env.block.time.seconds() + 10_000);
-        pending_batch.liquid_unstake_requests.insert(
+        new_unstake_request(
+            &mut deps.as_mut(),
             "bob".to_string(),
-            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(40_000u128)),
-        );
-        pending_batch.liquid_unstake_requests.insert(
+            1,
+            Uint128::from(40_000u128),
+        )
+        .unwrap();
+        new_unstake_request(
+            &mut deps.as_mut(),
             "tom".to_string(),
-            LiquidUnstakeRequest::new(Addr::unchecked("tom"), Uint128::from(90_000u128)),
-        );
+            1,
+            Uint128::from(90_000u128),
+        )
+        .unwrap();
         let res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
         assert!(res.is_ok());
 
@@ -180,14 +196,16 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::Batch {
-            id: pending_batch.id,
+        let msg = QueryMsg::ClaimableBatches {
+            user: Addr::unchecked("bob"),
+            start_after: None,
+            limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.requests.get(0).unwrap().redeemed);
+        assert!(resp.batches.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -222,14 +240,16 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::Batch {
-            id: pending_batch.id,
+        let msg = QueryMsg::ClaimableBatches {
+            user: Addr::unchecked("tom"),
+            start_after: None,
+            limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.requests.get(0).unwrap().redeemed);
+        assert!(resp.batches.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
