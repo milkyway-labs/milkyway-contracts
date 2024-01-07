@@ -310,7 +310,13 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
     }
 
     // migrate data
-    // TODO add version safe guard
+    if version != Version::new(0, 4, 5) {
+        return Err(StdError::generic_err(format!(
+            "Unsupported migration from version {}",
+            version
+        ))
+        .into());
+    }
     let batch_ids = BATCHES
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|v| {
