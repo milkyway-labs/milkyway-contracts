@@ -402,7 +402,7 @@ mod staking_tests {
             unstake_requests
                 .batches
                 .iter()
-                .filter(|v| v.status == "Received")
+                .filter(|v| v.status == "received")
                 .count(),
             0
         );
@@ -451,7 +451,7 @@ mod staking_tests {
             unstake_requests
                 .batches
                 .iter()
-                .filter(|v| v.status == "Received")
+                .filter(|v| v.status == "received")
                 .count(),
             1
         );
