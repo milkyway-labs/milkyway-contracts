@@ -440,7 +440,6 @@ pub fn execute_withdraw(
         .multiply_ratio(liquid_unstake_request, batch.batch_total_liquid_stake);
 
     // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
-    BATCHES.save(deps.storage, batch.id, &batch)?;
     remove_unstake_request(&mut deps, info.sender.to_string(), batch.id)?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
