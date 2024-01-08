@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, DepsMut, StdError, Timestamp, Uint128};
 use cw_controllers::Admin;
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, UniqueIndex};
 use milky_way::staking::Batch;
 
 #[cw_serde]
@@ -51,11 +51,35 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
 pub const BATCHES: Map<u64, Batch> = Map::new("batches");
-// <batch id, user address, request>
-pub const UNSTAKE_REQUESTS: Map<(u64, String), Uint128> = Map::new("unstake_requests");
-pub const UNSTAKE_REQUESTS_BY_USER: Map<(String, u64), bool> = Map::new("unstake_requests_by_user");
-pub const UNSTAKE_REQUEST_COUNTERS: Map<u64, u64> = Map::new("unstake_request_counters");
 pub const PENDING_BATCH_ID: Item<u64> = Item::new("pending_batch_id");
+
+#[cw_serde]
+pub struct UnstakeRequest {
+    pub batch_id: u64,
+    pub user: String,
+    pub amount: Uint128,
+}
+
+pub struct UnstakeRequestIndexes<'a> {
+    pub by_user: UniqueIndex<'a, (String, u64), UnstakeRequest>,
+}
+
+impl<'a> IndexList<UnstakeRequest> for UnstakeRequestIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<UnstakeRequest>> + '_> {
+        let v: Vec<&dyn Index<UnstakeRequest>> = vec![&self.by_user];
+        Box::new(v.into_iter())
+    }
+}
+
+pub fn unstake_requests<'a>(
+) -> IndexedMap<'a, (u64, String), UnstakeRequest, UnstakeRequestIndexes<'a>> {
+    let indexes = UnstakeRequestIndexes {
+        by_user: UniqueIndex::new(|r| (r.user.clone(), r.batch_id), "unstake_requests_by_user"),
+    };
+
+    // depr version
+    IndexedMap::new("unstake_requests_v2", indexes)
+}
 
 pub fn new_unstake_request(
     deps: &mut DepsMut,
@@ -63,12 +87,15 @@ pub fn new_unstake_request(
     batch_id: u64,
     amount: Uint128,
 ) -> Result<(), StdError> {
-    UNSTAKE_REQUESTS.save(deps.storage, (batch_id, user.clone()), &amount)?;
-    UNSTAKE_REQUEST_COUNTERS.update(deps.storage, batch_id, |c| match c {
-        Some(c) => Ok::<u64, StdError>(c + 1),
-        None => Ok(1),
-    })?;
-    UNSTAKE_REQUESTS_BY_USER.save(deps.storage, (user, batch_id), &true)?;
+    unstake_requests().save(
+        deps.storage,
+        (batch_id, user.clone()),
+        &UnstakeRequest {
+            batch_id,
+            user,
+            amount,
+        },
+    )?;
     Ok(())
 }
 
@@ -77,12 +104,9 @@ pub fn remove_unstake_request(
     user: String,
     batch_id: u64,
 ) -> Result<(), StdError> {
-    UNSTAKE_REQUESTS.remove(deps.storage, (batch_id, user.clone()));
-    UNSTAKE_REQUEST_COUNTERS.update(deps.storage, batch_id, |c| match c {
-        Some(c) => Ok::<u64, StdError>(c - 1),
-        None => Ok(0),
-    })?;
-    UNSTAKE_REQUESTS_BY_USER.remove(deps.storage, (user, batch_id));
+    unstake_requests()
+        .remove(deps.storage, (batch_id, user.clone()))
+        .unwrap();
     Ok(())
 }
 

@@ -5,8 +5,8 @@ use crate::execute::{
 use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
-    query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
-    query_pending_batch, query_reply_queue, query_state,
+    query_batch, query_batches, query_config, query_ibc_queue, query_pending_batch,
+    query_reply_queue, query_state, query_unstake_requests,
 };
 use crate::state::{
     new_unstake_request, Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -265,11 +265,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             status,
         } => to_binary(&query_batches(deps, start_after, limit, status)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
-        QueryMsg::ClaimableBatches {
+        QueryMsg::UnstakeRequests {
             user,
             start_after,
             limit,
-        } => to_binary(&query_claimable(deps, user, start_after, limit)?),
+        } => to_binary(&query_unstake_requests(
+            deps,
+            user.to_string(),
+            start_after,
+            limit,
+        )?),
 
         // dev only, depr
         QueryMsg::IbcQueue { start_after, limit } => {
@@ -310,13 +315,13 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
     }
 
     // migrate data
-    if version != Version::new(0, 4, 5) {
-        return Err(StdError::generic_err(format!(
-            "Unsupported migration from version {}",
-            version
-        ))
-        .into());
-    }
+    // if version != Version::new(0, 4, 5) {
+    //     return Err(StdError::generic_err(format!(
+    //         "Unsupported migration from version {}",
+    //         version
+    //     ))
+    //     .into());
+    // }
     let mut batch_ids = Vec::<u64>::new();
     let requests = BATCHES
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)

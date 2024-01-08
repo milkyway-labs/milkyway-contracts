@@ -3,8 +3,7 @@ mod query_tests {
     // use serde_json;
     use crate::contract::{execute, query};
     use crate::msg::{
-        BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, LiquidUnstakeRequestResponse,
-        QueryMsg, StateResponse,
+        BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, QueryMsg, StateResponse,
     };
     use crate::query::query_pending_batch;
     use crate::state::{CONFIG, STATE};
@@ -112,7 +111,6 @@ mod query_tests {
                 assert_eq!(res.batch_total_liquid_stake, Uint128::from(0u128));
                 assert_eq!(res.expected_native_unstaked, Uint128::from(0u128));
                 assert_eq!(res.status, "pending".to_string());
-                assert_eq!(res.requests.len(), 0);
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),
@@ -142,20 +140,6 @@ mod query_tests {
                 assert_eq!(res.batch_total_liquid_stake, Uint128::from(2000u128));
                 assert_eq!(res.expected_native_unstaked, Uint128::from(0u128));
                 assert_eq!(res.status, "pending".to_string());
-                assert_eq!(res.requests.len(), 2);
-                assert_eq!(
-                    res.requests,
-                    vec![
-                        LiquidUnstakeRequestResponse {
-                            user: "alice".to_string(),
-                            amount: Uint128::from(1500u128),
-                        },
-                        LiquidUnstakeRequestResponse {
-                            user: "bob".to_string(),
-                            amount: Uint128::from(500u128),
-                        },
-                    ]
-                )
             }
             Err(e) => match e {
                 _ => panic!("Unexpected error: {:?}", e),
@@ -232,14 +216,6 @@ mod query_tests {
                         Uint128::from(1500u128)
                     );
                     assert_eq!(first_batch.status, "submitted".to_string());
-                    assert_eq!(first_batch.requests.len(), 1);
-                    assert_eq!(
-                        first_batch.requests,
-                        vec![LiquidUnstakeRequestResponse {
-                            user: "bob".to_string(),
-                            amount: Uint128::from(500u128),
-                        }]
-                    )
                 } else {
                     panic!("batches is empty");
                 }
@@ -251,14 +227,6 @@ mod query_tests {
                     );
                     assert_eq!(first_batch.expected_native_unstaked, Uint128::from(0u128));
                     assert_eq!(first_batch.status, "pending".to_string());
-                    assert_eq!(first_batch.requests.len(), 1);
-                    assert_eq!(
-                        first_batch.requests,
-                        vec![LiquidUnstakeRequestResponse {
-                            user: "alice".to_string(),
-                            amount: Uint128::from(1500u128),
-                        }]
-                    )
                 } else {
                     panic!("batches is empty");
                 }

@@ -128,7 +128,6 @@ pub struct BatchResponse {
     pub received_native_unstaked: Uint128,
     pub next_batch_action_time: Timestamp,
     pub status: String,
-    pub requests: Vec<LiquidUnstakeRequestResponse>,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchesResponse {
@@ -161,7 +160,7 @@ pub enum QueryMsg {
     #[returns(BatchResponse)]
     PendingBatch {},
     #[returns(BatchesResponse)]
-    ClaimableBatches {
+    UnstakeRequests {
         user: Addr,
         start_after: Option<u64>,
         limit: Option<u32>,

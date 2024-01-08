@@ -72,7 +72,7 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::ClaimableBatches {
+        let msg = QueryMsg::UnstakeRequests {
             user: Addr::unchecked("bob"),
             start_after: None,
             limit: None,
@@ -116,7 +116,7 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::ClaimableBatches {
+        let msg = QueryMsg::UnstakeRequests {
             user: Addr::unchecked("tom"),
             start_after: None,
             limit: None,
@@ -196,7 +196,7 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::ClaimableBatches {
+        let msg = QueryMsg::UnstakeRequests {
             user: Addr::unchecked("bob"),
             start_after: None,
             limit: None,
@@ -240,7 +240,7 @@ mod withdraw_tests {
         let messages = res.unwrap().messages;
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
-        let msg = QueryMsg::ClaimableBatches {
+        let msg = QueryMsg::UnstakeRequests {
             user: Addr::unchecked("tom"),
             start_after: None,
             limit: None,
