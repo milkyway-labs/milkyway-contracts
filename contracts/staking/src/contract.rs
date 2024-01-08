@@ -317,17 +317,12 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
         ))
         .into());
     }
-    let batch_ids = BATCHES
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .map(|v| {
-            let (k, _v) = v.unwrap();
-            return k;
-        })
-        .collect::<Vec<u64>>();
+    let mut batch_ids = Vec::<u64>::new();
     let requests = BATCHES
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|v| {
             let (k, _v) = v.unwrap();
+            batch_ids.push(k);
             let _requests = _v.liquid_unstake_requests;
             if _requests.is_some() {
                 let requests = _requests.unwrap().into_iter();
