@@ -316,13 +316,13 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
     }
 
     // migrate data
-    // if version != Version::new(0, 4, 5) {
-    //     return Err(StdError::generic_err(format!(
-    //         "Unsupported migration from version {}",
-    //         version
-    //     ))
-    //     .into());
-    // }
+    if version != Version::new(0, 4, 5) {
+        return Err(StdError::generic_err(format!(
+            "Unsupported migration from version {}",
+            version
+        ))
+        .into());
+    }
     let mut batch_ids = Vec::<u64>::new();
     let mut request_count = Map::<u64, u64>::new();
     let requests = BATCHES

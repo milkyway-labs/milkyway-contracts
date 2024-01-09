@@ -78,7 +78,7 @@ pub fn unstake_requests<'a>(
     };
 
     // depr version
-    IndexedMap::new("unstake_requests_v2", indexes)
+    IndexedMap::new("unstake_requests", indexes)
 }
 
 pub fn new_unstake_request(
