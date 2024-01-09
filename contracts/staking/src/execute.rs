@@ -242,6 +242,7 @@ pub fn execute_liquid_unstake(
     // Add unstake request to pending batch
     let pending_unstake_request =
         unstake_requests().may_load(deps.storage, (pending_batch_id, info.sender.to_string()))?;
+    let is_new_request = pending_unstake_request.is_none();
     match pending_unstake_request {
         Some(_) => {
             unstake_requests().update(
@@ -271,27 +272,12 @@ pub fn execute_liquid_unstake(
         |_batch| -> Result<Batch, ContractError> {
             let mut batch = _batch.unwrap();
             batch.batch_total_liquid_stake += amount;
+            if is_new_request {
+                batch.unstake_requests_count = Some(batch.unstake_requests_count.unwrap_or(0) + 1);
+            }
             Ok(batch)
         },
     )?;
-
-    // let mut msgs: Vec<CosmosMsg> = vec![];
-    // if batch period has elapsed, submit batch
-    // for simplicity not doing this for now
-    // if let Some(est_next_batch_action) = pending_batch.next_batch_action_time {
-    //     if est_next_batch_action >= env.block.time.seconds() {
-    //         msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
-    //             contract_addr: env.contract.address.to_string(),
-    //             msg: to_binary(&ExecuteMsg::SubmitBatch {
-    //                 batch_id: pending_batch_id,
-    //             })?,
-    //             funds: vec![],
-    //         }))
-    //     }
-
-    //     // Save updated pending batch
-    //     PENDING_BATCH.save(deps.storage, &pending_batch)?;
-    // }
 
     Ok(Response::new()
         .add_attribute("action", "liquid_unstake")

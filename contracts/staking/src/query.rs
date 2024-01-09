@@ -76,6 +76,7 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
             batch.next_batch_action_time.unwrap_or(0u64),
         ),
         status: batch.status.as_str().to_string(),
+        unstake_request_count: batch.unstake_requests_count.unwrap_or(0), // Fallback. Only is none if migration failed. Would be set in updates for new batches though
     }
 }
 

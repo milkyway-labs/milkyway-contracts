@@ -30,7 +30,9 @@ use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
+use schemars::Map;
 use semver::Version;
+use serde_json::Map;
 
 // Version information for migration
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -323,6 +325,7 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
     //     .into());
     // }
     let mut batch_ids = Vec::<u64>::new();
+    let mut request_count = Map::<u64, u64>::new();
     let requests = BATCHES
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|v| {
@@ -331,6 +334,7 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
             let _requests = _v.liquid_unstake_requests;
             if _requests.is_some() {
                 let requests = _requests.unwrap().into_iter();
+                request_count.insert(k, requests.len() as u64);
                 return requests
                     .filter(|r| !r.1.redeemed)
                     .map(|r| return (r.0, k.clone(), r.1.shares))
@@ -347,6 +351,7 @@ pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Respons
         BATCHES.update(deps.storage, batch_id, |b| -> StdResult<Batch> {
             let mut batch = b.unwrap();
             batch.liquid_unstake_requests = None;
+            batch.unstake_requests_count = request_count.get(&batch_id).cloned();
             Ok(batch)
         })?;
     }
