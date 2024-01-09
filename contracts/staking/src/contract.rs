@@ -5,12 +5,12 @@ use crate::execute::{
 use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
-    query_batch, query_batches, query_claimable, query_config, query_ibc_queue,
-    query_pending_batch, query_reply_queue, query_state,
+    query_batch, query_batches, query_config, query_ibc_queue, query_pending_batch,
+    query_reply_queue, query_state, query_unstake_requests,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
+    new_unstake_request, Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
+    CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -30,6 +30,7 @@ use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
+use schemars::Map;
 use semver::Version;
 
 // Version information for migration
@@ -265,11 +266,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             status,
         } => to_binary(&query_batches(deps, start_after, limit, status)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
-        QueryMsg::ClaimableBatches {
+        QueryMsg::UnstakeRequests {
             user,
             start_after,
             limit,
-        } => to_binary(&query_claimable(deps, user, start_after, limit)?),
+        } => to_binary(&query_unstake_requests(
+            deps,
+            user.to_string(),
+            start_after,
+            limit,
+        )?),
 
         // dev only, depr
         QueryMsg::IbcQueue { start_after, limit } => {
@@ -286,7 +292,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 ///////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if &CONTRACT_NAME != &current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -310,7 +316,44 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
-    // none
+    if version != Version::new(0, 4, 5) {
+        return Err(StdError::generic_err(format!(
+            "Unsupported migration from version {}",
+            version
+        ))
+        .into());
+    }
+    let mut batch_ids = Vec::<u64>::new();
+    let mut request_count = Map::<u64, u64>::new();
+    let requests = BATCHES
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|v| {
+            let (k, _v) = v.unwrap();
+            batch_ids.push(k);
+            let _requests = _v.liquid_unstake_requests;
+            if _requests.is_some() {
+                let requests = _requests.unwrap().into_iter();
+                request_count.insert(k, requests.len() as u64);
+                return requests
+                    .filter(|r| !r.1.redeemed)
+                    .map(|r| return (r.0, k.clone(), r.1.shares))
+                    .collect();
+            }
+            return vec![];
+        })
+        .flatten()
+        .collect::<Vec<(String, u64, Uint128)>>();
+    for request in requests {
+        new_unstake_request(&mut deps, request.0, request.1, request.2).unwrap();
+    }
+    for batch_id in batch_ids {
+        BATCHES.update(deps.storage, batch_id, |b| -> StdResult<Batch> {
+            let mut batch = b.unwrap();
+            batch.liquid_unstake_requests = None;
+            batch.unstake_requests_count = request_count.get(&batch_id).cloned();
+            Ok(batch)
+        })?;
+    }
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

@@ -3,11 +3,11 @@ mod circuit_breaker_tests {
     use crate::contract::execute;
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
-    use crate::state::{State, BATCHES, CONFIG, STATE};
+    use crate::state::{new_unstake_request, State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO2, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{coins, Addr, Coin, Uint128};
-    use milky_way::staking::{Batch, LiquidUnstakeRequest};
+    use cosmwasm_std::{coins, Coin, Uint128};
+    use milky_way::staking::Batch;
 
     #[test]
     fn circuit_breaker() {
@@ -97,10 +97,13 @@ mod circuit_breaker_tests {
         // execute withdraw
         let mut pending_batch: Batch =
             Batch::new(1, Uint128::zero(), env.block.time.seconds() + 10000);
-        pending_batch.liquid_unstake_requests.insert(
+        new_unstake_request(
+            &mut deps.as_mut(),
             "bob".to_string(),
-            LiquidUnstakeRequest::new(Addr::unchecked("bob"), Uint128::from(10u128)),
-        );
+            1,
+            Uint128::from(10u128),
+        )
+        .unwrap();
         pending_batch.status = milky_way::staking::BatchStatus::Received;
         let _res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
         let msg = ExecuteMsg::Withdraw { batch_id: 1 };

@@ -30,7 +30,8 @@ pub struct Batch {
     /// The amount of native tokens received after unbonding
     pub received_native_unstaked: Option<Uint128>,
 
-    pub liquid_unstake_requests: Map<String, LiquidUnstakeRequest>,
+    pub liquid_unstake_requests: Option<Map<String, LiquidUnstakeRequest>>,
+    pub unstake_requests_count: Option<u64>,
 
     /// Estimated time when next batch action occurs
     pub next_batch_action_time: Option<u64>,
@@ -45,11 +46,12 @@ impl Batch {
         Self {
             id,
             batch_total_liquid_stake: batch_total,
-            liquid_unstake_requests: Map::new(),
             next_batch_action_time: Some(est_next_batch_action),
             status: BatchStatus::Pending,
             expected_native_unstaked: None,
             received_native_unstaked: None,
+            liquid_unstake_requests: None,
+            unstake_requests_count: Some(0),
         }
     }
     pub fn update_status(&mut self, new_status: BatchStatus, next_action: Option<u64>) {
@@ -88,10 +90,5 @@ impl LiquidUnstakeRequest {
             shares,
             redeemed: false,
         }
-    }
-
-    // Add to existing request for user
-    pub fn update_request(&mut self, new_shares: Uint128) {
-        self.shares += new_shares;
     }
 }

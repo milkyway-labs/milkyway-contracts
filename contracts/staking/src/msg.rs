@@ -119,7 +119,6 @@ pub struct StateResponse {
 pub struct LiquidUnstakeRequestResponse {
     pub user: String,
     pub amount: Uint128,
-    pub redeemed: bool,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchResponse {
@@ -127,9 +126,9 @@ pub struct BatchResponse {
     pub batch_total_liquid_stake: Uint128,
     pub expected_native_unstaked: Uint128,
     pub received_native_unstaked: Uint128,
+    pub unstake_request_count: u64,
     pub next_batch_action_time: Timestamp,
     pub status: String,
-    pub requests: Vec<LiquidUnstakeRequestResponse>,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchesResponse {
@@ -162,7 +161,7 @@ pub enum QueryMsg {
     #[returns(BatchResponse)]
     PendingBatch {},
     #[returns(BatchesResponse)]
-    ClaimableBatches {
+    UnstakeRequests {
         user: Addr,
         start_after: Option<u64>,
         limit: Option<u32>,

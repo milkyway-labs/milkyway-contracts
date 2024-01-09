@@ -6,12 +6,13 @@ mod staking_tests {
     use crate::msg::BatchesResponse;
     use crate::msg::ExecuteMsg;
     use crate::msg::QueryMsg;
+    use crate::state::new_unstake_request;
+    use crate::state::unstake_requests;
     use crate::state::{Config, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
-    use milky_way::staking::LiquidUnstakeRequest;
     use milky_way::staking::{Batch, BatchStatus};
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
     use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
@@ -68,7 +69,7 @@ mod staking_tests {
         STATE.save(&mut deps.storage, &state).unwrap();
         let msg = ExecuteMsg::LiquidUnstake {};
 
-        // Bob unstakes 100
+        // Bob unstakes 500
         let info = mock_info("bob", &coins(500, "factory/cosmos2contract/stTIA"));
         let mut res = execute(deps.as_mut(), mock_env(), info, msg.clone());
         assert!(res.is_ok());
@@ -79,14 +80,14 @@ mod staking_tests {
         assert!(res.is_ok());
 
         // Check pending batch
-        let pending_batch = BATCHES.load(&deps.storage, 1).unwrap();
-        assert!(pending_batch.liquid_unstake_requests.len() == 1);
+        let unstake_requests_records = unstake_requests()
+            .prefix(1u64)
+            .range(&deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .map(|v| v.unwrap())
+            .collect::<Vec<_>>();
+        assert!(unstake_requests_records.len() == 1);
         assert_eq!(
-            pending_batch
-                .liquid_unstake_requests
-                .get("bob")
-                .unwrap()
-                .shares,
+            unstake_requests_records.get(0).unwrap().1.amount,
             Uint128::from(1500u128)
         );
 
@@ -101,23 +102,30 @@ mod staking_tests {
             pending_batch.batch_total_liquid_stake,
             Uint128::from(6_500u128)
         );
-        assert!(pending_batch.liquid_unstake_requests.len() == 2); //for bob & alice
+        let unstake_requests_records = unstake_requests()
+            .prefix(1u64)
+            .range(&deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .map(|v| v.unwrap())
+            .collect::<Vec<_>>();
+        assert!(unstake_requests_records.len() == 2); //for bob & alice
 
         assert_eq!(
-            pending_batch
-                .liquid_unstake_requests
-                .get("bob")
+            unstake_requests_records
+                .iter()
+                .find(|v| v.0 == "bob")
                 .unwrap()
-                .shares,
-            Uint128::from(1_500u128)
+                .1
+                .amount,
+            Uint128::from(1500u128)
         );
         assert_eq!(
-            pending_batch
-                .liquid_unstake_requests
-                .get("alice")
+            unstake_requests_records
+                .iter()
+                .find(|v| v.0 == "alice")
                 .unwrap()
-                .shares,
-            Uint128::from(5_000u128)
+                .1
+                .amount,
+            Uint128::from(5000u128)
         );
 
         // submit batch
@@ -356,43 +364,48 @@ mod staking_tests {
         state.total_native_token = Uint128::from(300_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let mut batch_1 = Batch::new(1, Uint128::from(1000u128), 1000);
-        batch_1.liquid_unstake_requests.insert(
+        let batch_1 = Batch::new(1, Uint128::from(1000u128), 1000);
+        new_unstake_request(
+            &mut deps.as_mut(),
             "bob".to_string(),
-            LiquidUnstakeRequest {
-                user: Addr::unchecked("bob"),
-                shares: Uint128::from(1000u128),
-                redeemed: false,
-            },
-        );
-        let mut batch_2 = Batch::new(2, Uint128::from(1000u128), 1000);
-        batch_2.liquid_unstake_requests.insert(
+            1,
+            Uint128::from(1000u128),
+        )
+        .unwrap();
+        let batch_2 = Batch::new(2, Uint128::from(1000u128), 1000);
+        new_unstake_request(
+            &mut deps.as_mut(),
             "bob".to_string(),
-            LiquidUnstakeRequest {
-                user: Addr::unchecked("bob"),
-                shares: Uint128::from(1000u128),
-                redeemed: false,
-            },
-        );
+            2,
+            Uint128::from(1000u128),
+        )
+        .unwrap();
         let res = BATCHES.save(&mut deps.storage, 1, &batch_1);
         assert!(res.is_ok());
         let res = BATCHES.save(&mut deps.storage, 2, &batch_2);
         assert!(res.is_ok());
 
-        let claimable_batches_res = query(
+        let unstake_requests_res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::ClaimableBatches {
+            QueryMsg::UnstakeRequests {
                 user: Addr::unchecked("bob"),
                 start_after: None,
                 limit: None,
             },
         );
-        assert!(claimable_batches_res.is_ok());
-        let claimable_batches_res = from_binary::<BatchesResponse>(&claimable_batches_res.unwrap());
-        assert!(claimable_batches_res.is_ok());
-        let claimable_batches = claimable_batches_res.unwrap();
-        assert_eq!(claimable_batches.batches.len(), 0);
+        assert!(unstake_requests_res.is_ok());
+        let unstake_requests_res = from_binary::<BatchesResponse>(&unstake_requests_res.unwrap());
+        assert!(unstake_requests_res.is_ok());
+        let unstake_requests = unstake_requests_res.unwrap();
+        assert_eq!(
+            unstake_requests
+                .batches
+                .iter()
+                .filter(|v| v.status == "received")
+                .count(),
+            0
+        );
 
         // receive tokens for batch 1
         let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
@@ -421,20 +434,27 @@ mod staking_tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_ok());
 
-        let claimable_batches_res = query(
+        let unstake_requests_res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::ClaimableBatches {
+            QueryMsg::UnstakeRequests {
                 user: Addr::unchecked("bob"),
                 start_after: None,
                 limit: None,
             },
         );
-        assert!(claimable_batches_res.is_ok());
-        let claimable_batches_res = from_binary::<BatchesResponse>(&claimable_batches_res.unwrap());
-        assert!(claimable_batches_res.is_ok());
-        let claimable_batches = claimable_batches_res.unwrap();
-        assert_eq!(claimable_batches.batches.len(), 1);
-        assert_eq!(claimable_batches.batches[0].id, 1);
+        assert!(unstake_requests_res.is_ok());
+        let unstake_requests_res = from_binary::<BatchesResponse>(&unstake_requests_res.unwrap());
+        assert!(unstake_requests_res.is_ok());
+        let unstake_requests = unstake_requests_res.unwrap();
+        assert_eq!(
+            unstake_requests
+                .batches
+                .iter()
+                .filter(|v| v.status == "received")
+                .count(),
+            1
+        );
+        assert_eq!(unstake_requests.batches.get(0).unwrap().id, 1);
     }
 }

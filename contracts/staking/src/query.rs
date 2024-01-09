@@ -1,13 +1,15 @@
 use crate::helpers::{get_redemption_rate, paginate_map};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
-    LiquidUnstakeRequestResponse, StateResponse,
+    StateResponse,
 };
 use crate::state::ibc::IBCTransfer;
 use crate::state::{
-    BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    unstake_requests, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID,
+    STATE,
 };
-use cosmwasm_std::{Addr, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Deps, StdResult, Timestamp, Uint128};
+use cw_storage_plus::Bound;
 use milky_way::staking::{Batch, BatchStatus};
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
@@ -74,15 +76,7 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
             batch.next_batch_action_time.unwrap_or(0u64),
         ),
         status: batch.status.as_str().to_string(),
-        requests: batch
-            .liquid_unstake_requests
-            .into_iter()
-            .map(|v| LiquidUnstakeRequestResponse {
-                user: v.1.user.to_string(),
-                amount: v.1.shares,
-                redeemed: v.1.redeemed,
-            })
-            .collect(),
+        unstake_request_count: batch.unstake_requests_count.unwrap_or(0), // Fallback. Only is none if migration failed. Would be set in updates for new batches though
     }
 }
 
@@ -161,33 +155,35 @@ pub fn query_reply_queue(
     Ok(res)
 }
 
-pub fn query_claimable(
+pub fn query_unstake_requests(
     deps: Deps,
-    user: Addr,
+    user: String,
     start_after: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<BatchesResponse> {
-    deps.api.addr_validate(&user.to_string())?;
+    let unstaking_requests = unstake_requests()
+        .idx
+        .by_user
+        .prefix(user.to_string())
+        .range(
+            deps.storage,
+            start_after.map(Bound::exclusive),
+            None,
+            cosmwasm_std::Order::Ascending,
+        )
+        .take(limit.unwrap_or(u32::MAX as u32) as usize)
+        .map(|v| v.unwrap())
+        .collect::<Vec<_>>();
 
-    let batches = paginate_map(
-        deps,
-        &BATCHES,
-        start_after,
-        limit,
-        cosmwasm_std::Order::Ascending,
-        Some(Box::new(|b: &Batch| {
-            return b.status == milky_way::staking::BatchStatus::Received;
-        })),
-    )?
-    .into_iter()
-    .filter(|b| {
-        !b.liquid_unstake_requests
-            .get(&user.to_string())
-            .unwrap()
-            .redeemed
-    })
-    .map(|v| batch_to_response(v))
-    .collect();
+    let batches = unstaking_requests
+        .into_iter()
+        .filter_map(|v| {
+            let batch_id = v.1.batch_id;
+            let batch = BATCHES.load(deps.storage, batch_id).ok()?;
+            Some(batch)
+        })
+        .map(|v| batch_to_response(v))
+        .collect();
 
     let res = BatchesResponse { batches };
     Ok(res)
