@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod withdraw_tests {
     use crate::contract::{execute, query};
-    use crate::msg::{BatchesResponse, ExecuteMsg, QueryMsg};
-    use crate::state::{new_unstake_request, BATCHES, CONFIG, STATE};
+    use crate::msg::{ExecuteMsg, QueryMsg};
+    use crate::state::{new_unstake_request, UnstakeRequest, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO1, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{from_binary, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
@@ -73,15 +73,15 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Addr::unchecked("bob"),
+            user: Some(Addr::unchecked("bob")),
             start_after: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: Vec<UnstakeRequest> = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.batches.len() == 0);
+        assert!(resp.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -117,15 +117,15 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Addr::unchecked("tom"),
+            user: Some(Addr::unchecked("tom")),
             start_after: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: Vec<UnstakeRequest> = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.batches.len() == 0);
+        assert!(resp.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -197,15 +197,15 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Addr::unchecked("bob"),
+            user: Some(Addr::unchecked("bob")),
             start_after: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: Vec<UnstakeRequest> = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.batches.len() == 0);
+        assert!(resp.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
@@ -241,15 +241,15 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Addr::unchecked("tom"),
+            user: Some(Addr::unchecked("tom")),
             start_after: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
-        let resp: BatchesResponse = from_binary(&res.unwrap()).unwrap();
+        let resp: Vec<UnstakeRequest> = from_binary(&res.unwrap()).unwrap();
 
-        assert!(resp.batches.len() == 0);
+        assert!(resp.len() == 0);
 
         let config = CONFIG.load(&deps.storage).unwrap();
         let coin = Coin {
