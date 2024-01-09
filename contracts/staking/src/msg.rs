@@ -116,11 +116,6 @@ pub struct StateResponse {
     pub total_fees: Uint128,
 }
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
-pub struct LiquidUnstakeRequestResponse {
-    pub user: String,
-    pub amount: Uint128,
-}
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct BatchResponse {
     pub id: u64,
     pub batch_total_liquid_stake: Uint128,
@@ -134,6 +129,17 @@ pub struct BatchResponse {
 pub struct BatchesResponse {
     pub batches: Vec<BatchResponse>,
 }
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct UnstakeRequestResponse {
+    pub batch_id: u64,
+    pub batch_total_liquid_stake: Uint128,
+    pub expected_native_unstaked: Uint128,
+    pub received_native_unstaked: Uint128,
+    pub status: String,
+    pub unstake_amount: Uint128,
+    pub user: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct IBCQueueResponse {
     pub ibc_queue: Vec<IBCTransfer>,
@@ -160,9 +166,10 @@ pub enum QueryMsg {
     },
     #[returns(BatchResponse)]
     PendingBatch {},
-    #[returns(BatchesResponse)]
-    UnstakeRequests {
-        user: Addr,
+    #[returns(Vec<UnstakeRequestResponse>)]
+    UnstakeRequests { user: Addr },
+    #[returns(Vec<UnstakeRequestResponse>)]
+    AllUnstakeRequests {
         start_after: Option<u64>,
         limit: Option<u32>,
     },

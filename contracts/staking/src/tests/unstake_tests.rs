@@ -3,9 +3,9 @@ mod staking_tests {
     use crate::contract::execute;
     use crate::contract::query;
     use crate::helpers::derive_intermediate_sender;
-    use crate::msg::BatchesResponse;
     use crate::msg::ExecuteMsg;
     use crate::msg::QueryMsg;
+    use crate::msg::UnstakeRequestResponse;
     use crate::state::new_unstake_request;
     use crate::state::unstake_requests;
     use crate::state::{Config, BATCHES, CONFIG, STATE};
@@ -102,29 +102,33 @@ mod staking_tests {
             pending_batch.batch_total_liquid_stake,
             Uint128::from(6_500u128)
         );
-        let unstake_requests_records = unstake_requests()
-            .prefix(1u64)
-            .range(&deps.storage, None, None, cosmwasm_std::Order::Ascending)
-            .map(|v| v.unwrap())
-            .collect::<Vec<_>>();
+
+        // Check unstake requests
+        let msg = QueryMsg::AllUnstakeRequests {
+            start_after: None,
+            limit: None,
+        };
+        let res = query(deps.as_ref(), mock_env(), msg);
+        assert!(res.is_ok());
+        let unstake_requests_records: Vec<UnstakeRequestResponse> =
+            from_binary(&res.unwrap()).unwrap();
+
         assert!(unstake_requests_records.len() == 2); //for bob & alice
 
         assert_eq!(
             unstake_requests_records
                 .iter()
-                .find(|v| v.0 == "bob")
+                .find(|v| v.user == "bob")
                 .unwrap()
-                .1
-                .amount,
+                .unstake_amount,
             Uint128::from(1500u128)
         );
         assert_eq!(
             unstake_requests_records
                 .iter()
-                .find(|v| v.0 == "alice")
+                .find(|v| v.user == "alice")
                 .unwrap()
-                .1
-                .amount,
+                .unstake_amount,
             Uint128::from(5000u128)
         );
 
@@ -134,7 +138,7 @@ mod staking_tests {
         env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
 
         let msg = ExecuteMsg::SubmitBatch {};
-        res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
         let resp = res.unwrap();
         let attrs = resp.attributes;
         assert_eq!(attrs[0].value, "submit_batch");
@@ -390,22 +394,14 @@ mod staking_tests {
             mock_env(),
             QueryMsg::UnstakeRequests {
                 user: Addr::unchecked("bob"),
-                start_after: None,
-                limit: None,
             },
         );
         assert!(unstake_requests_res.is_ok());
-        let unstake_requests_res = from_binary::<BatchesResponse>(&unstake_requests_res.unwrap());
+        let unstake_requests_res =
+            from_binary::<Vec<UnstakeRequestResponse>>(&unstake_requests_res.unwrap());
         assert!(unstake_requests_res.is_ok());
         let unstake_requests = unstake_requests_res.unwrap();
-        assert_eq!(
-            unstake_requests
-                .batches
-                .iter()
-                .filter(|v| v.status == "received")
-                .count(),
-            0
-        );
+        assert_eq!(unstake_requests.len(), 2);
 
         // receive tokens for batch 1
         let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
@@ -439,22 +435,20 @@ mod staking_tests {
             mock_env(),
             QueryMsg::UnstakeRequests {
                 user: Addr::unchecked("bob"),
-                start_after: None,
-                limit: None,
             },
         );
         assert!(unstake_requests_res.is_ok());
-        let unstake_requests_res = from_binary::<BatchesResponse>(&unstake_requests_res.unwrap());
+        let unstake_requests_res =
+            from_binary::<Vec<UnstakeRequestResponse>>(&unstake_requests_res.unwrap());
         assert!(unstake_requests_res.is_ok());
         let unstake_requests = unstake_requests_res.unwrap();
         assert_eq!(
             unstake_requests
-                .batches
                 .iter()
                 .filter(|v| v.status == "received")
                 .count(),
             1
         );
-        assert_eq!(unstake_requests.batches.get(0).unwrap().id, 1);
+        assert_eq!(unstake_requests.get(0).unwrap().batch_id, 1);
     }
 }
