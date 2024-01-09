@@ -32,7 +32,6 @@ use milky_way::staking::Batch;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 use schemars::Map;
 use semver::Version;
-use serde_json::Map;
 
 // Version information for migration
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
