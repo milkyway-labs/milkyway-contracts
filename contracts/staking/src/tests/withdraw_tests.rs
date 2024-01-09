@@ -73,9 +73,7 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Some(Addr::unchecked("bob")),
-            start_after: None,
-            limit: None,
+            user: Addr::unchecked("bob"),
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
@@ -117,9 +115,7 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Some(Addr::unchecked("tom")),
-            start_after: None,
-            limit: None,
+            user: Addr::unchecked("tom"),
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
@@ -197,9 +193,7 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Some(Addr::unchecked("bob")),
-            start_after: None,
-            limit: None,
+            user: Addr::unchecked("bob"),
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());
@@ -241,9 +235,7 @@ mod withdraw_tests {
         assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
         let msg = QueryMsg::UnstakeRequests {
-            user: Some(Addr::unchecked("tom")),
-            start_after: None,
-            limit: None,
+            user: Addr::unchecked("tom"),
         };
         let res = query(deps.as_ref(), env.clone(), msg);
         assert!(res.is_ok());

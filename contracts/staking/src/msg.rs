@@ -166,9 +166,10 @@ pub enum QueryMsg {
     },
     #[returns(BatchResponse)]
     PendingBatch {},
-    #[returns(BatchesResponse)]
-    UnstakeRequests {
-        user: Option<Addr>,
+    #[returns(Vec<UnstakeRequestResponse>)]
+    UnstakeRequests { user: Addr },
+    #[returns(Vec<UnstakeRequestResponse>)]
+    AllUnstakeRequests {
         start_after: Option<u64>,
         limit: Option<u32>,
     },

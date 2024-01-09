@@ -104,8 +104,7 @@ mod staking_tests {
         );
 
         // Check unstake requests
-        let msg = QueryMsg::UnstakeRequests {
-            user: None,
+        let msg = QueryMsg::AllUnstakeRequests {
             start_after: None,
             limit: None,
         };
@@ -394,9 +393,7 @@ mod staking_tests {
             deps.as_ref(),
             mock_env(),
             QueryMsg::UnstakeRequests {
-                user: Some(Addr::unchecked("bob")),
-                start_after: None,
-                limit: None,
+                user: Addr::unchecked("bob"),
             },
         );
         assert!(unstake_requests_res.is_ok());
@@ -437,9 +434,7 @@ mod staking_tests {
             deps.as_ref(),
             mock_env(),
             QueryMsg::UnstakeRequests {
-                user: Some(Addr::unchecked("bob")),
-                start_after: None,
-                limit: None,
+                user: Addr::unchecked("bob"),
             },
         );
         assert!(unstake_requests_res.is_ok());

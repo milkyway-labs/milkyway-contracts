@@ -167,51 +167,49 @@ pub fn query_reply_queue(
     Ok(res)
 }
 
-pub fn query_unstake_requests(
+pub fn query_unstake_requests(deps: Deps, user: String) -> StdResult<Vec<UnstakeRequestResponse>> {
+    let unstaking_requests = unstake_requests()
+        .idx
+        .by_user
+        .prefix(user.to_string())
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .filter_map(|r| {
+            if r.is_ok() {
+                let request = r.unwrap().1;
+                let batch = BATCHES.load(deps.storage, request.batch_id).unwrap();
+                return Some(unstake_request_to_response(batch, request));
+            }
+            None
+        })
+        .collect();
+
+    Ok(unstaking_requests)
+}
+
+pub fn query_all_unstake_requests(
     deps: Deps,
-    user: Option<String>,
     start_after: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<Vec<UnstakeRequestResponse>> {
-    let unstaking_requests: Vec<UnstakeRequestResponse> = match user {
-        Some(user) => unstake_requests()
-            .idx
-            .by_user
-            .prefix(user.to_string())
-            .range(
-                deps.storage,
-                start_after.map(Bound::exclusive),
-                None,
-                cosmwasm_std::Order::Ascending,
-            )
-            .take(limit.unwrap_or(u32::MAX as u32) as usize)
-            .filter_map(|r| {
-                if r.is_ok() {
-                    let request = r.unwrap().1;
-                    let batch = BATCHES.load(deps.storage, request.batch_id).unwrap();
-                    return Some(unstake_request_to_response(batch, request));
-                }
-                None
-            })
-            .collect(),
-        None => unstake_requests()
-            .range(
-                deps.storage,
-                start_after.map(|s| Bound::exclusive((s, "".to_string()))),
-                None,
-                cosmwasm_std::Order::Ascending,
-            )
-            .take(limit.unwrap_or(u32::MAX as u32) as usize)
-            .filter_map(|r| {
-                if r.is_ok() {
-                    let request = r.unwrap().1;
-                    let batch = BATCHES.load(deps.storage, request.batch_id).unwrap();
-                    return Some(unstake_request_to_response(batch, request));
-                }
-                None
-            })
-            .collect(),
-    };
+    let unstaking_requests = unstake_requests()
+        .idx
+        .by_user
+        .range(
+            deps.storage,
+            start_after.map(|s| Bound::exclusive(("".to_string(), s))),
+            None,
+            cosmwasm_std::Order::Ascending,
+        )
+        .take(limit.unwrap_or(u32::MAX) as usize)
+        .filter_map(|r| {
+            if r.is_ok() {
+                let request = r.unwrap().1;
+                let batch = BATCHES.load(deps.storage, request.batch_id).unwrap();
+                return Some(unstake_request_to_response(batch, request));
+            }
+            None
+        })
+        .collect();
 
     Ok(unstaking_requests)
 }

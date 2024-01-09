@@ -5,8 +5,8 @@ use crate::execute::{
 use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::query::{
-    query_batch, query_batches, query_config, query_ibc_queue, query_pending_batch,
-    query_reply_queue, query_state, query_unstake_requests,
+    query_all_unstake_requests, query_batch, query_batches, query_config, query_ibc_queue,
+    query_pending_batch, query_reply_queue, query_state, query_unstake_requests,
 };
 use crate::state::{
     Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
@@ -265,16 +265,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             status,
         } => to_binary(&query_batches(deps, start_after, limit, status)?),
         QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
-        QueryMsg::UnstakeRequests {
-            user,
-            start_after,
-            limit,
-        } => to_binary(&query_unstake_requests(
-            deps,
-            user.map(|u| u.into_string()),
-            start_after,
-            limit,
-        )?),
+        QueryMsg::UnstakeRequests { user } => {
+            to_binary(&query_unstake_requests(deps, user.into_string())?)
+        }
+        QueryMsg::AllUnstakeRequests { start_after, limit } => {
+            to_binary(&query_all_unstake_requests(deps, start_after, limit)?)
+        }
 
         // dev only, depr
         QueryMsg::IbcQueue { start_after, limit } => {
