@@ -12,7 +12,7 @@ function awaitTx() {
     done
 }
 
-# create 200 wallets in osmosis
+# create 200 wallets in osmosis (just need to do once locally)
 for i in {1..200}
 do
   echo "Creating wallet $i"
@@ -32,11 +32,6 @@ osmosisd tx bank multi-send $ADMIN_OSMOSIS "${ALL_ADDRESSES[@]}" 200000stake \
     --chain-id osmosis-dev-1 --broadcast-mode sync
 
 # ibc send 100000 utia to each wallet from celestia
-# TXHASH=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --keyring-backend test \
-#     --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y \
-#     $ADMIN_OSMOSIS 20000000utia --broadcast-mode sync --output json | jq -r '.txhash')
-# awaitTx
-
 # need to do in docker currently
 celestia-appd tx ibc-transfer transfer transfer channel-0 --from validator1 --keyring-backend test  --home=$HOME/.celestia-app/validator1 \
     --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y \
@@ -60,7 +55,7 @@ awaitTx
 # STAKE_CONTRACT=osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9
 
 # liquid stake 100000 utia from each wallet
-for i in {158..200}
+for i in {1..200}
 do
   echo "Liquid staking wallet $i"
 # check if wallet has stake already
@@ -75,11 +70,11 @@ do
     -y --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
     --broadcast-mode sync --chain-id osmosis-dev-1 \
     --generate-only > unsignedTx.json
-    echo XXX
   osmosisd tx sign unsignedTx.json \
     --from wallet$i --keyring-backend test --home ./osmosisd_test \
     --chain-id osmosis-dev-1 --output-document signedTx.json
-  TXHASH=$(osmosisd tx broadcast signedTx.json --output json | jq -r '.txhash')
+  RES=$(osmosisd tx broadcast signedTx.json --output json)
+  TXHASH=$(echo $RES | jq -r '.txhash')
   echo $TXHASH
 # pause every 25
     if [ $(( $i % 25 )) -eq 0 ]; then
@@ -119,8 +114,13 @@ do
     osmosisd tx sign unsignedTx.json \
         --from wallet$i --keyring-backend test --home ./osmosisd_test \
         --chain-id osmosis-dev-1 --account-number $ACCOUNT_NUMBER --sequence $SEQUENCE --output-document signedTx.json
-    TXHASH=$(osmosisd tx broadcast signedTx.json --output json | jq -r '.txhash')
+    RES=$(osmosisd tx broadcast signedTx.json --output json)
+    TXHASH=$(echo $RES | jq -r '.txhash')
+    # awaitTx
+    # RES=$(osmosisd query tx $TXHASH --output json)
+    # GAS=$(echo $RES | jq -r '.gas_used')
     echo $TXHASH
+    # echo $GAS
 # pause every 25
         if [ $(( $i % 25 )) -eq 0 ]; then
             echo "Pausing for 5 seconds"
@@ -130,7 +130,8 @@ do
 done
 
 # count requests in batch
-osmosisd query wasm contract-state smart $STAKE_CONTRACT '{"batches":{}}' --output json | jq -r '.data.batches[0].requests | length'
+osmosisd query wasm contract-state smart $STAKE_CONTRACT '{"batches":{}}' --output json | jq -r '.data.batches[0].unstake_request_count'
+osmosisd query wasm contract-state smart $STAKE_CONTRACT '{"unstake_requests":{"user":"osmo1z0um7jczylh6n7mh5s26grtydf02d8254kmaf6"}}'
 
 # check queue
 osmosisd query wasm contract-state smart $STAKE_CONTRACT '{"ibc_queue":{}}' --output json | jq -r '.data.ibc_queue'
@@ -138,6 +139,17 @@ osmosisd query wasm contract-state smart $STAKE_CONTRACT '{"ibc_queue":{}}' --ou
 # execute batch
 osmosisd tx wasm execute $STAKE_CONTRACT '{"submit_batch":{}}' \
   --from test_master --keyring-backend test \
+  -y -b sync \
+  --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
+  --chain-id osmosis-dev-1
+
+# receive rewards
+MEMO='{"wasm":{"contract":"'$STAKE_CONTRACT'","msg":{"receive_unstaked_tokens":{"batch_id":1}}}}'
+PACKET_SEQUENCE=$(celestia-appd tx ibc-transfer transfer transfer channel-0 --from test_master --node http://localhost:26661 --chain-id celestia-dev-1 --fees 21000utia --output json -y $STAKE_CONTRACT 10utia  --broadcast-mode block --memo "$MEMO" | jq -r '.raw_log | fromjson | .[0].events[] | select(.type == "send_packet") | .attributes[] | select(.key == "packet_sequence") | .value')
+
+# withdraw tokens
+osmosisd tx wasm execute $STAKE_CONTRACT '{"withdraw":{"batch_id":1}}' \
+  --from wallet1 --keyring-backend test --home ./osmosisd_test \
   -y -b sync \
   --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
   --chain-id osmosis-dev-1

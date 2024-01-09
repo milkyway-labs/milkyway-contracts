@@ -1,14 +1,14 @@
 use crate::helpers::{get_redemption_rate, paginate_map};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
-    LiquidUnstakeRequestResponse, StateResponse,
+    StateResponse,
 };
 use crate::state::ibc::IBCTransfer;
 use crate::state::{
-    BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
-    UNSTAKE_REQUESTS, UNSTAKE_REQUESTS_BY_USER,
+    unstake_requests, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID,
+    STATE,
 };
-use cosmwasm_std::{Addr, Deps, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Deps, StdResult, Timestamp, Uint128};
 use cw_storage_plus::Bound;
 use milky_way::staking::{Batch, BatchStatus};
 
@@ -66,12 +66,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     Ok(res)
 }
 
-fn batch_to_response(deps: Deps, batch: Batch) -> BatchResponse {
-    let unstake_requests = UNSTAKE_REQUESTS
-        .prefix(batch.id)
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .map(|v| v.unwrap())
-        .collect::<Vec<_>>();
+fn batch_to_response(batch: Batch) -> BatchResponse {
     BatchResponse {
         id: batch.id,
         batch_total_liquid_stake: batch.batch_total_liquid_stake,
@@ -81,19 +76,13 @@ fn batch_to_response(deps: Deps, batch: Batch) -> BatchResponse {
             batch.next_batch_action_time.unwrap_or(0u64),
         ),
         status: batch.status.as_str().to_string(),
-        requests: unstake_requests
-            .into_iter()
-            .map(|v| LiquidUnstakeRequestResponse {
-                user: v.0,
-                amount: v.1,
-            })
-            .collect(),
+        unstake_request_count: batch.unstake_requests_count.unwrap_or(0), // Fallback. Only is none if migration failed. Would be set in updates for new batches though
     }
 }
 
 pub fn query_batch(deps: Deps, id: u64) -> StdResult<BatchResponse> {
     let batch: Batch = BATCHES.load(deps.storage, id)?;
-    Ok(batch_to_response(deps, batch))
+    Ok(batch_to_response(batch))
 }
 
 pub fn query_batches(
@@ -115,10 +104,7 @@ pub fn query_batches(
     )?;
 
     let res = BatchesResponse {
-        batches: batches
-            .into_iter()
-            .map(|v| batch_to_response(deps, v))
-            .collect(),
+        batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
     };
     Ok(res)
 }
@@ -127,7 +113,7 @@ pub fn query_pending_batch(deps: Deps) -> StdResult<BatchResponse> {
     let pending_batch_id = PENDING_BATCH_ID.load(deps.storage)?;
     let pending_batch = BATCHES.load(deps.storage, pending_batch_id)?;
 
-    Ok(batch_to_response(deps, pending_batch))
+    Ok(batch_to_response(pending_batch))
 }
 
 pub fn query_ibc_queue(
@@ -169,15 +155,15 @@ pub fn query_reply_queue(
     Ok(res)
 }
 
-pub fn query_claimable(
+pub fn query_unstake_requests(
     deps: Deps,
-    user: Addr,
+    user: String,
     start_after: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<BatchesResponse> {
-    deps.api.addr_validate(&user.to_string())?;
-
-    let unstaking_requests = UNSTAKE_REQUESTS_BY_USER
+    let unstaking_requests = unstake_requests()
+        .idx
+        .by_user
         .prefix(user.to_string())
         .range(
             deps.storage,
@@ -192,15 +178,11 @@ pub fn query_claimable(
     let batches = unstaking_requests
         .into_iter()
         .filter_map(|v| {
-            let batch_id = v.0;
+            let batch_id = v.1.batch_id;
             let batch = BATCHES.load(deps.storage, batch_id).ok()?;
-            if batch.status == BatchStatus::Received {
-                Some(batch)
-            } else {
-                None
-            }
+            Some(batch)
         })
-        .map(|v| batch_to_response(deps, v))
+        .map(|v| batch_to_response(v))
         .collect();
 
     let res = BatchesResponse { batches };
