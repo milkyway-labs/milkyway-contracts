@@ -1,5 +1,5 @@
 use crate::state::{
-    ibc::IBCTransfer, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig,
+    ibc::IBCTransfer, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, UnstakeRequest,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
@@ -164,12 +164,19 @@ pub enum QueryMsg {
         limit: Option<u32>,
         status: Option<BatchStatus>,
     },
+    #[returns(BatchesResponse)]
+    BatchesByIds { ids: Vec<u64> },
     #[returns(BatchResponse)]
     PendingBatch {},
-    #[returns(Vec<UnstakeRequestResponse>)]
+    #[returns(Vec<UnstakeRequest>)]
     UnstakeRequests { user: Addr },
     #[returns(Vec<UnstakeRequestResponse>)]
     AllUnstakeRequests {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(String, u64, Uint128)>)]
+    AllUnstakeRequestsV2 {
         start_after: Option<u64>,
         limit: Option<u32>,
     },

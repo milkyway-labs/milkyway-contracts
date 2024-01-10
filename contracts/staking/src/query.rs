@@ -1,7 +1,7 @@
 use crate::helpers::{get_redemption_rate, paginate_map};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
-    StateResponse, UnstakeRequestResponse,
+    StateResponse,
 };
 use crate::state::ibc::IBCTransfer;
 use crate::state::{
@@ -80,18 +80,6 @@ fn batch_to_response(batch: Batch) -> BatchResponse {
     }
 }
 
-fn unstake_request_to_response(batch: Batch, request: UnstakeRequest) -> UnstakeRequestResponse {
-    UnstakeRequestResponse {
-        batch_id: batch.id,
-        batch_total_liquid_stake: batch.batch_total_liquid_stake,
-        expected_native_unstaked: batch.expected_native_unstaked.unwrap_or(Uint128::zero()),
-        received_native_unstaked: batch.received_native_unstaked.unwrap_or(Uint128::zero()),
-        status: batch.status.as_str().to_string(),
-        unstake_amount: request.amount,
-        user: request.user,
-    }
-}
-
 pub fn query_batch(deps: Deps, id: u64) -> StdResult<BatchResponse> {
     let batch: Batch = BATCHES.load(deps.storage, id)?;
     Ok(batch_to_response(batch))
@@ -114,6 +102,25 @@ pub fn query_batches(
         cosmwasm_std::Order::Ascending,
         filter_closure,
     )?;
+
+    let res = BatchesResponse {
+        batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
+    };
+    Ok(res)
+}
+
+pub fn query_batches_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<BatchesResponse> {
+    let batches: Vec<Batch> = ids
+        .into_iter()
+        .map(|id| BATCHES.load(deps.storage, id))
+        .filter_map(|r| {
+            if r.is_ok() {
+                let batch = r.unwrap();
+                return Some(batch);
+            }
+            None
+        })
+        .collect();
 
     let res = BatchesResponse {
         batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
@@ -167,7 +174,7 @@ pub fn query_reply_queue(
     Ok(res)
 }
 
-pub fn query_unstake_requests(deps: Deps, user: String) -> StdResult<Vec<UnstakeRequestResponse>> {
+pub fn query_unstake_requests(deps: Deps, user: String) -> StdResult<Vec<UnstakeRequest>> {
     let unstaking_requests = unstake_requests()
         .idx
         .by_user
@@ -176,8 +183,7 @@ pub fn query_unstake_requests(deps: Deps, user: String) -> StdResult<Vec<Unstake
         .filter_map(|r| {
             if r.is_ok() {
                 let request = r.unwrap().1;
-                let batch = BATCHES.load(deps.storage, request.batch_id).unwrap();
-                return Some(unstake_request_to_response(batch, request));
+                return Some(request);
             }
             None
         })
@@ -186,11 +192,12 @@ pub fn query_unstake_requests(deps: Deps, user: String) -> StdResult<Vec<Unstake
     Ok(unstaking_requests)
 }
 
+// DEPR
 pub fn query_all_unstake_requests(
     deps: Deps,
     start_after: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<Vec<UnstakeRequestResponse>> {
+) -> StdResult<Vec<UnstakeRequest>> {
     let unstaking_requests = unstake_requests()
         .idx
         .by_user
@@ -204,8 +211,34 @@ pub fn query_all_unstake_requests(
         .filter_map(|r| {
             if r.is_ok() {
                 let request = r.unwrap().1;
-                let batch = BATCHES.load(deps.storage, request.batch_id).unwrap();
-                return Some(unstake_request_to_response(batch, request));
+                return Some(request);
+            }
+            None
+        })
+        .collect();
+
+    Ok(unstaking_requests)
+}
+
+pub fn query_all_unstake_requests_v2(
+    deps: Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<Vec<(String, u64, Uint128)>> {
+    let unstaking_requests = unstake_requests()
+        .idx
+        .by_user
+        .range(
+            deps.storage,
+            start_after.map(|s| Bound::exclusive(("".to_string(), s))),
+            None,
+            cosmwasm_std::Order::Ascending,
+        )
+        .take(limit.unwrap_or(u32::MAX) as usize)
+        .filter_map(|r| {
+            if r.is_ok() {
+                let request = r.unwrap().1;
+                return Some((request.user, request.batch_id, request.amount));
             }
             None
         })

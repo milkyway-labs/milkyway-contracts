@@ -8,6 +8,7 @@ mod staking_tests {
     use crate::msg::UnstakeRequestResponse;
     use crate::state::new_unstake_request;
     use crate::state::unstake_requests;
+    use crate::state::UnstakeRequest;
     use crate::state::{Config, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::init;
     use cosmwasm_std::from_binary;
@@ -104,13 +105,13 @@ mod staking_tests {
         );
 
         // Check unstake requests
-        let msg = QueryMsg::AllUnstakeRequests {
+        let msg = QueryMsg::AllUnstakeRequestsV2 {
             start_after: None,
             limit: None,
         };
         let res = query(deps.as_ref(), mock_env(), msg);
         assert!(res.is_ok());
-        let unstake_requests_records: Vec<UnstakeRequestResponse> =
+        let unstake_requests_records: Vec<(String, u64, Uint128)> =
             from_binary(&res.unwrap()).unwrap();
 
         assert!(unstake_requests_records.len() == 2); //for bob & alice
@@ -118,17 +119,17 @@ mod staking_tests {
         assert_eq!(
             unstake_requests_records
                 .iter()
-                .find(|v| v.user == "bob")
+                .find(|v| v.0 == "bob")
                 .unwrap()
-                .unstake_amount,
+                .2,
             Uint128::from(1500u128)
         );
         assert_eq!(
             unstake_requests_records
                 .iter()
-                .find(|v| v.user == "alice")
+                .find(|v| v.0 == "alice")
                 .unwrap()
-                .unstake_amount,
+                .2,
             Uint128::from(5000u128)
         );
 
@@ -398,7 +399,7 @@ mod staking_tests {
         );
         assert!(unstake_requests_res.is_ok());
         let unstake_requests_res =
-            from_binary::<Vec<UnstakeRequestResponse>>(&unstake_requests_res.unwrap());
+            from_binary::<Vec<UnstakeRequest>>(&unstake_requests_res.unwrap());
         assert!(unstake_requests_res.is_ok());
         let unstake_requests = unstake_requests_res.unwrap();
         assert_eq!(unstake_requests.len(), 2);
@@ -439,16 +440,9 @@ mod staking_tests {
         );
         assert!(unstake_requests_res.is_ok());
         let unstake_requests_res =
-            from_binary::<Vec<UnstakeRequestResponse>>(&unstake_requests_res.unwrap());
+            from_binary::<Vec<UnstakeRequest>>(&unstake_requests_res.unwrap());
         assert!(unstake_requests_res.is_ok());
         let unstake_requests = unstake_requests_res.unwrap();
-        assert_eq!(
-            unstake_requests
-                .iter()
-                .filter(|v| v.status == "received")
-                .count(),
-            1
-        );
         assert_eq!(unstake_requests.get(0).unwrap().batch_id, 1);
     }
 }
