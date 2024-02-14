@@ -45,6 +45,7 @@ mod staking_tests {
                     vec![
                         attr("action", "liquid_stake"),
                         attr("sender", OSMO3),
+                        attr("mint_to", OSMO3),
                         attr("in_amount", "1000"),
                         attr("mint_amount", "1000"),
                     ]
