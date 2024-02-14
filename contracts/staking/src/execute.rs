@@ -202,7 +202,7 @@ pub fn execute_liquid_stake(
             denom: config.liquid_stake_token_denom.clone(),
             amount: mint_amount.to_string(),
         }),
-        mint_to_address,
+        mint_to_address: mint_to_address.clone(),
     };
 
     // Transfer native token to multisig address
@@ -220,6 +220,7 @@ pub fn execute_liquid_stake(
         .add_submessage(sub_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
+        .add_attribute("mint_to", mint_to_address.clone().to_string())
         .add_attribute("in_amount", amount)
         .add_attribute("mint_amount", mint_amount))
 }
