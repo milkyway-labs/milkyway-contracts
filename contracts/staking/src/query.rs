@@ -222,7 +222,7 @@ pub fn query_all_unstake_requests(
 
 pub fn query_all_unstake_requests_v2(
     deps: Deps,
-    start_after: Option<u64>,
+    start_after: Option<(String, u64)>,
     limit: Option<u32>,
 ) -> StdResult<Vec<(String, u64, Uint128)>> {
     let unstaking_requests = unstake_requests()
@@ -230,7 +230,7 @@ pub fn query_all_unstake_requests_v2(
         .by_user
         .range(
             deps.storage,
-            start_after.map(|s| Bound::exclusive(("".to_string(), s))),
+            start_after.map(|s| Bound::exclusive(s)),
             None,
             cosmwasm_std::Order::Ascending,
         )

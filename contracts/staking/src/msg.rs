@@ -177,7 +177,7 @@ pub enum QueryMsg {
     },
     #[returns(Vec<(String, u64, Uint128)>)]
     AllUnstakeRequestsV2 {
-        start_after: Option<u64>,
+        start_after: Option<(String, u64)>,
         limit: Option<u32>,
     },
     #[returns(IBCQueueResponse)]

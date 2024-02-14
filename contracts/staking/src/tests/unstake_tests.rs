@@ -5,7 +5,6 @@ mod staking_tests {
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
     use crate::msg::QueryMsg;
-    use crate::msg::UnstakeRequestResponse;
     use crate::state::new_unstake_request;
     use crate::state::unstake_requests;
     use crate::state::UnstakeRequest;
@@ -170,6 +169,60 @@ mod staking_tests {
         let batch = BATCHES.load(&deps.storage, 1).unwrap();
         assert_eq!(batch.batch_total_liquid_stake, Uint128::from(6500u128));
         assert_eq!(batch.status, BatchStatus::Submitted);
+
+        // Check unstake requests pagination
+        let msg = QueryMsg::AllUnstakeRequestsV2 {
+            start_after: Some(("bob".to_string(), 1u64)),
+            limit: None,
+        };
+        let res = query(deps.as_ref(), mock_env(), msg);
+        assert!(res.is_ok());
+        let unstake_requests_records: Vec<(String, u64, Uint128)> =
+            from_binary(&res.unwrap()).unwrap();
+
+        assert!(unstake_requests_records.len() == 1); // just alice
+
+        assert_eq!(
+            unstake_requests_records
+                .iter()
+                .find(|v| v.0 == "bob")
+                .is_none(),
+            true
+        );
+        assert_eq!(
+            unstake_requests_records
+                .iter()
+                .find(|v| v.0 == "alice")
+                .unwrap()
+                .2,
+            Uint128::from(5000u128)
+        );
+
+        let msg = QueryMsg::AllUnstakeRequestsV2 {
+            start_after: None,
+            limit: Some(1),
+        };
+        let res = query(deps.as_ref(), mock_env(), msg);
+        assert!(res.is_ok());
+        let unstake_requests_records: Vec<(String, u64, Uint128)> =
+            from_binary(&res.unwrap()).unwrap();
+
+        assert!(unstake_requests_records.len() == 1); // just bob
+
+        assert_eq!(
+            unstake_requests_records
+                .iter()
+                .find(|v| v.0 == "bob")
+                .is_some(),
+            true
+        );
+        assert_eq!(
+            unstake_requests_records
+                .iter()
+                .find(|v| v.0 == "alice")
+                .is_none(),
+            true
+        );
     }
 
     #[test]
