@@ -4,7 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_redemption_rate,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::oracle::{Oracle, RedemptionRateAttributes, ORACLE_KEY};
+use crate::oracle::{Oracle, RedemptionRateAttributes, ORACLE_REDEMPTION_RATE_KEY, PurchaseRateAttributes, ORACLE_PURCHASE_RATE_KEY};
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -91,10 +91,11 @@ fn transfer_stake_sub_msg(
     })
 }
 
-fn update_oracle_msg(deps: Deps, env: Env, config: &Config) -> Result<CosmosMsg, ContractError> {
+fn update_oracle_msg(deps: Deps, env: Env, config: &Config) -> Result<Vec<CosmosMsg>, ContractError> {
     let redemption_rate = get_redemption_rate(&deps);
-    let update_oracle_execute_msg = Oracle::PostMetric {
-        key: ORACLE_KEY.to_string(),
+    let mut messages: Vec<CosmosMsg> = Vec::new();
+    let update_redemption_rate_execute_msg = Oracle::PostMetric {
+        key: ORACLE_REDEMPTION_RATE_KEY.to_string(),
         value: redemption_rate.to_string(),
         metric_type: crate::oracle::MetricType::RedemptionRate,
         update_time: env.block.time.seconds(),
@@ -107,15 +108,39 @@ fn update_oracle_msg(deps: Deps, env: Env, config: &Config) -> Result<CosmosMsg,
             .into_bytes(),
         )),
     };
-    let update_oracle_execute_msg_json = serde_json::to_string(&update_oracle_execute_msg).unwrap();
-    let update_oracle_msg = MsgExecuteContract {
+
+    let update_purchase_rate_execute_msg = Oracle::PostMetric {
+        key: ORACLE_PURCHASE_RATE_KEY.to_string(),
+        value: redemption_rate.to_string(),
+        metric_type: crate::oracle::MetricType::PurchaseRate,
+        update_time: env.block.time.seconds(),
+        block_height: env.block.height,
+        attributes: Some(Binary::from(
+            serde_json::to_string(&PurchaseRateAttributes {
+                sttoken_denom: config.liquid_stake_token_denom.clone(),
+            })
+            .unwrap()
+            .into_bytes(),
+        )),
+    };
+    
+    let update_redemption_rate_msg_json = serde_json::to_string(&update_redemption_rate_execute_msg).unwrap();
+    messages.push(MsgExecuteContract {
         sender: env.contract.address.to_string(),
         contract: config.oracle_contract_address.clone().unwrap().to_string(),
-        msg: update_oracle_execute_msg_json.as_bytes().to_vec(),
-        funds: vec![],
-    };
+        msg: update_redemption_rate_msg_json.as_bytes().to_vec(),
+        funds: vec![]
+    }.into());
 
-    Ok(update_oracle_msg.into())
+    let update_purchase_rate_msg_json = serde_json::to_string(&update_purchase_rate_execute_msg).unwrap();
+    messages.push(MsgExecuteContract {
+        sender: env.contract.address.to_string(),
+        contract: config.oracle_contract_address.clone().unwrap().to_string(),
+        msg: update_purchase_rate_msg_json.as_bytes().to_vec(),
+        funds: vec![]
+    }.into());
+
+    Ok(messages)
 }
 
 pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
@@ -216,7 +241,7 @@ pub fn execute_liquid_stake(
 
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_message(update_oracle_msg)
+        .add_messages(update_oracle_msg)
         .add_submessage(sub_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
@@ -394,7 +419,7 @@ pub fn execute_submit_batch(
 
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
-        .add_message(update_oracle_msg)
+        .add_messages(update_oracle_msg)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", batch.id.to_string())
         .add_attribute("batch_total", batch.batch_total_liquid_stake)
@@ -451,13 +476,14 @@ pub fn execute_withdraw(
     messages.push(send_msg.into());
 
     let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
-    messages.push(update_oracle_msg.into());
 
     Ok(Response::new()
         .add_attribute("action", "execute_withdraw")
         .add_attribute("batch", batch.id.to_string())
         .add_attribute("amount", amount.to_string())
-        .add_messages(messages))
+        .add_messages(messages)
+        .add_messages(update_oracle_msg)
+    )
 }
 
 // Add a validator to the list of validators; callable by the owner
@@ -835,7 +861,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
-        .add_message(update_oracle_msg)
+        .add_messages(update_oracle_msg)
         .add_submessage(ibc_transfer_msg))
 }
 
@@ -962,7 +988,7 @@ pub fn resume_contract(
         .add_attribute("total_native_token", total_native_token)
         .add_attribute("total_liquid_stake_token", total_liquid_stake_token)
         .add_attribute("total_reward_amount", total_reward_amount)
-        .add_message(update_oracle_msg))
+        .add_messages(update_oracle_msg))
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {

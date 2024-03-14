@@ -2,7 +2,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Decimal};
 
-pub const ORACLE_KEY: &str = "milkTIA_redemption_rate";
+pub const ORACLE_REDEMPTION_RATE_KEY: &str = "milkTIA_redemption_rate";
+pub const ORACLE_PURCHASE_RATE_KEY: &str = "milkTIA_purchase_rate";
 
 #[cw_serde]
 pub enum Oracle {
@@ -35,6 +36,17 @@ pub struct RedemptionRate {
     pub update_time: u64,
 }
 
+/// The PurchaseRate struct represents the purchase rate of an milkTia
+#[cw_serde]
+pub struct PurchaseRate {
+    /// stToken denom as an IBC hash, as it appears on the oracle chain
+    pub denom: String,
+    /// The purchase rate of the milkTia
+    pub purchase_rate: Decimal,
+    /// The unix timestamp representing when the purchase rate was last updated
+    pub update_time: u64,
+}
+
 /// This contract represents a generic key value store
 /// A "metric" is the term for a piece of information stored
 /// Each metric has a higher level category that helps inform if any other,
@@ -44,6 +56,7 @@ pub struct RedemptionRate {
 #[cw_serde]
 pub enum MetricType {
     RedemptionRate,
+    PurchaseRate,
     Other(String),
 }
 
@@ -51,5 +64,12 @@ pub enum MetricType {
 /// as it appears on the controller chain (e.g. `stuosmo`)
 #[cw_serde]
 pub struct RedemptionRateAttributes {
+    pub sttoken_denom: String,
+}
+
+/// For use in price oracles, the RedemptionRate metric requires the stToken denom
+/// as it appears on the controller chain (e.g. `stuosmo`)
+#[cw_serde]
+pub struct PurchaseRateAttributes {
     pub sttoken_denom: String,
 }
