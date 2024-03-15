@@ -5,7 +5,6 @@ mod staking_tests {
     use crate::helpers::derive_intermediate_sender;
     use crate::msg::ExecuteMsg;
     use crate::msg::QueryMsg;
-    use crate::msg::UnstakeRequestResponse;
     use crate::state::new_unstake_request;
     use crate::state::unstake_requests;
     use crate::state::UnstakeRequest;
@@ -148,7 +147,7 @@ mod staking_tests {
         assert_eq!(attrs[3].value, "650");
 
         let messages = resp.messages;
-        assert_eq!(messages.len(), 3); // batch submit and redemption rate update
+        assert_eq!(messages.len(), 3); // batch submit and redemption/purchase rate update
         assert_eq!(
             messages[0],
             SubMsg {

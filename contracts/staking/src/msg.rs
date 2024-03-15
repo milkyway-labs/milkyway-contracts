@@ -31,7 +31,7 @@ pub struct InstantiateMsg {
     pub minimum_liquid_stake_amount: Uint128,
     // IBC channel id on Osmosis to Celestia
     pub ibc_channel_id: String,
-    // The redemption rate oracle address
+    // The redemption / purchase rate oracle address
     pub oracle_contract_address: Option<String>,
 }
 

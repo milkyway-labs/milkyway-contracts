@@ -91,7 +91,7 @@ fn transfer_stake_sub_msg(
     })
 }
 
-fn update_oracle_msg(deps: Deps, env: Env, config: &Config) -> Result<Vec<CosmosMsg>, ContractError> {
+fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<CosmosMsg>, ContractError> {
     let redemption_rate = get_redemption_rate(&deps);
     let mut messages: Vec<CosmosMsg> = Vec::new();
     let update_redemption_rate_execute_msg = Oracle::PostMetric {
@@ -232,7 +232,7 @@ pub fn execute_liquid_stake(
 
     // Transfer native token to multisig address
     let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
@@ -241,7 +241,7 @@ pub fn execute_liquid_stake(
 
     Ok(Response::new()
         .add_message(mint_msg)
-        .add_messages(update_oracle_msg)
+        .add_messages(update_oracle_msgs)
         .add_submessage(sub_msg)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
@@ -309,7 +309,6 @@ pub fn execute_liquid_unstake(
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("batch", pending_batch_id.to_string())
         .add_attribute("amount", amount))
-    // .add_messages(msgs))
 }
 
 // Submit batch and transition pending batch to submitted
@@ -415,11 +414,11 @@ pub fn execute_submit_batch(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
-        .add_messages(update_oracle_msg)
+        .add_messages(update_oracle_msgs)
         .add_attribute("action", "submit_batch")
         .add_attribute("batch_id", batch.id.to_string())
         .add_attribute("batch_total", batch.batch_total_liquid_stake)
@@ -475,14 +474,13 @@ pub fn execute_withdraw(
     };
     messages.push(send_msg.into());
 
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "execute_withdraw")
         .add_attribute("batch", batch.id.to_string())
         .add_attribute("amount", amount.to_string())
-        .add_messages(messages)
-        .add_messages(update_oracle_msg)
+        .add_messages([messages, update_oracle_msgs].concat())
     )
 }
 
@@ -854,14 +852,14 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     // transfer the funds to Celestia to be staked
     let ibc_transfer_msg =
         transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "receive_rewards")
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
-        .add_messages(update_oracle_msg)
+        .add_messages(update_oracle_msgs)
         .add_submessage(ibc_transfer_msg))
 }
 
@@ -979,7 +977,7 @@ pub fn resume_contract(
     state.total_liquid_stake_token = total_liquid_stake_token;
     state.total_reward_amount = total_reward_amount;
 
-    let update_oracle_msg = update_oracle_msg(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
     STATE.save(deps.storage, &state)?;
 
@@ -988,7 +986,7 @@ pub fn resume_contract(
         .add_attribute("total_native_token", total_native_token)
         .add_attribute("total_liquid_stake_token", total_liquid_stake_token)
         .add_attribute("total_reward_amount", total_reward_amount)
-        .add_messages(update_oracle_msg))
+        .add_messages(update_oracle_msgs))
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {

@@ -67,7 +67,7 @@ pub struct RedemptionRateAttributes {
     pub sttoken_denom: String,
 }
 
-/// For use in price oracles, the RedemptionRate metric requires the stToken denom
+/// For use in price oracles, the PurchaseRate metric requires the stToken denom
 /// as it appears on the controller chain (e.g. `stuosmo`)
 #[cw_serde]
 pub struct PurchaseRateAttributes {
