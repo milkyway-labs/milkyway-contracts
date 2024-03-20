@@ -20,6 +20,7 @@ pub struct Config {
     pub ibc_channel_id: String,
     pub stopped: bool,
     pub oracle_contract_address: Option<Addr>,
+    pub oracle_contract_address_v2: Option<Addr>,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?

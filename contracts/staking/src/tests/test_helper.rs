@@ -10,6 +10,7 @@ use cosmwasm_std::{coins, Addr, OwnedDeps, Uint128};
 pub static OSMO1: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
 pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
 pub static OSMO3: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
+pub static OSMO4: &str = "osmo17x4zm0m0mxc428ykll3agmehfrxpr5hqpmsatd";
 pub static CELESTIA1: &str = "celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx";
 pub static CELESTIA2: &str = "celestia1ztrhpdznu2xlwakd4yp3hg9lwyr3d46ayd30u2";
 pub static CELESTIAVAL1: &str = "celestiavaloper1463wx5xkus5hyugyecvlhv9qpxklz62kyhwcts";
@@ -39,6 +40,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         minimum_liquid_stake_amount: Uint128::from(100u128),
         ibc_channel_id: CHANNEL_ID.to_string(),
         oracle_contract_address: Some(OSMO3.to_string()),
+        oracle_contract_address_v2: Some(OSMO4.to_string()),
     };
     let info = mock_info(OSMO3, &coins(1000, "uosmo"));
 
