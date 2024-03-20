@@ -139,13 +139,8 @@ fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<Cosmo
         funds: vec![]
     }.into());
 
+    // purchase rate for the new contract only
     let update_purchase_rate_msg_json = serde_json::to_string(&update_purchase_rate_execute_msg).unwrap();
-    messages.push(MsgExecuteContract {
-        sender: env.contract.address.to_string(),
-        contract: config.oracle_contract_address.clone().unwrap().to_string(),
-        msg: update_purchase_rate_msg_json.as_bytes().to_vec(),
-        funds: vec![]
-    }.into());
     messages.push(MsgExecuteContract {
         sender: env.contract.address.to_string(),
         contract: config.oracle_contract_address_v2.clone().unwrap().to_string(),
