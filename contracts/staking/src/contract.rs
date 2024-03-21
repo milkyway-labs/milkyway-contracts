@@ -297,7 +297,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 ///////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if &CONTRACT_NAME != &current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -321,13 +321,11 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     }
 
     // migrate data
-    // none
+    // update v2 oracle contract address
+    update_config_from_migrate(deps.branch(), msg)?;
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // update v2 oracle contract address
-    update_config_from_migrate(deps, msg)?;
 
     Ok(Response::new())
 }
