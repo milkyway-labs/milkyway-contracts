@@ -46,6 +46,7 @@ mod tests {
                 minimum_liquid_stake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
                 oracle_contract_address: None,
+                oracle_contract_address_v2: None,
             }
         }
 
@@ -156,6 +157,7 @@ mod tests {
             monitors: Some(vec![OSMO3.to_string()]),
             treasury_address: Some(OSMO3.to_string()),
             oracle_contract_address: None,
+            oracle_contract_address_v2: None,
         };
 
         let res = crate::contract::execute(
@@ -186,6 +188,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_contract_address: None,
+            oracle_contract_address_v2: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -211,6 +214,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_contract_address: None,
+            oracle_contract_address_v2: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -236,6 +240,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_contract_address: None,
+            oracle_contract_address_v2: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),

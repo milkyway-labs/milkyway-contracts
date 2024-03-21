@@ -24,6 +24,7 @@ use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
+use crate::msg::MigrateMsg;
 
 pub fn transfer_stake_msg(
     deps: &Deps,
@@ -132,10 +133,11 @@ fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<Cosmo
         funds: vec![]
     }.into());
 
+    // purchase rate for the new contract only
     let update_purchase_rate_msg_json = serde_json::to_string(&update_purchase_rate_execute_msg).unwrap();
     messages.push(MsgExecuteContract {
         sender: env.contract.address.to_string(),
-        contract: config.oracle_contract_address.clone().unwrap().to_string(),
+        contract: config.oracle_contract_address_v2.clone().unwrap().to_string(),
         msg: update_purchase_rate_msg_json.as_bytes().to_vec(),
         funds: vec![]
     }.into());
@@ -711,6 +713,23 @@ pub fn recover(
         .add_submessage(sub_msg))
 }
 
+pub fn update_config_from_migrate(
+    deps: DepsMut,
+    msg: MigrateMsg,
+) -> ContractResult<Response> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+   
+    // update oracle contract address v2
+    if msg.oracle_contract_address_v2.is_some() {
+        let oracle_contract_address_v2 = msg.oracle_contract_address_v2.unwrap();
+        let address = validate_address(&oracle_contract_address_v2, "osmo")?;
+        config.oracle_contract_address_v2 = Some(address);
+    }
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_oracle_contract_address_v2"))
+}
+
 // Update the config; callable by the owner
 pub fn update_config(
     deps: DepsMut,
@@ -726,6 +745,7 @@ pub fn update_config(
     monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
     oracle_contract_address: Option<String>,
+    oracle_contract_address_v2: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -782,8 +802,14 @@ pub fn update_config(
 
     if oracle_contract_address.is_some() {
         let oracle_contract_address = oracle_contract_address.unwrap();
-        validate_address(&oracle_contract_address, "osmo")?;
-        config.oracle_contract_address = Some(Addr::unchecked(oracle_contract_address));
+        let address = validate_address(&oracle_contract_address, "osmo")?;
+        config.oracle_contract_address = Some(address);
+    }
+
+    if oracle_contract_address_v2.is_some() {
+        let oracle_contract_address_v2 = oracle_contract_address_v2.unwrap();
+        let address = validate_address(&oracle_contract_address_v2, "osmo")?;
+        config.oracle_contract_address_v2 = Some(address);
     }
 
     CONFIG.save(deps.storage, &config)?;

@@ -33,6 +33,8 @@ pub struct InstantiateMsg {
     pub ibc_channel_id: String,
     // The redemption / purchase rate oracle address
     pub oracle_contract_address: Option<String>,
+    // The migratable redemption / purchase rate oracle address
+    pub oracle_contract_address_v2: Option<String>,
 }
 
 #[cw_serde]
@@ -68,6 +70,7 @@ pub enum ExecuteMsg {
         monitors: Option<Vec<String>>,
         treasury_address: Option<String>,
         oracle_contract_address: Option<String>,
+        oracle_contract_address_v2: Option<String>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {
@@ -104,6 +107,7 @@ pub struct ConfigResponse {
     pub ibc_channel_id: String,
     pub stopped: bool,
     pub oracle_contract_address: String,
+    pub oracle_contract_address_v2: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -193,7 +197,9 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub oracle_contract_address_v2: Option<String>
+}
 
 #[cw_serde]
 pub enum IBCLifecycleComplete {

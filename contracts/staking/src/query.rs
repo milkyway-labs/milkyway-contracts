@@ -45,6 +45,10 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .oracle_contract_address
             .map(|v| v.to_string())
             .unwrap_or_default(),
+        oracle_contract_address_v2: config
+            .oracle_contract_address_v2
+            .map(|v| v.to_string())
+            .unwrap_or_default(),
     };
     Ok(res)
 }

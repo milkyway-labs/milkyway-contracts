@@ -1,6 +1,6 @@
 use crate::execute::{
     circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
-    receive_unstaked_tokens, recover, resume_contract, update_config,
+    receive_unstaked_tokens, recover, resume_contract, update_config, update_config_from_migrate,
 };
 use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
@@ -95,6 +95,7 @@ pub fn instantiate(
         ibc_channel_id: "".to_string(),
         stopped: true,                 // we start stopped
         oracle_contract_address: None, // just for migration. This always needs to be set
+        oracle_contract_address_v2: None,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -113,6 +114,7 @@ pub fn instantiate(
         Some(msg.monitors),
         Some(msg.treasury_address),
         msg.oracle_contract_address,
+        msg.oracle_contract_address_v2,
     )?;
 
     // Init State
@@ -204,6 +206,7 @@ pub fn execute(
             monitors,
             treasury_address,
             oracle_contract_address,
+            oracle_contract_address_v2,
         } => update_config(
             deps,
             env,
@@ -218,6 +221,7 @@ pub fn execute(
             monitors,
             treasury_address,
             oracle_contract_address,
+            oracle_contract_address_v2,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
@@ -293,7 +297,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 ///////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if &CONTRACT_NAME != &current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -317,10 +321,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     }
 
     // migrate data
-    // none
+    // update v2 oracle contract address
+    update_config_from_migrate(deps.branch(), msg)?;
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(Response::new())
 }
 
