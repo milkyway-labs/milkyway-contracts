@@ -728,8 +728,8 @@ pub fn update_config_from_migrate(
     // update oracle contract address v2
     if msg.oracle_contract_address_v2.is_some() {
         let oracle_contract_address_v2 = msg.oracle_contract_address_v2.unwrap();
-        validate_address(&oracle_contract_address_v2, "osmo")?;
-        config.oracle_contract_address_v2 = Some(Addr::unchecked(oracle_contract_address_v2));
+        let address = validate_address(&oracle_contract_address_v2, "osmo")?;
+        config.oracle_contract_address_v2 = Some(address);
     }
     CONFIG.save(deps.storage, &config)?;
 
