@@ -808,8 +808,8 @@ pub fn update_config(
 
     if oracle_contract_address.is_some() {
         let oracle_contract_address = oracle_contract_address.unwrap();
-        validate_address(&oracle_contract_address, "osmo")?;
-        config.oracle_contract_address = Some(Addr::unchecked(oracle_contract_address));
+        let address = validate_address(&oracle_contract_address, "osmo")?;
+        config.oracle_contract_address = Some(address);
     }
 
     if oracle_contract_address_v2.is_some() {
