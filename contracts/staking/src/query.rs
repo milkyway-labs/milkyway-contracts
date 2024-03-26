@@ -1,4 +1,4 @@
-use crate::helpers::{get_redemption_rate, paginate_map};
+use crate::helpers::{get_rate, paginate_map};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, IBCQueueResponse, IBCReplyQueueResponse,
     StateResponse,
@@ -55,11 +55,11 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
-
+    let (redemption_rate, _purchase_rate) = get_rate(&deps);
     let res = StateResponse {
         total_native_token: state.total_native_token,
         total_liquid_stake_token: state.total_liquid_stake_token,
-        rate: get_redemption_rate(&deps),
+        rate: redemption_rate,
         pending_owner: state
             .pending_owner
             .map(|v| v.to_string())

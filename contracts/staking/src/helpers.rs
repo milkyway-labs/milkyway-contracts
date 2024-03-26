@@ -151,14 +151,16 @@ where
     Ok(result)
 }
 
-pub fn get_redemption_rate(deps: &Deps) -> Decimal {
+pub fn get_rate(deps: &Deps) -> (Decimal, Decimal) {
     let state = STATE.load(deps.storage).unwrap();
     let total_native_token = state.total_native_token;
     let total_liquid_stake_token = state.total_liquid_stake_token;
     if total_liquid_stake_token.is_zero() {
-        Decimal::zero()
+        (Decimal::zero(), Decimal::zero())
     } else {
-        Decimal::from_ratio(total_liquid_stake_token, total_native_token)
+        // return redemption_rate, purchase_rate
+        (Decimal::from_ratio(total_native_token, total_liquid_stake_token),
+         Decimal::from_ratio(total_liquid_stake_token, total_native_token))
     }
 }
 
