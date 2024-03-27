@@ -1,7 +1,7 @@
 use crate::contract::{CELESTIA_VALIDATOR_PREFIX, IBC_TIMEOUT};
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rate,
+    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
 use crate::oracle::{Oracle, RedemptionRateAttributes, ORACLE_REDEMPTION_RATE_KEY, PurchaseRateAttributes, ORACLE_PURCHASE_RATE_KEY};
@@ -93,7 +93,7 @@ fn transfer_stake_sub_msg(
 }
 
 fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<CosmosMsg>, ContractError> {
-    let (redemption_rate, purchase_rate) = get_rate(&deps);
+    let (redemption_rate, purchase_rate) = get_rates(&deps);
     let mut messages: Vec<CosmosMsg> = Vec::new();
 
     // V1 uses purchase_rate (but named redemption_rate)

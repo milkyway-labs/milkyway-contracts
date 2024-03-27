@@ -151,7 +151,7 @@ where
     Ok(result)
 }
 
-pub fn get_rate(deps: &Deps) -> (Decimal, Decimal) {
+pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
     let state = STATE.load(deps.storage).unwrap();
     let total_native_token = state.total_native_token;
     let total_liquid_stake_token = state.total_liquid_stake_token;

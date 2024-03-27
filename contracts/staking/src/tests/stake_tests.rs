@@ -2,7 +2,7 @@
 mod staking_tests {
     use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
-    use crate::helpers::{derive_intermediate_sender, get_rate};
+    use crate::helpers::{derive_intermediate_sender, get_rates};
     use crate::msg::ExecuteMsg;
     use crate::state::{State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
@@ -167,7 +167,7 @@ mod staking_tests {
         assert_eq!(state.total_native_token, Uint128::from(1_050_000_000u128));
 
         // test redemption rate, purchase rate
-        let (redemption_rate, purchase_rate) = get_rate(&deps.as_ref());
+        let (redemption_rate, purchase_rate) = get_rates(&deps.as_ref());
         assert_eq!(redemption_rate, Decimal::from_ratio(1_050_000_000u128, 1_050_000u128));
         assert_eq!(purchase_rate, Decimal::from_ratio(1_050_000u128, 1_050_000_000u128));
     }
