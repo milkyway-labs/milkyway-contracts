@@ -2,14 +2,14 @@
 mod staking_tests {
     use crate::contract::{execute, reply, IBC_TIMEOUT};
     use crate::error::ContractError;
-    use crate::helpers::derive_intermediate_sender;
+    use crate::helpers::{derive_intermediate_sender, get_rates};
     use crate::msg::ExecuteMsg;
     use crate::state::{State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
         attr, coins, Addr, CosmosMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg, SubMsgResponse,
-        SubMsgResult, Timestamp, Uint128,
+        SubMsgResult, Timestamp, Uint128, Decimal
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -49,9 +49,9 @@ mod staking_tests {
                         attr("mint_amount", "1000"),
                     ]
                 );
-                assert_eq!(result.messages.len(), 4); // transfer, mint, redemption rate update
+                assert_eq!(result.messages.len(), 5); // transfer, mint, redemption rate update
                 assert_eq!(
-                    result.messages[3],
+                    result.messages[4],
                     SubMsg {
                         id: ibc_sub_msg_id.clone(),
                         msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
@@ -165,6 +165,11 @@ mod staking_tests {
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1_050_000u128));
         assert_eq!(state.total_native_token, Uint128::from(1_050_000_000u128));
+
+        // test redemption rate, purchase rate
+        let (redemption_rate, purchase_rate) = get_rates(&deps.as_ref());
+        assert_eq!(redemption_rate, Decimal::from_ratio(1_050_000_000u128, 1_050_000u128));
+        assert_eq!(purchase_rate, Decimal::from_ratio(1_050_000u128, 1_050_000_000u128));
     }
 
     #[test]

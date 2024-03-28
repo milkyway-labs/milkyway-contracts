@@ -147,7 +147,7 @@ mod staking_tests {
         assert_eq!(attrs[3].value, "650");
 
         let messages = resp.messages;
-        assert_eq!(messages.len(), 3); // batch submit and redemption/purchase rate update
+        assert_eq!(messages.len(), 4); // batch submit and redemption/purchase rate update
         assert_eq!(
             messages[0],
             SubMsg {
