@@ -41,6 +41,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         ibc_channel_id: CHANNEL_ID.to_string(),
         oracle_contract_address: Some(OSMO3.to_string()),
         oracle_contract_address_v2: Some(OSMO4.to_string()),
+        oracle_address: Some(OSMO4.to_string()),
     };
     let info = mock_info(OSMO3, &coins(1000, "uosmo"));
 

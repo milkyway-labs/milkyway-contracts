@@ -96,6 +96,7 @@ pub fn instantiate(
         stopped: true,                 // we start stopped
         oracle_contract_address: None, // just for migration. This always needs to be set
         oracle_contract_address_v2: None,
+        oracle_address: None,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -115,6 +116,7 @@ pub fn instantiate(
         Some(msg.treasury_address),
         msg.oracle_contract_address,
         msg.oracle_contract_address_v2,
+        msg.oracle_address,
     )?;
 
     // Init State
@@ -207,6 +209,7 @@ pub fn execute(
             treasury_address,
             oracle_contract_address,
             oracle_contract_address_v2,
+            oracle_address,
         } => update_config(
             deps,
             env,
@@ -222,6 +225,7 @@ pub fn execute(
             treasury_address,
             oracle_contract_address,
             oracle_contract_address_v2,
+            oracle_address,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {

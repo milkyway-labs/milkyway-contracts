@@ -21,6 +21,7 @@ pub struct Config {
     pub stopped: bool,
     pub oracle_contract_address: Option<Addr>,
     pub oracle_contract_address_v2: Option<Addr>,
+    pub oracle_address: Option<Addr>,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?

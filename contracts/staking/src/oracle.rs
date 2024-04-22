@@ -23,27 +23,24 @@ pub enum Oracle {
         /// Additional metric-specific attributes
         attributes: Option<Binary>,
     },
+    PostRates {
+        denom: String,
+        purchase_rate: String,
+        redemption_rate: String,
+    },
 }
 
-/// The RedemptionRate struct represents the redemption rate of an stToken
 #[cw_serde]
 pub struct RedemptionRate {
-    /// stToken denom as an IBC hash, as it appears on the oracle chain
     pub denom: String,
-    /// The redemption rate of the stToken
     pub redemption_rate: Decimal,
-    /// The unix timestamp representing when the redemption rate was last updated
     pub update_time: u64,
 }
 
-/// The PurchaseRate struct represents the purchase rate of an milkTia
 #[cw_serde]
 pub struct PurchaseRate {
-    /// stToken denom as an IBC hash, as it appears on the oracle chain
     pub denom: String,
-    /// The purchase rate of the milkTia
     pub purchase_rate: Decimal,
-    /// The unix timestamp representing when the purchase rate was last updated
     pub update_time: u64,
 }
 
