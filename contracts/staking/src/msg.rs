@@ -35,6 +35,8 @@ pub struct InstantiateMsg {
     pub oracle_contract_address: Option<String>,
     // The migratable redemption / purchase rate oracle address
     pub oracle_contract_address_v2: Option<String>,
+    // The redemption / purchase rate oracle address
+    pub oracle_address: Option<String>,
 }
 
 #[cw_serde]
@@ -71,6 +73,7 @@ pub enum ExecuteMsg {
         treasury_address: Option<String>,
         oracle_contract_address: Option<String>,
         oracle_contract_address_v2: Option<String>,
+        oracle_address: Option<String>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {
@@ -108,6 +111,7 @@ pub struct ConfigResponse {
     pub stopped: bool,
     pub oracle_contract_address: String,
     pub oracle_contract_address_v2: String,
+    pub oracle_address: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -198,7 +202,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct MigrateMsg {
-    pub oracle_contract_address_v2: Option<String>
+    pub oracle_address: Option<String>
 }
 
 #[cw_serde]

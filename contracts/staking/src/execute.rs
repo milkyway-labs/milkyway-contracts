@@ -167,6 +167,21 @@ fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<Cosmo
         funds: vec![]
     }.into());
     
+    // Post rates to Milkyway Oracle contract
+    let post_rates_msg = Oracle::PostRates {
+        purchase_rate: purchase_rate.to_string(),
+        redemption_rate: redemption_rate.to_string(),
+        denom: config.liquid_stake_token_denom.clone(),
+    };
+
+    let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
+    messages.push(MsgExecuteContract {
+        sender: env.contract.address.to_string(),
+        contract: config.oracle_address.clone().unwrap().to_string(),
+        msg: post_rate_msg_json.as_bytes().to_vec(),
+        funds: vec![]
+    }.into());
+
     Ok(messages)
 }
 
@@ -744,15 +759,16 @@ pub fn update_config_from_migrate(
 ) -> ContractResult<Response> {
     let mut config: Config = CONFIG.load(deps.storage)?;
    
-    // update oracle contract address v2
-    if msg.oracle_contract_address_v2.is_some() {
-        let oracle_contract_address_v2 = msg.oracle_contract_address_v2.unwrap();
-        let address = validate_address(&oracle_contract_address_v2, "osmo")?;
-        config.oracle_contract_address_v2 = Some(address);
+    // update oracle contract address v3
+    if msg.oracle_address.is_some() {
+        let oracle_address = msg.oracle_address.unwrap();
+        let address = validate_address(&oracle_address, "osmo")?;
+        config.oracle_address = Some(address);
     }
+
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "update_oracle_contract_address_v2"))
+    Ok(Response::new().add_attribute("action", "update_oracle_address"))
 }
 
 // Update the config; callable by the owner
@@ -771,6 +787,7 @@ pub fn update_config(
     treasury_address: Option<String>,
     oracle_contract_address: Option<String>,
     oracle_contract_address_v2: Option<String>,
+    oracle_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -835,6 +852,12 @@ pub fn update_config(
         let oracle_contract_address_v2 = oracle_contract_address_v2.unwrap();
         let address = validate_address(&oracle_contract_address_v2, "osmo")?;
         config.oracle_contract_address_v2 = Some(address);
+    }
+
+    if oracle_address.is_some() {
+        let oracle_address = oracle_address.unwrap();
+        let address = validate_address(&oracle_address, "osmo")?;
+        config.oracle_address = Some(address);
     }
 
     CONFIG.save(deps.storage, &config)?;

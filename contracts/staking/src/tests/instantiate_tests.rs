@@ -47,6 +47,7 @@ mod tests {
                 ibc_channel_id: CHANNEL_ID.to_string(),
                 oracle_contract_address: None,
                 oracle_contract_address_v2: None,
+                oracle_address: None,
             }
         }
 
@@ -158,6 +159,7 @@ mod tests {
             treasury_address: Some(OSMO3.to_string()),
             oracle_contract_address: None,
             oracle_contract_address_v2: None,
+            oracle_address: None,
         };
 
         let res = crate::contract::execute(
@@ -189,6 +191,7 @@ mod tests {
             treasury_address: None,
             oracle_contract_address: None,
             oracle_contract_address_v2: None,
+            oracle_address: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -215,6 +218,7 @@ mod tests {
             treasury_address: None,
             oracle_contract_address: None,
             oracle_contract_address_v2: None,
+            oracle_address: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -241,6 +245,7 @@ mod tests {
             treasury_address: None,
             oracle_contract_address: None,
             oracle_contract_address_v2: None,
+            oracle_address: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
