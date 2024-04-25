@@ -109,8 +109,6 @@ pub struct ConfigResponse {
     pub protocol_fee_config: ProtocolFeeConfig,
     pub ibc_channel_id: String,
     pub stopped: bool,
-    pub oracle_contract_address: String,
-    pub oracle_contract_address_v2: String,
     pub oracle_address: String,
 }
 
