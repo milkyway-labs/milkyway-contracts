@@ -4,7 +4,7 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::oracle::{Oracle, RedemptionRateAttributes, ORACLE_REDEMPTION_RATE_KEY, PurchaseRateAttributes, ORACLE_PURCHASE_RATE_KEY};
+use crate::oracle::{Oracle};
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -95,78 +95,6 @@ fn transfer_stake_sub_msg(
 fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<CosmosMsg>, ContractError> {
     let (redemption_rate, purchase_rate) = get_rates(&deps);
     let mut messages: Vec<CosmosMsg> = Vec::new();
-
-    // V1 uses purchase_rate (but named redemption_rate)
-    let update_redemption_rate_execute_msg_v1 = Oracle::PostMetric {
-        key: ORACLE_REDEMPTION_RATE_KEY.to_string(),
-        value: purchase_rate.to_string(),
-        metric_type: crate::oracle::MetricType::RedemptionRate,
-        update_time: env.block.time.seconds(),
-        block_height: env.block.height,
-        attributes: Some(Binary::from(
-            serde_json::to_string(&RedemptionRateAttributes {
-                sttoken_denom: config.liquid_stake_token_denom.clone(),
-            })
-            .unwrap()
-            .into_bytes(),
-        )),
-    };
-
-    let update_redemption_rate_msg_json_v1 = serde_json::to_string(&update_redemption_rate_execute_msg_v1).unwrap();
-    messages.push(MsgExecuteContract {
-        sender: env.contract.address.to_string(),
-        contract: config.oracle_contract_address.clone().unwrap().to_string(),
-        msg: update_redemption_rate_msg_json_v1.as_bytes().to_vec(),
-        funds: vec![]
-    }.into());
-
-    // V2 uses both redemption_rate and purchase_rate
-    let update_redemption_rate_execute_msg = Oracle::PostMetric {
-        key: ORACLE_REDEMPTION_RATE_KEY.to_string(),
-        value: redemption_rate.to_string(),
-        metric_type: crate::oracle::MetricType::RedemptionRate,
-        update_time: env.block.time.seconds(),
-        block_height: env.block.height,
-        attributes: Some(Binary::from(
-            serde_json::to_string(&RedemptionRateAttributes {
-                sttoken_denom: config.liquid_stake_token_denom.clone(),
-            })
-            .unwrap()
-            .into_bytes(),
-        )),
-    };
-
-    let update_redemption_rate_msg_json = serde_json::to_string(&update_redemption_rate_execute_msg).unwrap();
-    messages.push(MsgExecuteContract {
-        sender: env.contract.address.to_string(),
-        contract: config.oracle_contract_address_v2.clone().unwrap().to_string(),
-        msg: update_redemption_rate_msg_json.as_bytes().to_vec(),
-        funds: vec![]
-    }.into());
-
-    let update_purchase_rate_execute_msg = Oracle::PostMetric {
-        key: ORACLE_PURCHASE_RATE_KEY.to_string(),
-        value: purchase_rate.to_string(),
-        metric_type: crate::oracle::MetricType::PurchaseRate,
-        update_time: env.block.time.seconds(),
-        block_height: env.block.height,
-        attributes: Some(Binary::from(
-            serde_json::to_string(&PurchaseRateAttributes {
-                sttoken_denom: config.liquid_stake_token_denom.clone(),
-            })
-            .unwrap()
-            .into_bytes(),
-        )),
-    };
-
-    let update_purchase_rate_msg_json = serde_json::to_string(&update_purchase_rate_execute_msg).unwrap();
-    messages.push(MsgExecuteContract {
-        sender: env.contract.address.to_string(),
-        contract: config.oracle_contract_address_v2.clone().unwrap().to_string(),
-        msg: update_purchase_rate_msg_json.as_bytes().to_vec(),
-        funds: vec![]
-    }.into());
-    
     // Post rates to Milkyway Oracle contract
     let post_rates_msg = Oracle::PostRates {
         purchase_rate: purchase_rate.to_string(),
