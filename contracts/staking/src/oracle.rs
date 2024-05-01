@@ -1,6 +1,5 @@
 // Types for the Oracle contract
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Decimal};
 
 #[cw_serde]
 pub enum Oracle {

@@ -12,7 +12,7 @@ use crate::state::{
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
 use cosmwasm_std::{
-    ensure, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn,
+    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn,
     Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
