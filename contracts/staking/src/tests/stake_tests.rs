@@ -49,9 +49,9 @@ mod staking_tests {
                         attr("mint_amount", "1000"),
                     ]
                 );
-                assert_eq!(result.messages.len(), 6); // transfer, mint, redemption rate update
+                assert_eq!(result.messages.len(), 3); // transfer, mint, redemption rate update
                 assert_eq!(
-                    result.messages[5],
+                    result.messages[2],
                     SubMsg {
                         id: ibc_sub_msg_id.clone(),
                         msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
