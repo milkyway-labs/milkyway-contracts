@@ -4,7 +4,6 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::msg::MigrateMsg;
 use crate::oracle::Oracle;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
@@ -685,21 +684,6 @@ pub fn recover(
         .add_attribute("action", "recover")
         .add_attribute("packets", packets.len().to_string())
         .add_submessage(sub_msg))
-}
-
-pub fn update_config_from_migrate(deps: DepsMut, msg: MigrateMsg) -> ContractResult<Response> {
-    let mut config: Config = CONFIG.load(deps.storage)?;
-
-    // update oracle contract address v3
-    if msg.oracle_address.is_some() {
-        let oracle_address = msg.oracle_address.unwrap();
-        let address = validate_address(&oracle_address, "osmo")?;
-        config.oracle_address = Some(address);
-    }
-
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(Response::new().add_attribute("action", "update_oracle_address"))
 }
 
 // Update the config; callable by the owner

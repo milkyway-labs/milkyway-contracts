@@ -1,9 +1,10 @@
 use crate::execute::{
     circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
-    receive_unstaked_tokens, recover, resume_contract, update_config, update_config_from_migrate,
+    receive_unstaked_tokens, recover, resume_contract, update_config,
 };
 use crate::helpers::validate_addresses;
 use crate::ibc::{receive_ack, receive_timeout};
+use crate::migrations;
 use crate::query::{
     query_all_unstake_requests, query_all_unstake_requests_v2, query_batch, query_batches,
     query_batches_by_ids, query_config, query_ibc_queue, query_pending_batch, query_reply_queue,
@@ -34,8 +35,8 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 use semver::Version;
 
 // Version information for migration
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
 pub const CELESTIA_ACCOUNT_PREFIX: &str = &"celestia";
@@ -79,7 +80,6 @@ pub fn instantiate(
             env.contract.address, msg.liquid_stake_token_denom
         ),
         treasury_address: Addr::unchecked(""),
-        operators: None,
         monitors: Some(vec![]),
         validators,
         batch_period: 0,
@@ -93,9 +93,7 @@ pub fn instantiate(
         },
         minimum_liquid_stake_amount: Uint128::zero(),
         ibc_channel_id: "".to_string(),
-        stopped: true,                 // we start stopped
-        oracle_contract_address: None, // just for migration. This always needs to be set
-        oracle_contract_address_v2: None,
+        stopped: true, // we start stopped
         oracle_address: None,
     };
 
@@ -295,7 +293,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 ///////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if &CONTRACT_NAME != &current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -318,14 +316,14 @@ pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response
         return Err(StdError::generic_err("Cannot migrate to the same version.").into());
     }
 
-    // migrate data
-    // update v2 oracle contract address
-    update_config_from_migrate(deps.branch(), msg)?;
+    let migration_response = match msg {
+        MigrateMsg::V0_4_18ToV0_4_19 {} => migrations::v0_4_19::migrate(deps.branch(), env)?,
+    };
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new())
+    Ok(migration_response)
 }
 
 /////////////

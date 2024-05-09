@@ -1,4 +1,5 @@
 use cosmwasm_std::{StdError, Timestamp, Uint128};
+use cw2::VersionError;
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 use milky_way::staking::BatchStatus;
@@ -131,4 +132,7 @@ pub enum ContractError {
 
     #[error("If liquid staking is done from a non native Osmosis address you need to provide an address via 'mint_to'")]
     MissingMintAddress {},
+
+    #[error("{0}")]
+    Version(#[from] VersionError),
 }

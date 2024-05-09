@@ -192,9 +192,9 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, JsonSchema)]
-pub struct MigrateMsg {
-    pub oracle_address: Option<String>,
+#[cw_serde]
+pub enum MigrateMsg {
+    V0_4_18ToV0_4_19 {},
 }
 
 #[cw_serde]

@@ -9,7 +9,6 @@ pub struct Config {
     pub native_token_denom: String,
     pub liquid_stake_token_denom: String,
     pub treasury_address: Addr,
-    pub operators: Option<Vec<Addr>>, //depr
     pub monitors: Option<Vec<Addr>>,
     pub validators: Vec<Addr>,
     pub batch_period: u64,
@@ -19,8 +18,6 @@ pub struct Config {
     pub minimum_liquid_stake_amount: Uint128,
     pub ibc_channel_id: String,
     pub stopped: bool,
-    pub oracle_contract_address: Option<Addr>,
-    pub oracle_contract_address_v2: Option<Addr>,
     pub oracle_address: Option<Addr>,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
