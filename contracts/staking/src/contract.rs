@@ -114,8 +114,6 @@ pub fn instantiate(
         Some(msg.ibc_channel_id.clone()),
         Some(msg.monitors),
         Some(msg.treasury_address),
-        msg.oracle_contract_address,
-        msg.oracle_contract_address_v2,
         msg.oracle_address,
     )?;
 
@@ -207,8 +205,6 @@ pub fn execute(
             channel_id,
             monitors,
             treasury_address,
-            oracle_contract_address,
-            oracle_contract_address_v2,
             oracle_address,
         } => update_config(
             deps,
@@ -223,8 +219,6 @@ pub fn execute(
             channel_id,
             monitors,
             treasury_address,
-            oracle_contract_address,
-            oracle_contract_address_v2,
             oracle_address,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),

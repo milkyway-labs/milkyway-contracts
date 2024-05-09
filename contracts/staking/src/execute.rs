@@ -4,7 +4,8 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::oracle::{Oracle};
+use crate::msg::MigrateMsg;
+use crate::oracle::Oracle;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
     Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
@@ -12,8 +13,8 @@ use crate::state::{
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
 use cosmwasm_std::{
-    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn,
-    Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
+    SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus};
@@ -24,7 +25,6 @@ use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
-use crate::msg::MigrateMsg;
 
 pub fn transfer_stake_msg(
     deps: &Deps,
@@ -92,7 +92,11 @@ fn transfer_stake_sub_msg(
     })
 }
 
-fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<CosmosMsg>, ContractError> {
+fn update_oracle_msgs(
+    deps: Deps,
+    env: Env,
+    config: &Config,
+) -> Result<Vec<CosmosMsg>, ContractError> {
     let (redemption_rate, purchase_rate) = get_rates(&deps);
     let mut messages: Vec<CosmosMsg> = Vec::new();
     // Post rates to Milkyway Oracle contract
@@ -103,12 +107,15 @@ fn update_oracle_msgs(deps: Deps, env: Env, config: &Config) -> Result<Vec<Cosmo
     };
 
     let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
-    messages.push(MsgExecuteContract {
-        sender: env.contract.address.to_string(),
-        contract: config.oracle_address.clone().unwrap().to_string(),
-        msg: post_rate_msg_json.as_bytes().to_vec(),
-        funds: vec![]
-    }.into());
+    messages.push(
+        MsgExecuteContract {
+            sender: env.contract.address.to_string(),
+            contract: config.oracle_address.clone().unwrap().to_string(),
+            msg: post_rate_msg_json.as_bytes().to_vec(),
+            funds: vec![],
+        }
+        .into(),
+    );
 
     Ok(messages)
 }
@@ -450,8 +457,7 @@ pub fn execute_withdraw(
         .add_attribute("action", "execute_withdraw")
         .add_attribute("batch", batch.id.to_string())
         .add_attribute("amount", amount.to_string())
-        .add_messages([messages, update_oracle_msgs].concat())
-    )
+        .add_messages([messages, update_oracle_msgs].concat()))
 }
 
 // Add a validator to the list of validators; callable by the owner
@@ -681,12 +687,9 @@ pub fn recover(
         .add_submessage(sub_msg))
 }
 
-pub fn update_config_from_migrate(
-    deps: DepsMut,
-    msg: MigrateMsg,
-) -> ContractResult<Response> {
+pub fn update_config_from_migrate(deps: DepsMut, msg: MigrateMsg) -> ContractResult<Response> {
     let mut config: Config = CONFIG.load(deps.storage)?;
-   
+
     // update oracle contract address v3
     if msg.oracle_address.is_some() {
         let oracle_address = msg.oracle_address.unwrap();
@@ -713,8 +716,6 @@ pub fn update_config(
     channel_id: Option<String>,
     monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
-    oracle_contract_address: Option<String>,
-    oracle_contract_address_v2: Option<String>,
     oracle_address: Option<String>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -768,18 +769,6 @@ pub fn update_config(
 
         config.ibc_channel_id = channel_id;
         config.native_token_denom = native_token_denom;
-    }
-
-    if oracle_contract_address.is_some() {
-        let oracle_contract_address = oracle_contract_address.unwrap();
-        let address = validate_address(&oracle_contract_address, "osmo")?;
-        config.oracle_contract_address = Some(address);
-    }
-
-    if oracle_contract_address_v2.is_some() {
-        let oracle_contract_address_v2 = oracle_contract_address_v2.unwrap();
-        let address = validate_address(&oracle_contract_address_v2, "osmo")?;
-        config.oracle_contract_address_v2 = Some(address);
     }
 
     if oracle_address.is_some() {

@@ -32,10 +32,6 @@ pub struct InstantiateMsg {
     // IBC channel id on Osmosis to Celestia
     pub ibc_channel_id: String,
     // The redemption / purchase rate oracle address
-    pub oracle_contract_address: Option<String>,
-    // The migratable redemption / purchase rate oracle address
-    pub oracle_contract_address_v2: Option<String>,
-    // The redemption / purchase rate oracle address
     pub oracle_address: Option<String>,
 }
 
@@ -71,8 +67,6 @@ pub enum ExecuteMsg {
         channel_id: Option<String>,
         monitors: Option<Vec<String>>,
         treasury_address: Option<String>,
-        oracle_contract_address: Option<String>,
-        oracle_contract_address_v2: Option<String>,
         oracle_address: Option<String>,
     },
     ReceiveRewards {},
@@ -200,7 +194,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct MigrateMsg {
-    pub oracle_address: Option<String>
+    pub oracle_address: Option<String>,
 }
 
 #[cw_serde]

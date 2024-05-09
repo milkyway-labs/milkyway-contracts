@@ -45,8 +45,6 @@ mod tests {
                 },
                 minimum_liquid_stake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
-                oracle_contract_address: None,
-                oracle_contract_address_v2: None,
                 oracle_address: None,
             }
         }
@@ -157,8 +155,6 @@ mod tests {
             channel_id: Some("channel-0".to_string()),
             monitors: Some(vec![OSMO3.to_string()]),
             treasury_address: Some(OSMO3.to_string()),
-            oracle_contract_address: None,
-            oracle_contract_address_v2: None,
             oracle_address: None,
         };
 
@@ -189,8 +185,6 @@ mod tests {
             channel_id: Some("channel-0".to_string()),
             monitors: None,
             treasury_address: None,
-            oracle_contract_address: None,
-            oracle_contract_address_v2: None,
             oracle_address: None,
         };
         let res = crate::contract::execute(
@@ -216,8 +210,6 @@ mod tests {
             channel_id: Some("".to_string()),
             monitors: None,
             treasury_address: None,
-            oracle_contract_address: None,
-            oracle_contract_address_v2: None,
             oracle_address: None,
         };
         let res = crate::contract::execute(
@@ -243,8 +235,6 @@ mod tests {
             channel_id: Some("".to_string()),
             monitors: None,
             treasury_address: None,
-            oracle_contract_address: None,
-            oracle_contract_address_v2: None,
             oracle_address: None,
         };
         let res = crate::contract::execute(
