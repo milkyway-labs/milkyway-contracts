@@ -1,16 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_json_string, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::execute::{
     execute_accept_ownership, execute_revoke_ownership_transfer, execute_spend_funds,
-    execute_transfer_ownership,
+    execute_swap_exact_amount_in, execute_swap_exact_amount_out, execute_transfer_ownership,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, ADMIN, STATE};
+use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -20,7 +20,7 @@ pub fn instantiate(
     mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -34,9 +34,25 @@ pub fn instantiate(
     };
     STATE.save(deps.storage, &state)?;
 
+    // Init Config
+    let config = Config {
+        trader: msg
+            .trader
+            .map(|trader_str| deps.api.addr_validate(&trader_str))
+            .transpose()?
+            .unwrap_or(info.sender.clone()),
+        allowed_swap_routes: msg.allowed_swap_routes,
+    };
+    CONFIG.save(deps.storage, &config)?;
+
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", info.sender)
+        .add_attribute("trader", config.trader)
+        .add_attribute(
+            "allowed_swap_routes",
+            to_json_string(&config.allowed_swap_routes)?,
+        ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -59,6 +75,16 @@ pub fn execute(
             receiver,
             channel_id,
         } => execute_spend_funds(deps, env, info, amount, receiver, channel_id),
+        ExecuteMsg::SwapExactAmountIn {
+            routes,
+            token_in,
+            token_out_min_amount,
+        } => execute_swap_exact_amount_in(deps, env, info, routes, token_in, token_out_min_amount),
+        ExecuteMsg::SwapExactAmountOut {
+            routes,
+            token_out,
+            token_in_max_amount,
+        } => execute_swap_exact_amount_out(deps, env, info, routes, token_out, token_in_max_amount),
     }
 }
 

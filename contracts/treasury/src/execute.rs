@@ -1,4 +1,6 @@
-use cosmwasm_std::{attr, CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp};
+use cosmwasm_std::{
+    attr, to_json_string, CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp,
+};
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin, ibc::applications::transfer::v1::MsgTransfer,
 };
@@ -6,7 +8,7 @@ use osmosis_std::types::{
 use crate::{
     error::{ContractError, ContractResult},
     helpers::validate_address,
-    state::{State, ADMIN, STATE},
+    state::{State, SwapRoute, ADMIN, CONFIG, STATE},
 };
 
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
@@ -148,4 +150,88 @@ pub fn execute_spend_funds(
         .add_message(msg_send)
         .add_attributes(attributes);
     Ok(res)
+}
+
+pub fn execute_swap_exact_amount_in(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    swap_routes: Vec<SwapRoute>,
+    token_in: cosmwasm_std::Coin,
+    token_out_min_amount: u128,
+) -> ContractResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    config.assert_trader(&info.sender)?;
+    swap_routes
+        .iter()
+        .try_for_each(|swap_route| config.assert_allowed_swap_route(swap_route))?;
+
+    let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountIn {
+        sender: info.sender.to_string(),
+        routes: swap_routes
+            .iter()
+            .map(|swap_route| {
+                osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute {
+                    pool_id: swap_route.pool_id,
+                    token_out_denom: swap_route.token_out_denom.clone(),
+                }
+            })
+            .collect(),
+        token_in: Some(Coin {
+            denom: token_in.denom.clone(),
+            amount: token_in.amount.to_string(),
+        }),
+        token_out_min_amount: token_out_min_amount.to_string(),
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "swap_exact_amount_in")
+        .add_attribute("sender", info.sender)
+        .add_attribute("routes", to_json_string(&swap_routes)?)
+        .add_attribute("token_in", token_in.to_string())
+        .add_attribute("token_out_min_amount", token_out_min_amount.to_string())
+        .add_message(message))
+}
+
+pub fn execute_swap_exact_amount_out(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    swap_routes: Vec<SwapRoute>,
+    token_out: cosmwasm_std::Coin,
+    token_in_max_amount: u128,
+) -> ContractResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    config.assert_trader(&info.sender)?;
+    swap_routes
+        .iter()
+        .try_for_each(|swap_route| config.assert_allowed_swap_route(swap_route))?;
+
+    let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut {
+        sender: info.sender.to_string(),
+        routes: swap_routes
+            .iter()
+            .map(|swap_route| {
+                osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute {
+                    pool_id: swap_route.pool_id,
+                    token_in_denom: swap_route.token_in_denom.clone(),
+                }
+            })
+            .collect(),
+        token_out: Some(Coin {
+            denom: token_out.denom.clone(),
+            amount: token_out.amount.to_string(),
+        }),
+        token_in_max_amount: token_in_max_amount.to_string(),
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "swap_exact_amount_in")
+        .add_attribute("sender", info.sender)
+        .add_attribute("routes", to_json_string(&swap_routes)?)
+        .add_attribute("token_out", token_out.to_string())
+        .add_attribute("token_in_max_amount", token_in_max_amount.to_string())
+        .add_message(message))
 }
