@@ -5,6 +5,7 @@ use crate::state::SwapRoute;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub admin: Option<String>,
     pub trader: Option<String>,
     pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
 }

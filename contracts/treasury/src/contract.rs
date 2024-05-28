@@ -24,8 +24,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO: determine if info.sender is the admin or if we want to pass in with msg
-    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    let admin = msg
+        .admin
+        .map(|admin_str| deps.api.addr_validate(&admin_str))
+        .transpose()?
+        .unwrap_or(info.sender.clone());
+    ADMIN.set(deps.branch(), Some(admin))?;
 
     // Init State
     let state = State {
