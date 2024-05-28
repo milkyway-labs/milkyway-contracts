@@ -231,3 +231,29 @@ pub fn execute_swap_exact_amount_out(
         .add_attribute("token_in_max_amount", token_in_max_amount.to_string())
         .add_message(message))
 }
+
+pub fn execute_update_config(
+    deps: DepsMut,
+    info: MessageInfo,
+    trader: Option<String>,
+    routes: Option<Vec<Vec<SwapRoute>>>,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut response = Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute("sender", info.sender);
+
+    let mut config = CONFIG.load(deps.storage)?;
+    if let Some(trader) = trader {
+        config.trader = deps.api.addr_validate(&trader)?;
+        response = response.add_attribute("trader", trader);
+    }
+    if let Some(routes) = routes {
+        response = response.add_attribute("allowed_routes", to_json_string(&routes)?);
+        config.allowed_swap_routes = routes;
+    }
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(response)
+}

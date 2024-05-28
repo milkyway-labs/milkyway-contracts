@@ -32,6 +32,10 @@ pub enum ExecuteMsg {
         token_out: Coin,
         token_in_max_amount: u128,
     },
+    UpdateConfig {
+        trader: Option<String>,
+        allowed_swap_routes: Option<Vec<Vec<SwapRoute>>>,
+    },
 }
 
 #[cw_serde]

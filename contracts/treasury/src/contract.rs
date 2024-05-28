@@ -9,6 +9,7 @@ use crate::error::{ContractError, ContractResult};
 use crate::execute::{
     execute_accept_ownership, execute_revoke_ownership_transfer, execute_spend_funds,
     execute_swap_exact_amount_in, execute_swap_exact_amount_out, execute_transfer_ownership,
+    execute_update_config,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::query_config;
@@ -91,6 +92,10 @@ pub fn execute(
             token_out,
             token_in_max_amount,
         } => execute_swap_exact_amount_out(deps, env, info, routes, token_out, token_in_max_amount),
+        ExecuteMsg::UpdateConfig {
+            trader,
+            allowed_swap_routes,
+        } => execute_update_config(deps, info, trader, allowed_swap_routes),
     }
 }
 
