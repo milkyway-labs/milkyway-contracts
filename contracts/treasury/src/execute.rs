@@ -163,9 +163,7 @@ pub fn execute_swap_exact_amount_in(
     let config = CONFIG.load(deps.storage)?;
 
     config.assert_trader(&info.sender)?;
-    swap_routes
-        .iter()
-        .try_for_each(|swap_route| config.assert_allowed_swap_route(swap_route))?;
+    config.assert_allowed_swap_route(&swap_routes)?;
 
     let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountIn {
         sender: info.sender.to_string(),
@@ -205,9 +203,7 @@ pub fn execute_swap_exact_amount_out(
     let config = CONFIG.load(deps.storage)?;
 
     config.assert_trader(&info.sender)?;
-    swap_routes
-        .iter()
-        .try_for_each(|swap_route| config.assert_allowed_swap_route(swap_route))?;
+    config.assert_allowed_swap_route(&swap_routes)?;
 
     let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut {
         sender: info.sender.to_string(),

@@ -22,6 +22,6 @@ pub enum ContractError {
     #[error("Ownership transfer not ready")]
     OwnershipTransferNotReady { time_to_claim: Timestamp },
 
-    #[error("swap root not allowed, {pool_id} {out_denom}")]
-    SwapRouteNotAllowed { pool_id: u64, out_denom: String },
+    #[error("swap root not allowed")]
+    SwapRouteNotAllowed {},
 }

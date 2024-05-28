@@ -31,7 +31,7 @@ pub struct Config {
     /// User that will be allowed to perform the swap operations.
     pub trader: Addr,
     /// List of allowed swap routes that can be taken when performing a SwapExactAmountIn.
-    pub allowed_swap_routes: Vec<SwapRoute>,
+    pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -47,7 +47,7 @@ impl Config {
         }
     }
 
-    pub fn assert_allowed_swap_route(&self, swap_route: &SwapRoute) -> ContractResult<()> {
+    pub fn assert_allowed_swap_route(&self, swap_route: &[SwapRoute]) -> ContractResult<()> {
         if self
             .allowed_swap_routes
             .iter()
@@ -55,10 +55,7 @@ impl Config {
         {
             Ok(())
         } else {
-            Err(ContractError::SwapRouteNotAllowed {
-                pool_id: swap_route.pool_id,
-                out_denom: swap_route.token_out_denom.clone(),
-            })
+            Err(ContractError::SwapRouteNotAllowed {})
         }
     }
 }
