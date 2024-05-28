@@ -166,7 +166,7 @@ pub fn execute_swap_exact_amount_in(
     config.assert_allowed_swap_route(&swap_routes)?;
 
     let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountIn {
-        sender: info.sender.to_string(),
+        sender: env.contract.address.to_string(),
         routes: swap_routes
             .iter()
             .map(|swap_route| {
@@ -206,7 +206,7 @@ pub fn execute_swap_exact_amount_out(
     config.assert_allowed_swap_route(&swap_routes)?;
 
     let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut {
-        sender: info.sender.to_string(),
+        sender: env.contract.address.to_string(),
         routes: swap_routes
             .iter()
             .map(|swap_route| {
