@@ -164,8 +164,16 @@ pub fn execute_swap_exact_amount_in(
 
     config.assert_trader(&info.sender)?;
     config.assert_allowed_swap_route(&swap_routes)?;
+    if swap_routes.is_empty() {
+        return Err(ContractError::SwapRouteNotAllowed {});
+    }
+    if swap_routes[0].token_in_denom != token_in.denom {
+        return Err(ContractError::InvalidTokenInDenom {
+            denom: token_in.denom,
+        });
+    }
 
-    let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountIn {
+    let message = osmosis_std::types::osmosis::poolmanager::v1beta1::MsgSwapExactAmountIn {
         sender: env.contract.address.to_string(),
         routes: swap_routes
             .iter()
@@ -204,8 +212,16 @@ pub fn execute_swap_exact_amount_out(
 
     config.assert_trader(&info.sender)?;
     config.assert_allowed_swap_route(&swap_routes)?;
+    if swap_routes.is_empty() {
+        return Err(ContractError::SwapRouteNotAllowed {});
+    }
+    if swap_routes.last().unwrap().token_out_denom != token_out.denom {
+        return Err(ContractError::InvalidTokenOutDenom {
+            denom: token_out.denom,
+        });
+    }
 
-    let message = osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountOut {
+    let message = osmosis_std::types::osmosis::poolmanager::v1beta1::MsgSwapExactAmountOut {
         sender: env.contract.address.to_string(),
         routes: swap_routes
             .iter()

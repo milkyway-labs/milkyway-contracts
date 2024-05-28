@@ -2,14 +2,14 @@
 mod ownership_tests {
     use crate::contract::execute;
     use crate::msg::ExecuteMsg;
-    use crate::tests::test_helper::{init, OSMO3};
+    use crate::tests::test_helper::{init, ADMIN};
     use cosmwasm_std::coins;
     use cosmwasm_std::testing::{mock_env, mock_info};
 
     #[test]
     fn proper_transfer_ownership() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+        let info = mock_info(ADMIN, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
         };
@@ -37,7 +37,7 @@ mod ownership_tests {
     #[test]
     fn proper_claim_ownership() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+        let info = mock_info(ADMIN, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
         };
@@ -66,7 +66,7 @@ mod ownership_tests {
     #[test]
     fn unauthorized_claim_ownership() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+        let info = mock_info(ADMIN, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
         };
@@ -85,7 +85,7 @@ mod ownership_tests {
     #[test]
     fn proper_revoke_ownership_transfer() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+        let info = mock_info(ADMIN, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
         };
@@ -93,7 +93,7 @@ mod ownership_tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_ok());
 
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+        let info = mock_info(ADMIN, &coins(1000, "uosmo"));
         let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 
         let res2 = execute(deps.as_mut(), mock_env(), info, msg);

@@ -2,14 +2,14 @@
 mod ownership_tests {
     use crate::contract::execute;
     use crate::msg::ExecuteMsg;
-    use crate::tests::test_helper::{init, OSMO3};
+    use crate::tests::test_helper::{init, ADMIN};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{Coin, Uint128};
 
     #[test]
     fn proper_send() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &vec![]);
+        let info = mock_info(ADMIN, &vec![]);
 
         let msg = ExecuteMsg::SpendFunds {
             amount: Coin {
@@ -48,7 +48,7 @@ mod ownership_tests {
     #[test]
     fn proper_send_ibc() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &vec![]);
+        let info = mock_info(ADMIN, &vec![]);
 
         let msg = ExecuteMsg::SpendFunds {
             amount: Coin {

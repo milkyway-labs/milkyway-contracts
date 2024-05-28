@@ -4,7 +4,7 @@ use thiserror::Error;
 
 pub type ContractResult<T> = core::result::Result<T, ContractError>;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -24,4 +24,10 @@ pub enum ContractError {
 
     #[error("swap root not allowed")]
     SwapRouteNotAllowed {},
+
+    #[error("invalid token in denom {denom}")]
+    InvalidTokenInDenom { denom: String },
+
+    #[error("invalid token out denom {denom}")]
+    InvalidTokenOutDenom { denom: String },
 }
