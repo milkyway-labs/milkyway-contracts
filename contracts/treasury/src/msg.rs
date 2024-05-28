@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Addr, Coin};
 
 use crate::state::SwapRoute;
 
@@ -36,4 +36,14 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
+}
+
+#[cw_serde]
+pub struct ConfigResponse {
+    pub admin: Addr,
+    pub trader: Addr,
+    pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
+}

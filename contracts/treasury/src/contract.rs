@@ -1,15 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_json_string, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_json_binary, to_json_string, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+};
 use cw2::set_contract_version;
-// use cw2::set_contract_version;
 
-use crate::error::ContractError;
+use crate::error::{ContractError, ContractResult};
 use crate::execute::{
     execute_accept_ownership, execute_revoke_ownership_transfer, execute_spend_funds,
     execute_swap_exact_amount_in, execute_swap_exact_amount_out, execute_transfer_ownership,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::query::query_config;
 use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -93,9 +95,9 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> ContractResult<Binary> {
+    match msg {
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+    }
+    .map_err(ContractError::from)
 }
-
-#[cfg(test)]
-mod tests {}
