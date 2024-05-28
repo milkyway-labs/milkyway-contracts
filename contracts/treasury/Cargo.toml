@@ -37,6 +37,7 @@ cw-controllers.workspace = true
 cw-storage-plus.workspace = true
 osmosis-std.workspace = true
 schemars.workspace = true
+semver.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 v = "0.1.0"

@@ -952,6 +952,7 @@ dependencies = [
  "cw2",
  "osmosis-std",
  "schemars",
+ "semver",
  "serde",
  "thiserror",
  "v",
