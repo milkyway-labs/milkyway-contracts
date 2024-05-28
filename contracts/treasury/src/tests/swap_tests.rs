@@ -18,7 +18,7 @@ use crate::{
 use super::test_helper::{init, TIA_DENOM, USDC_DENOM};
 
 #[test]
-pub fn swap_amount_in_from_user_fail() {
+fn swap_amount_in_from_user_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountIn {
@@ -48,7 +48,20 @@ pub fn swap_amount_in_from_user_fail() {
 }
 
 #[test]
-pub fn swap_amount_in_from_unauthorized_pool_fail() {
+fn swap_amount_in_with_empty_routes_fail() {
+    let mut deps = init();
+
+    let msg = ExecuteMsg::SwapExactAmountIn {
+        routes: vec![],
+        token_in: Coin::new(1000u128, TIA_DENOM),
+        token_out_min_amount: 100,
+    };
+    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
+}
+
+#[test]
+fn swap_amount_in_from_unauthorized_pool_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountIn {
@@ -88,7 +101,7 @@ pub fn swap_amount_in_from_unauthorized_pool_fail() {
 }
 
 #[test]
-pub fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
+fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountIn {
@@ -143,7 +156,7 @@ pub fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
 }
 
 #[test]
-pub fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
+fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountIn {
@@ -181,7 +194,7 @@ pub fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
 }
 
 #[test]
-pub fn swap_amount_in() {
+fn swap_amount_in() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountIn {
@@ -269,7 +282,7 @@ pub fn swap_amount_in() {
 }
 
 #[test]
-pub fn swap_amount_out_from_user_fail() {
+fn swap_amount_out_from_user_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountOut {
@@ -299,7 +312,20 @@ pub fn swap_amount_out_from_user_fail() {
 }
 
 #[test]
-pub fn swap_amount_out_from_unauthorized_pool_fail() {
+fn swap_amount_out_with_empty_routes_fail() {
+    let mut deps = init();
+
+    let msg = ExecuteMsg::SwapExactAmountOut {
+        routes: vec![],
+        token_out: Coin::new(1000u128, USDC_DENOM),
+        token_in_max_amount: 100,
+    };
+    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
+}
+
+#[test]
+fn swap_amount_out_from_unauthorized_pool_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountOut {
@@ -336,7 +362,7 @@ pub fn swap_amount_out_from_unauthorized_pool_fail() {
 }
 
 #[test]
-pub fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
+fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountOut {
@@ -373,7 +399,7 @@ pub fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
 }
 
 #[test]
-pub fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
+fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountOut {
@@ -428,7 +454,7 @@ pub fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
 }
 
 #[test]
-pub fn swap_amount_out() {
+fn swap_amount_out() {
     let mut deps = init();
 
     let msg = ExecuteMsg::SwapExactAmountOut {
