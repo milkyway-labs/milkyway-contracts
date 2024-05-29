@@ -159,9 +159,7 @@ pub fn execute_swap_exact_amount_in(
 
     config.assert_trader(&info.sender)?;
     config.assert_allowed_swap_route(&swap_routes)?;
-    if swap_routes.is_empty() {
-        return Err(ContractError::SwapRouteNotAllowed {});
-    }
+    // Check that the first route token in is the same as the token in
     if swap_routes[0].token_in_denom != token_in.denom {
         return Err(ContractError::InvalidTokenInDenom {
             denom: token_in.denom,
@@ -207,9 +205,7 @@ pub fn execute_swap_exact_amount_out(
 
     config.assert_trader(&info.sender)?;
     config.assert_allowed_swap_route(&swap_routes)?;
-    if swap_routes.is_empty() {
-        return Err(ContractError::SwapRouteNotAllowed {});
-    }
+    // Check that the last route token out is the same as the token out
     if swap_routes.last().unwrap().token_out_denom != token_out.denom {
         return Err(ContractError::InvalidTokenOutDenom {
             denom: token_out.denom,

@@ -48,6 +48,9 @@ impl Config {
     }
 
     pub fn assert_allowed_swap_route(&self, swap_route: &[SwapRoute]) -> ContractResult<()> {
+        if swap_route.is_empty() {
+            return Err(ContractError::SwapRouteNotAllowed {});
+        }
         if self
             .allowed_swap_routes
             .iter()
