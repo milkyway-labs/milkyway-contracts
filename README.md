@@ -13,7 +13,7 @@ This repository contains MilkyWay's core contracts that is deployed and operated
 | Contract                           | Description                                             |
 | ---------------------------------- | ------------------------------------------------------- |
 | [`staking`](./contracts/staking)   | Core contract for liquid staking / liquid unstaking TIA |
-| [`treasury`](./contracts/treasury) | MilkyWay DAO                                            |
+| [`treasury`](./contracts/treasury) | MilkyWay treasury contract                                            |
 
 ## Testing
 
