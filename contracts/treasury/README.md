@@ -39,7 +39,7 @@ osmosisd tx wasm instantiate <code-id> '{"admin": "<admin-addr>", "trader": "<tr
 The instantiate message takes the following parameters:
 - `admin` - Optional address of the admin account, if not provided the admin account will be the sender
 - `trader` - The address of the trader account, if not provided the trader will be the sender
-- `allowed_swap_routes` - The list of swap routes that the trader is allowed to use, you can see the definition [here](./src/state.rs#20)
+- `allowed_swap_routes` - The list of swap routes that the trader is allowed to use, you can see the definition [here](./src/state.rs#L20)
 
 ## Execute
 
