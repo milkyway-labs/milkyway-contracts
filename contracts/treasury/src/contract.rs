@@ -1,5 +1,3 @@
-use std::error::Error;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -14,7 +12,7 @@ use crate::execute::{
     execute_swap_exact_amount_in, execute_swap_exact_amount_out, execute_transfer_ownership,
     execute_update_config,
 };
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::query_config;
 use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 
@@ -111,9 +109,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> ContractResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> ContractResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Response> {
     let current_version = cw2::get_contract_version(deps.storage)?;
-    if &CONTRACT_NAME != &current_version.contract.as_str() {
+    if CONTRACT_NAME != current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
     }
 

@@ -51,3 +51,6 @@ pub struct ConfigResponse {
     pub trader: Addr,
     pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
 }
+
+#[cw_serde]
+pub enum MigrateMsg {}

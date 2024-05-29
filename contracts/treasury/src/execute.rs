@@ -104,19 +104,17 @@ pub fn execute_spend_funds(
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let msg_send: CosmosMsg;
-
-    if channel_id.is_none() {
+    let msg_send: CosmosMsg = if channel_id.is_none() {
         validate_address(&receiver, "osmo")?;
-        msg_send = cosmwasm_std::BankMsg::Send {
+        cosmwasm_std::BankMsg::Send {
             to_address: receiver.clone(),
             amount: vec![amount.clone()],
         }
-        .into();
+        .into()
     } else {
         validate_address(&receiver, "celestia")?;
         // not using the ibc queue here. if this fails, we just reexecute
-        msg_send = MsgTransfer {
+        MsgTransfer {
             source_channel: channel_id.clone().unwrap().clone(),
             source_port: "transfer".to_string(),
             token: Some(Coin {
@@ -127,13 +125,10 @@ pub fn execute_spend_funds(
             sender: env.contract.address.to_string(),
             timeout_height: None,
             timeout_timestamp: env.block.time.nanos() + IBC_TIMEOUT.nanos(),
-            memo: format!(
-                "{{\"ibc_callback\":\"{}\"}}",
-                env.contract.address.to_string()
-            ),
+            memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
         }
-        .into();
-    }
+        .into()
+    };
 
     let mut attributes = vec![
         attr("action", "spend_funds"),
