@@ -22,12 +22,12 @@ pub enum ContractError {
     #[error("Ownership transfer not ready")]
     OwnershipTransferNotReady { time_to_claim: Timestamp },
 
-    #[error("swap root not allowed")]
+    #[error("Swap root not allowed")]
     SwapRouteNotAllowed {},
 
-    #[error("invalid token in denom {denom}")]
+    #[error("Invalid token in denom {denom}")]
     InvalidTokenInDenom { denom: String },
 
-    #[error("invalid token out denom {denom}")]
+    #[error("Invalid token out denom {denom}")]
     InvalidTokenOutDenom { denom: String },
 }

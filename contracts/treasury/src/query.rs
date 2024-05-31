@@ -8,7 +8,9 @@ use crate::{
 
 pub fn query_config(deps: Deps) -> ContractResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
-    let admin = ADMIN.get(deps)?.unwrap();
+    let admin = ADMIN
+        .get(deps)?
+        .expect("admin not present in the contract state");
 
     Ok(ConfigResponse {
         admin,
