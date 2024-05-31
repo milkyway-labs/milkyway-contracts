@@ -50,12 +50,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
-name = "bech32-no_std"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4756f018d917ebf7d60361ce6b48e88a9f1904525429e501bc0841b9436d416e"
-
-[[package]]
 name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -864,7 +858,6 @@ name = "staking"
 version = "0.4.19"
 dependencies = [
  "bech32",
- "bech32-no_std",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers",

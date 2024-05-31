@@ -21,7 +21,6 @@ library = []
 
 [dependencies]
 bech32.workspace = true
-bech32-no_std = "0.7.3"
 cw2.workspace = true
 cosmwasm-schema.workspace = true
 cosmwasm-std = { workspace = true, features = ["stargate"]}

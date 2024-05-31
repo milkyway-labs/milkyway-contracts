@@ -94,12 +94,12 @@ pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
     bech32_prefix: &str,
-) -> Result<String, bech32_no_std::Error> {
-    use bech32_no_std::ToBase32;
+) -> Result<String, bech32::Error> {
+    use bech32::ToBase32;
     let sender_str = format!("{channel_id}/{original_sender}");
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32.to_base32();
-    bech32_no_std::encode(bech32_prefix, sender)
+    bech32::encode(bech32_prefix, sender, bech32::Variant::Bech32)
 }
 
 /// Generic function for paginating a list of (K, V) pairs in a
