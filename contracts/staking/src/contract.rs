@@ -24,7 +24,7 @@ use crate::{
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
@@ -39,9 +39,9 @@ pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
-pub const CELESTIA_ACCOUNT_PREFIX: &str = &"celestia";
-pub const OSMOSIS_ACCOUNT_PREFIX: &str = &"osmo";
-pub const CELESTIA_VALIDATOR_PREFIX: &str = &"celestiavaloper";
+pub const CELESTIA_ACCOUNT_PREFIX: &str = "celestia";
+pub const OSMOSIS_ACCOUNT_PREFIX: &str = "osmo";
+pub const CELESTIA_VALIDATOR_PREFIX: &str = "celestiavaloper";
 
 ///////////////////
 /// INSTANTIATE ///
@@ -257,33 +257,33 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::State {} => to_binary(&query_state(deps)?),
-        QueryMsg::Batch { id } => to_binary(&query_batch(deps, id)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::State {} => to_json_binary(&query_state(deps)?),
+        QueryMsg::Batch { id } => to_json_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {
             start_after,
             limit,
             status,
-        } => to_binary(&query_batches(deps, start_after, limit, status)?),
-        QueryMsg::BatchesByIds { ids } => to_binary(&query_batches_by_ids(deps, ids)?),
-        QueryMsg::PendingBatch {} => to_binary(&query_pending_batch(deps)?),
+        } => to_json_binary(&query_batches(deps, start_after, limit, status)?),
+        QueryMsg::BatchesByIds { ids } => to_json_binary(&query_batches_by_ids(deps, ids)?),
+        QueryMsg::PendingBatch {} => to_json_binary(&query_pending_batch(deps)?),
         QueryMsg::UnstakeRequests { user } => {
-            to_binary(&query_unstake_requests(deps, user.into_string())?)
+            to_json_binary(&query_unstake_requests(deps, user.into_string())?)
         }
         // DEPR
         QueryMsg::AllUnstakeRequests { start_after, limit } => {
-            to_binary(&query_all_unstake_requests(deps, start_after, limit)?)
+            to_json_binary(&query_all_unstake_requests(deps, start_after, limit)?)
         }
         QueryMsg::AllUnstakeRequestsV2 { start_after, limit } => {
-            to_binary(&query_all_unstake_requests_v2(deps, start_after, limit)?)
+            to_json_binary(&query_all_unstake_requests_v2(deps, start_after, limit)?)
         }
 
         // dev only, depr
         QueryMsg::IbcQueue { start_after, limit } => {
-            to_binary(&query_ibc_queue(deps, start_after, limit)?)
+            to_json_binary(&query_ibc_queue(deps, start_after, limit)?)
         }
         QueryMsg::IbcReplyQueue { start_after, limit } => {
-            to_binary(&query_reply_queue(deps, start_after, limit)?)
+            to_json_binary(&query_reply_queue(deps, start_after, limit)?)
         }
     }
 }
@@ -295,7 +295,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;
-    if &CONTRACT_NAME != &current_version.contract.as_str() {
+    if CONTRACT_NAME != current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
     }
 

@@ -6,13 +6,13 @@ use std::collections::HashSet;
 use crate::state::STATE;
 
 pub fn validate_address(address: &String, prefix: &str) -> StdResult<Addr> {
-    let validated_addr = bech32::decode(&address);
+    let validated_addr = bech32::decode(address);
 
     if validated_addr.is_err() {
         return Err(StdError::generic_err("Invalid address"));
     }
 
-    if &validated_addr.unwrap().0 != prefix {
+    if validated_addr.unwrap().0 != prefix {
         return Err(StdError::generic_err("Invalid address prefix"));
     }
 
@@ -104,6 +104,7 @@ pub fn derive_intermediate_sender(
 
 /// Generic function for paginating a list of (K, V) pairs in a
 /// CosmWasm Map.
+#[allow(clippy::type_complexity)]
 pub fn paginate_map<'a, 'b, K, V, R: 'static>(
     deps: Deps,
     map: &Map<'a, K, V>,
@@ -159,8 +160,10 @@ pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
         (Decimal::zero(), Decimal::zero())
     } else {
         // return redemption_rate, purchase_rate
-        (Decimal::from_ratio(total_native_token, total_liquid_stake_token),
-         Decimal::from_ratio(total_liquid_stake_token, total_native_token))
+        (
+            Decimal::from_ratio(total_native_token, total_liquid_stake_token),
+            Decimal::from_ratio(total_liquid_stake_token, total_native_token),
+        )
     }
 }
 
@@ -175,7 +178,7 @@ mod tests {
             "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"osmo".to_string()).unwrap();
+        let result = validate_addresses(&addresses, "osmo").unwrap();
 
         assert_eq!(2, result.len());
     }
@@ -187,7 +190,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"osmo".to_string());
+        let result = validate_addresses(&addresses, "osmo");
 
         assert!(result.is_err());
     }
@@ -199,7 +202,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"osmo".to_string());
+        let result = validate_addresses(&addresses, "osmo");
 
         assert!(result.is_err());
     }
@@ -211,7 +214,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"celestia".to_string());
+        let result = validate_addresses(&addresses, "celestia");
 
         assert!(result.is_err());
     }

@@ -167,8 +167,8 @@ mod tests {
         assert!(res.is_ok());
         let config: Config = CONFIG.load(&deps.storage).unwrap();
         assert!(config.clone().monitors.unwrap().len() == 1);
-        assert!(config.clone().monitors.unwrap().get(0).unwrap().to_string() == OSMO3.to_string());
-        assert!(config.treasury_address == OSMO3.to_string());
+        assert!(config.clone().monitors.unwrap().first().unwrap().to_string() == *OSMO3);
+        assert!(config.treasury_address == OSMO3);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),

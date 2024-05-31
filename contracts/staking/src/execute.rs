@@ -54,10 +54,7 @@ pub fn transfer_stake_msg(
         sender: env.contract.address.to_string(),
         timeout_height: None,
         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-        memo: format!(
-            "{{\"ibc_callback\":\"{}\"}}",
-            env.contract.address.to_string()
-        ),
+        memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
     };
 
     Ok(ibc_msg)
@@ -687,6 +684,7 @@ pub fn recover(
 }
 
 // Update the config; callable by the owner
+#[allow(clippy::too_many_arguments)]
 pub fn update_config(
     deps: DepsMut,
     _env: Env,
@@ -723,7 +721,7 @@ pub fn update_config(
     }
     if let Some(monitors) = monitors {
         validate_addresses(&monitors, "osmo")?;
-        config.monitors = Some(monitors.into_iter().map(|o| Addr::unchecked(o)).collect());
+        config.monitors = Some(monitors.into_iter().map(Addr::unchecked).collect());
     }
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;
@@ -818,15 +816,14 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     let amount_after_fees = amount_after_fees.unwrap();
 
     // update the accounting of tokens
-    state.total_native_token += amount_after_fees.clone();
-    state.total_reward_amount += amount.clone();
+    state.total_native_token += amount_after_fees;
+    state.total_reward_amount += amount;
     state.total_fees += fee;
 
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg =
-        transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
+    let ibc_transfer_msg = transfer_stake_sub_msg(&mut deps, &env, amount_after_fees, None)?;
     let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
     Ok(Response::new()
@@ -897,7 +894,7 @@ pub fn receive_unstaked_tokens(
         });
     }
 
-    batch.received_native_unstaked = Some(amount.clone());
+    batch.received_native_unstaked = Some(amount);
     batch.update_status(BatchStatus::Received, None);
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
@@ -913,16 +910,15 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
-        if !config
-            .clone()
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err()
+        && !config
             .monitors
-            .unwrap_or(vec![])
+            .as_deref()
+            .unwrap_or_default()
             .iter()
             .any(|v| *v == sender)
-        {
-            return Err(ContractError::Unauthorized { sender });
-        }
+    {
+        return Err(ContractError::Unauthorized { sender });
     }
 
     config.stopped = true;

@@ -36,6 +36,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     LiquidStake {
         mint_to: Option<String>,
