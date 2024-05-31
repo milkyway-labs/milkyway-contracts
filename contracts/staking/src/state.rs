@@ -19,6 +19,9 @@ pub struct Config {
     pub ibc_channel_id: String,
     pub stopped: bool,
     pub oracle_address: Option<Addr>,
+    // Tells if the contract will automatically send the collected fees
+    // to the treasury.
+    pub send_fees_to_treasury: bool,
 }
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?

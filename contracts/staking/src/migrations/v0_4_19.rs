@@ -38,7 +38,7 @@ pub mod v0_4_18_state {
     }
 }
 
-pub fn migrate(deps: DepsMut, _env: Env) -> ContractResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, send_fees_to_treasury: bool) -> ContractResult<Response> {
     // Ensure that we are migrating from the correct version.
     assert_contract_version(deps.storage, CONTRACT_NAME, FROM_VERSION)?;
 
@@ -58,6 +58,7 @@ pub fn migrate(deps: DepsMut, _env: Env) -> ContractResult<Response> {
         ibc_channel_id: old_config.ibc_channel_id,
         stopped: old_config.stopped,
         oracle_address: old_config.oracle_address,
+        send_fees_to_treasury,
     };
     // Save the new config.
     CONFIG.save(deps.storage, &new_config)?;

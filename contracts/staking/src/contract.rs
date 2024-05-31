@@ -95,6 +95,7 @@ pub fn instantiate(
         ibc_channel_id: "".to_string(),
         stopped: true, // we start stopped
         oracle_address: None,
+        send_fees_to_treasury: msg.send_fees_to_treasury,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -113,6 +114,7 @@ pub fn instantiate(
         Some(msg.monitors),
         Some(msg.treasury_address),
         msg.oracle_address,
+        Some(msg.send_fees_to_treasury),
     )?;
 
     // Init State
@@ -204,6 +206,7 @@ pub fn execute(
             monitors,
             treasury_address,
             oracle_address,
+            send_fees_to_treasury,
         } => update_config(
             deps,
             env,
@@ -218,6 +221,7 @@ pub fn execute(
             monitors,
             treasury_address,
             oracle_address,
+            send_fees_to_treasury,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
@@ -317,7 +321,9 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
     }
 
     let migration_response = match msg {
-        MigrateMsg::V0_4_18ToV0_4_19 {} => migrations::v0_4_19::migrate(deps.branch(), env)?,
+        MigrateMsg::V0_4_18ToV0_4_19 {
+            send_fees_to_treasury,
+        } => migrations::v0_4_19::migrate(deps.branch(), env, send_fees_to_treasury)?,
     };
 
     // set new contract version

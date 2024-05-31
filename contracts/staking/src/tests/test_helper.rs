@@ -40,6 +40,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         minimum_liquid_stake_amount: Uint128::from(100u128),
         ibc_channel_id: CHANNEL_ID.to_string(),
         oracle_address: Some(OSMO4.to_string()),
+        send_fees_to_treasury: true,
     };
     let info = mock_info(OSMO3, &coins(1000, "uosmo"));
 

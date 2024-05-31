@@ -699,6 +699,7 @@ pub fn update_config(
     monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
     oracle_address: Option<String>,
+    send_fees_to_treasury: Option<bool>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -726,6 +727,9 @@ pub fn update_config(
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;
         config.treasury_address = Addr::unchecked(treasury_address);
+    }
+    if let Some(send_fees_to_treasury) = send_fees_to_treasury {
+        config.send_fees_to_treasury = send_fees_to_treasury;
     }
 
     // TODO get reserve token from channel? Maybe leave as safeguard?
@@ -818,7 +822,9 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     // update the accounting of tokens
     state.total_native_token += amount_after_fees;
     state.total_reward_amount += amount;
-    state.total_fees += fee;
+    if !config.send_fees_to_treasury {
+        state.total_fees += fee;
+    }
 
     STATE.save(deps.storage, &state)?;
 
@@ -826,13 +832,25 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     let ibc_transfer_msg = transfer_stake_sub_msg(&mut deps, &env, amount_after_fees, None)?;
     let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
-    Ok(Response::new()
+    let mut response = Response::new()
         .add_attribute("action", "receive_rewards")
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
         .add_messages(update_oracle_msgs)
-        .add_submessage(ibc_transfer_msg))
+        .add_submessage(ibc_transfer_msg);
+
+    if config.send_fees_to_treasury {
+        response = response.add_message(cosmwasm_std::BankMsg::Send {
+            to_address: config.treasury_address.to_string(),
+            amount: vec![cosmwasm_std::Coin::new(
+                fee.u128(),
+                config.native_token_denom,
+            )],
+        });
+    }
+
+    Ok(response)
 }
 
 pub fn receive_unstaked_tokens(

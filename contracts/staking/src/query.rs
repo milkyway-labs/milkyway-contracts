@@ -45,6 +45,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .oracle_address
             .map(|v| v.to_string())
             .unwrap_or_default(),
+        send_fees_to_treasury: config.send_fees_to_treasury,
     };
     Ok(res)
 }

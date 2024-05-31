@@ -46,6 +46,7 @@ mod tests {
                 minimum_liquid_stake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
                 oracle_address: None,
+                send_fees_to_treasury: false,
             }
         }
 
@@ -156,6 +157,7 @@ mod tests {
             monitors: Some(vec![OSMO3.to_string()]),
             treasury_address: Some(OSMO3.to_string()),
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
 
         let res = crate::contract::execute(
@@ -167,7 +169,16 @@ mod tests {
         assert!(res.is_ok());
         let config: Config = CONFIG.load(&deps.storage).unwrap();
         assert!(config.clone().monitors.unwrap().len() == 1);
-        assert!(config.clone().monitors.unwrap().first().unwrap().to_string() == *OSMO3);
+        assert!(
+            config
+                .clone()
+                .monitors
+                .unwrap()
+                .first()
+                .unwrap()
+                .to_string()
+                == *OSMO3
+        );
         assert!(config.treasury_address == OSMO3);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
@@ -186,6 +197,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -211,6 +223,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -236,6 +249,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
