@@ -721,8 +721,7 @@ pub fn update_config(
         config.protocol_fee_config = protocol_fee_config;
     }
     if let Some(monitors) = monitors {
-        validate_addresses(&monitors, "osmo")?;
-        config.monitors = Some(monitors.into_iter().map(Addr::unchecked).collect());
+        config.monitors = Some(validate_addresses(&monitors, "osmo")?);
     }
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;

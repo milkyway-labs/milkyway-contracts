@@ -14,11 +14,6 @@ pub fn make_ack_success() -> Binary {
     to_json_binary(&res).unwrap()
 }
 
-pub fn make_ack_fail(err: String) -> Binary {
-    let res = Ack::Error(err);
-    to_json_binary(&res).unwrap()
-}
-
 // reply id
 #[EnumRepr(type = "u64")]
 pub enum ReplyId {
