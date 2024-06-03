@@ -321,9 +321,9 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
     }
 
     let migration_response = match msg {
-        MigrateMsg::V0_4_18ToV0_4_19 {
+        MigrateMsg::V0_4_18ToV0_4_20 {
             send_fees_to_treasury,
-        } => migrations::v0_4_19::migrate(deps.branch(), env, send_fees_to_treasury)?,
+        } => migrations::v0_4_20::migrate(deps.branch(), env, send_fees_to_treasury)?,
     };
 
     // set new contract version

@@ -199,7 +199,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    V0_4_18ToV0_4_19 { send_fees_to_treasury: bool },
+    V0_4_18ToV0_4_20 { send_fees_to_treasury: bool },
 }
 
 #[cw_serde]
