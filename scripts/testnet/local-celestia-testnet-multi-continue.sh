@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Stop script execution if an error is encountered
 set -o errexit

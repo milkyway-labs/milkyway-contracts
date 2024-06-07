@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 # always returns true so set -e doesn't exit if it is not running.

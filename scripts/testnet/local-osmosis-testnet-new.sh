@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 # always returns true so set -e doesn't exit if it is not running.
@@ -12,8 +13,8 @@ mkdir $HOME/.osmosisd/validator1
 osmosisd init --chain-id=osmosis-dev-1 validator1 --home=$HOME/.osmosisd/validator1
 osmosisd keys add validator1 --keyring-backend=test --home=$HOME/.osmosisd/validator1
 
-update_genesis () {    
-    cat $HOME/.osmosisd/validator1/config/genesis.json | jq "$1" > $HOME/.osmosisd/validator1/config/tmp_genesis.json && mv $HOME/.osmosisd/validator1/config/tmp_genesis.json $HOME/.osmosisd/validator1/config/genesis.json
+update_genesis() {
+  cat $HOME/.osmosisd/validator1/config/genesis.json | jq "$1" >$HOME/.osmosisd/validator1/config/tmp_genesis.json && mv $HOME/.osmosisd/validator1/config/tmp_genesis.json $HOME/.osmosisd/validator1/config/genesis.json
 }
 
 # change staking denom to uosmo

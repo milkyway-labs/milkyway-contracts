@@ -1,36 +1,37 @@
 FROM ubuntu:latest
 
-RUN apt-get update
-RUN apt-get install -y tmux
-RUN apt-get install -y git
-RUN apt-get install -y make
-RUN apt-get install -y golang-go
-RUN apt-get install -y wget
-RUN apt install unzip
+RUN apt-get update && \
+  apt-get install -y tmux git make golang-go wget unzip psmisc jq
 
-RUN wget https://github.com/osmosis-labs/osmosis/releases/download/v20.1.1/osmosisd-20.1.1-linux-amd64
-RUN mv osmosisd-20.1.1-linux-amd64 /usr/local/bin/osmosisd
-RUN chmod +x /usr/local/bin/osmosisd
+# Binaries versions
+# Remember to update the hermes compatibility mode when bumping the versions
+# https://hermes.informal.systems/documentation/configuration/comet-compat-mode.html
+ENV OSMOSISD_VERSION="25.0.0" \
+  CELESTIA_APP_VERSION="1.11.0" \
+  HERMES_VERSION="1.9.0"
+
+RUN wget -O /usr/local/bin/osmosisd \
+  https://github.com/osmosis-labs/osmosis/releases/download/v${OSMOSISD_VERSION}/osmosisd-${OSMOSISD_VERSION}-linux-amd64 && \
+  chmod +x /usr/local/bin/osmosisd
 
 RUN ARCH=$(arch | sed s/aarch64/arm64/) && \
-    wget https://github.com/celestiaorg/celestia-app/releases/download/v1.3.0/celestia-app_Linux_$ARCH.tar.gz && \
-    tar -xvf celestia-app_Linux_$ARCH.tar.gz
-RUN mv celestia-appd /usr/local/bin
-RUN chmod +x /usr/local/bin/celestia-appd
+    wget https://github.com/celestiaorg/celestia-app/releases/download/v${CELESTIA_APP_VERSION}/celestia-app_Linux_$ARCH.tar.gz && \
+    tar -xvf celestia-app_Linux_$ARCH.tar.gz && \
+    rm celestia-app_Linux_$ARCH.tar.gz && \
+    mv celestia-appd /usr/local/bin && \
+    chmod +x /usr/local/bin/celestia-appd
 
 RUN ARCH=$(arch) && \
-    wget https://github.com/informalsystems/hermes/releases/download/v1.7.0/hermes-v1.7.0-$ARCH-unknown-linux-gnu.zip && \
-    unzip hermes-v1.7.0-$ARCH-unknown-linux-gnu.zip
-RUN mv hermes /usr/local/bin
-RUN chmod +x /usr/local/bin/hermes
+    wget https://github.com/informalsystems/hermes/releases/download/v${HERMES_VERSION}/hermes-v${HERMES_VERSION}-$ARCH-unknown-linux-gnu.zip && \
+    unzip hermes-v${HERMES_VERSION}-$ARCH-unknown-linux-gnu.zip && \
+    rm hermes-v${HERMES_VERSION}-$ARCH-unknown-linux-gnu.zip && \
+    mv hermes /usr/local/bin && \
+    chmod +x /usr/local/bin/hermes
 
-RUN apt-get install -y psmisc
-RUN apt-get install -y jq
-
-
+COPY ./utils.sh ./utils.sh
 COPY ./check-node-running.sh ./check-node-running.sh
 COPY ./local-osmosis-testnet-new.sh ./local-osmosis-testnet-new.sh
-RUN sh ./local-osmosis-testnet-new.sh
+RUN ./local-osmosis-testnet-new.sh
 
 COPY ./local-celestia-testnet-multi-new.sh ./local-celestia-testnet-multi-new.sh
 # Reduce unbonding time to 6 minutes
@@ -55,10 +56,10 @@ EXPOSE 9090
 
 # As the relayer times out very fast, we do create a bridge on start of the docker.
 # Continues runs will though create new bridges so you need to reset the docker every time.
-CMD sh ./local-celestia-testnet-multi-continue.sh && \
-    sh ./local-osmosis-testnet-continue.sh && \
-    sh ./check-node-running.sh osmosis1 && \
-    sh ./check-node-running.sh celestia1 && \
-    sh ./local-hermes-new.sh && \
-    sh ./local-account.sh && \
+CMD ./local-celestia-testnet-multi-continue.sh && \
+    ./local-osmosis-testnet-continue.sh && \
+    ./check-node-running.sh osmosis1 && \
+    ./check-node-running.sh celestia1 && \
+    ./local-hermes-new.sh && \
+    ./local-account.sh && \
     tail -f /dev/null

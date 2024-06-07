@@ -1,4 +1,5 @@
-# cargo install --git https://github.com/cmoog/bech32         
+#!/bin/bash
+# cargo install --git https://github.com/cmoog/bech32
 
 TXHASH=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --keyring-backend test --output json --node http://localhost:26657 -y -b sync --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto --chain-id osmosis-dev-1 | jq -r '.txhash')
 # wait
@@ -21,10 +22,10 @@ BATCH_PERIOD=$(echo "scale=2; ($UNBONDING_PERIOD + 6) / 7" | bc)
 BATCH_PERIOD=${BATCH_PERIOD%.*}
 INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$ADMIN_OSMOSIS\",\"monitors\":[\"$ADMIN_OSMOSIS\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\",\"$CELESTIA_VALIDATOR_2\",\"$CELESTIA_VALIDATOR_3\"],\"batch_period\":86400,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$ADMIN_CELESTIA\",\"reward_collector_address\":\"$ADMIN_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\"}
 osmosisd tx wasm instantiate $CODE_ID $INIT \
-    --from test_master --keyring-backend test --label "milkyway test" -y \
-    --admin "$ADMIN_OSMOSIS" --node http://localhost:26657 -y -b sync \
-    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmosis-dev-1
+  --from test_master --keyring-backend test --label "milkyway test" -y \
+  --admin "$ADMIN_OSMOSIS" --node http://localhost:26657 -y -b sync \
+  --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto \
+  --chain-id osmosis-dev-1
 
 # wait
 
@@ -35,15 +36,15 @@ echo $STAKE_CONTRACT
 
 # ORACLE_CONTRACT=osmo1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqvlx82r
 osmosisd tx wasm execute $STAKE_CONTRACT '{"update_config":{"oracle_contract_address":"'$ORACLE_CONTRACT'"}}' \
-    --from test_master --keyring-backend test \
-    -y -b sync \
-    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmosis-dev-1
+  --from test_master --keyring-backend test \
+  -y -b sync \
+  --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto \
+  --chain-id osmosis-dev-1
 
 # wait
 
 osmosisd tx wasm execute $STAKE_CONTRACT '{"resume_contract":{"total_native_token":"0","total_liquid_stake_token":"0","total_reward_amount":"0"}}' \
-    --from test_master --keyring-backend test -y \
-    --node http://localhost:26657 -y -b sync \
-    --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto  \
-    --chain-id osmosis-dev-1
+  --from test_master --keyring-backend test -y \
+  --node http://localhost:26657 -y -b sync \
+  --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto \
+  --chain-id osmosis-dev-1
