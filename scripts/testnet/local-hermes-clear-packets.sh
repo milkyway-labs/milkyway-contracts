@@ -1,4 +1,9 @@
 #!/bin/bash
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+BINS_DIR=$SCRIPT_DIR/../bins
+PATH=$BINS_DIR:$PATH
+
 # clears the packages in the channel as they frequently get stuck
 
 while true; do

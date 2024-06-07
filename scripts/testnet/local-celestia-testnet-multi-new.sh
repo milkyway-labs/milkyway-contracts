@@ -1,11 +1,13 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+BINS_DIR=$SCRIPT_DIR/../bins
+PATH=$BINS_DIR:$PATH
+
 set -e
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-
 # Include the utils function
-source $SCRIPT_DIR/utils.sh
+source $SCRIPT_DIR/../utils/tx.sh
 
 # always returns true so set -e doesn't exit if it is not running.
 killall celestia-appd || true

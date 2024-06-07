@@ -1,4 +1,9 @@
 #!/bin/bash
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+BINS_DIR=$SCRIPT_DIR/../bins
+PATH=$BINS_DIR:$PATH
+
 # test mnemonic, so in tests you have a funded account
 # MNEMONIC="boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require addresses"
 # celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx

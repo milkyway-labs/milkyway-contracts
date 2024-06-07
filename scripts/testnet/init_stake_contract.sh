@@ -1,6 +1,10 @@
 #!/bin/bash
 # cargo install --git https://github.com/cmoog/bech32
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+BINS_DIR=$SCRIPT_DIR/../bins
+PATH=$BINS_DIR:$PATH
+
 TXHASH=$(osmosisd tx wasm store ./artifacts/staking-aarch64.wasm --from test_master --keyring-backend test --output json --node http://localhost:26657 -y -b sync --gas-prices 0.025stake --gas-adjustment 1.7 --gas auto --chain-id osmosis-dev-1 | jq -r '.txhash')
 # wait
 

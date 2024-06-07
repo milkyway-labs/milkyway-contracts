@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+BINS_DIR=$SCRIPT_DIR/../bins
+PATH=$BINS_DIR:$PATH
+
 # this create a tia osmo pool on osmosis testnet
 
 # send tia

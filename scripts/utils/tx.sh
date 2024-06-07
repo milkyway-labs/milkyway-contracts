@@ -1,7 +1,7 @@
 #!/bin/bash
 
-OSMOSIS_NODE="http://0.0.0.0:26657"
-CELESTIA_NODE="http://0.0.0.0:26661"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+source "$SCRIPT_DIR/../testnet/params.sh"
 
 function wait_tx_included() {
   # Get function parameters

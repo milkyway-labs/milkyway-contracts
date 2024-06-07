@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+BINS_DIR=$SCRIPT_DIR/../bins
+PATH=$BINS_DIR:$PATH
+
 # Stop script execution if an error is encountered
 set -o errexit
 # Stop script execution if an undefined variable is used
