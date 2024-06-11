@@ -18,6 +18,12 @@ COPY ./bins /milkiway/bins
 COPY ./utils /milkiway/utils
 WORKDIR /milkiway
 
+# Install binaries
+RUN bash -c "source /milkiway/bins/download.sh && \
+  ensure_installed osmosisd && \
+  ensure_installed celestia-appd && \
+  ensure_installed hermes"
+
 RUN ./local-osmosis-testnet-new.sh
 RUN ./local-celestia-testnet-multi-new.sh
 RUN ./local-celestia-testnet-multi-continue.sh && \
