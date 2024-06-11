@@ -40,7 +40,7 @@ else
 fi
 
 # create validator node with tokens to transfer to the three other nodes
-celestia-appd add-genesis-account $(celestia-appd keys show validator1 -a --keyring-backend=test --home=$HOME/.celestia-app/validator1) 10000000000utia --home=$HOME/.celestia-app/validator1
+celestia-appd add-genesis-account $(celestia-appd keys show validator1 -a --keyring-backend=test --home=$HOME/.celestia-app/validator1) 1000000000000000utia --home=$HOME/.celestia-app/validator1
 celestia-appd gentx validator1 600000000utia --keyring-backend=test --home=$HOME/.celestia-app/validator1 --chain-id=celestia-dev-1
 celestia-appd collect-gentxs --home=$HOME/.celestia-app/validator1
 

@@ -27,7 +27,7 @@ update_genesis '.app_state["staking"]["params"]["bond_denom"]="uosmo"'
 sed -i -E 's|tcp://127.0.0.1:26657|tcp://0.0.0.0:26657|g' $HOME/.osmosisd/validator1/config/config.toml
 
 # create validator node with tokens
-osmosisd add-genesis-account $(osmosisd keys show validator1 -a --keyring-backend=test --home=$HOME/.osmosisd/validator1) 100000000000uosmo,100000000000stake --home=$HOME/.osmosisd/validator1
+osmosisd add-genesis-account $(osmosisd keys show validator1 -a --keyring-backend=test --home=$HOME/.osmosisd/validator1) 100000000000000uosmo,100000000000000stake --home=$HOME/.osmosisd/validator1
 osmosisd gentx validator1 500000000uosmo --keyring-backend=test --home=$HOME/.osmosisd/validator1 --chain-id=osmosis-dev-1
 osmosisd collect-gentxs --home=$HOME/.osmosisd/validator1
 

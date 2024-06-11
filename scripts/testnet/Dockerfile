@@ -25,7 +25,8 @@ RUN ./local-celestia-testnet-multi-continue.sh && \
     ./check-node-running.sh osmosis1 && \
     ./check-node-running.sh celestia1 && \
     ./fund-accounts.sh && \
-    ./local-hermes-new.sh
+    ./local-hermes-new.sh && \
+    ./tia-osmo-pool.sh
 
 EXPOSE 26661
 EXPOSE 26657
