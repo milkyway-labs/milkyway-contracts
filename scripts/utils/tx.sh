@@ -11,7 +11,6 @@ function wait_tx_included() {
 
   local count=0
   while [ $count -lt 30  ]; do
-    echo "wait_tx $binary Hash: $tx_hash"
     local output=$($binary q tx "$tx_hash" --node $node --output json 2>/dev/null || echo "failed")
     if [ "$output" == "failed" ]; then
       count=$((count+1))
