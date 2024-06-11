@@ -9,11 +9,13 @@ function wait_tx_included() {
   local tx_hash=$2
   local node=$3
 
-  while true; do
-    echo "wait_tx $binary $tx_hash $node"
+  local count=0
+  while [ $count -lt 30  ]; do
+    echo "wait_tx $binary Hash: $tx_hash"
     local output=$($binary q tx "$tx_hash" --node $node --output json 2>/dev/null || echo "failed")
     if [ "$output" == "failed" ]; then
-      sleep 3
+      count=$((count+1))
+      sleep 1
     else
       local code=$(echo $output | jq -r '.code')
       if [ "$code" == "0" ]; then
