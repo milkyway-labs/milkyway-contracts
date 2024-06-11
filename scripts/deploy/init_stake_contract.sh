@@ -22,7 +22,7 @@ function store_contract() {
   fi
 
   wait_tx osmosisd tx wasm store $1 --from test_master --keyring-backend test $OSMOSIS_TX_PARAMS
-  echo $(osmosisd query wasm list-code --output json | jq -r '.code_infos[-1].code_id')
+  echo $(osmosisd query wasm list-code --node $OSMOSIS_NODE --output json | jq -r '.code_infos[-1].code_id')
 }
 
 function init_contract() {
@@ -31,8 +31,11 @@ function init_contract() {
   local label=$3
 
   wait_tx osmosisd tx wasm instantiate $contract_code $init_message \
-    --from test_master --keyring-backend test --label "$label" --admin "$OSMOSIS_ACCOUNT" $OSMOSIS_TX_PARAMS
-  echo $(osmosisd query wasm list-contract-by-code $contract_code --node http://localhost:26657 --output json | jq -r '.contracts[-1]')
+     --label "$label" --admin "$OSMOSIS_ACCOUNT" \
+     --from test_master --keyring-backend test \
+    $OSMOSIS_TX_PARAMS
+
+  echo $(osmosisd query wasm list-contract-by-code $contract_code --node $OSMOSIS_NODE --output json | jq -r '.contracts[-1]')
 }
 
 # token depends on channel it was send over
@@ -71,21 +74,22 @@ echo ""
 # Contracts initialization
 
 echo "Init treasury contract"
-INIT='{"allowed_swap_routes":[[{"pool_id": 1, "token_in_denom": "utia", "token_out_denom": "uosmo"}]]'}
-TREASURY_CONTRACT=$(init_contract $TREASURY_CODE_ID $INIT "MilkyWay Treasury")
+INIT={\"allowed_swap_routes\":[[{\"pool_id\":1,\"token_in_denom\":\"$NATIVE_TOKEN_DENOM\",\"token_out_denom\":\"uosmo\"}]]} \
+TREASURY_CONTRACT=$(init_contract "$TREASURY_CODE_ID" $INIT "Treasury")
 
 echo "Init staking contract"
-INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$OSMOSIS_ACCOUNT\",\"monitors\":[\"$OSMOSIS_ACCOUNT\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\"],\"batch_period\":60,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$STAKER_CELESTIA\",\"reward_collector_address\":\"$REWARDS_COLLECTOR_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\"}
-STAKE_CONTRACT=$(init_contract $STAKING_CONTRACT_CODE_ID $INIT "MilkyWay test")
+INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$TREASURY_CONTRACT\",\"monitors\":[\"$OSMOSIS_ACCOUNT\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\"],\"batch_period\":60,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$STAKER_CELESTIA\",\"reward_collector_address\":\"$REWARDS_COLLECTOR_CELESTIA\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\",\"send_fees_to_treasury\":true}
+STAKE_CONTRACT=$(init_contract $STAKING_CONTRACT_CODE_ID $INIT "Staking")
 
 # Init our oracle contract
 echo "Init oracle contract"
 INIT={\"admin_address\":\"$STAKE_CONTRACT\"}
-ORACLE_CONTRACT=$(init_contract $ORACLE_CODE_ID $INIT "MilkyWay Oracle")
+ORACLE_CONTRACT=$(init_contract $ORACLE_CODE_ID $INIT "Oracle")
 
 # Start the staking contract
 echo "Starting the staking contract..."
-wait_tx osmosisd tx wasm execute $STAKE_CONTRACT '{"update_config":{"oracle_address":"$MILK_ORACLE"}}' \
+INIT={\"update_config\":{\"oracle_address\":\"$ORACLE_CONTRACT\"}}
+wait_tx osmosisd tx wasm execute $STAKE_CONTRACT $INIT \
     --from test_master --keyring-backend test \
     $OSMOSIS_TX_PARAMS
 
@@ -96,7 +100,7 @@ wait_tx osmosisd tx wasm execute $STAKE_CONTRACT '{"resume_contract":{"total_nat
 echo ""
 echo "Contracts initialized!"
 echo "Staking contract address: $STAKE_CONTRACT"
-echo "Oracle contract address: $ORACLE"
+echo "Oracle contract address: $ORACLE_CONTRACT"
+echo "Treasury contract address: $TREASURY_CONTRACT"
 echo ""
-
 
