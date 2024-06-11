@@ -5,7 +5,7 @@
 First build the image, this will take a while and leaves you with a setup testnet for both networks and a setup relayer
 
 ```
-docker build . --tag mw-testnet
+docker build ../. --tag mw-testnet
 ```
 
 Now you can always boot into the clean config
