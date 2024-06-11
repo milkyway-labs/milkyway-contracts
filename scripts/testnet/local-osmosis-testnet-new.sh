@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-BINS_DIR=$SCRIPT_DIR/../bins
+BINS_DIR=$SCRIPT_DIR/bins
 PATH=$BINS_DIR:$PATH
 
 # always returns true so set -e doesn't exit if it is not running.

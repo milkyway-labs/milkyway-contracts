@@ -1,11 +1,11 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-BINS_DIR=$SCRIPT_DIR/../bins
+BINS_DIR=$SCRIPT_DIR/bins
 PATH=$BINS_DIR:$PATH
 
 source $SCRIPT_DIR/params.sh
-source $SCRIPT_DIR/../utils/tx.sh
+source $SCRIPT_DIR/utils/tx.sh
 
 # this create a tia osmo pool on osmosis testnet
 

@@ -3,15 +3,15 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ARTIFACTS_DIR="${SCRIPT_DIR}/../../artifacts"
-BINS_DIR="${SCRIPT_DIR}/../bins"
+BINS_DIR="${SCRIPT_DIR}/bins"
 
 # extend PATH to include the bin dirs.
 PATH="${BINS_DIR}:${PATH}"
 
 # Include testenet params
-source "${SCRIPT_DIR}/../testnet/params.sh"
+source "${SCRIPT_DIR}/params.sh"
 # Include tx utils
-source "${SCRIPT_DIR}/../utils/tx.sh"
+source "${SCRIPT_DIR}/utils/tx.sh"
 
 set -e
 

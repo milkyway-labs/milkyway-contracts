@@ -1,12 +1,12 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-source "$SCRIPT_DIR/params.sh"
-source "$SCRIPT_DIR/../utils/tx.sh"
-
 # Add bins to the path
-BINS_DIR=$SCRIPT_DIR/../bins
+BINS_DIR="$SCRIPT_DIR/bins"
 PATH=$BINS_DIR:$PATH
+
+source "$SCRIPT_DIR/params.sh"
+source "$SCRIPT_DIR/utils/tx.sh"
 
 echo "Funding $OSMOSIS_ACCOUNT"
 wait_tx osmosisd tx bank send validator1 $OSMOSIS_ACCOUNT 50000000stake \

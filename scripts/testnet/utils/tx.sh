@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-source "$SCRIPT_DIR/../testnet/params.sh"
+source "$SCRIPT_DIR/../params.sh"
 
 function wait_tx_included() {
   # Get function parameters

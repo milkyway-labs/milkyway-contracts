@@ -13,10 +13,10 @@ ENV OSMOSISD_VERSION="25.0.0" \
 
 # Prepare the container environment
 RUN mkdir /milkiway
-COPY ./utils /milkiway/utils
+COPY ./* /milkiway/
 COPY ./bins /milkiway/bins
-COPY ./testnet /milkiway/testnet
-WORKDIR /milkiway/testnet
+COPY ./utils /milkiway/utils
+WORKDIR /milkiway
 
 RUN ./local-osmosis-testnet-new.sh
 RUN ./local-celestia-testnet-multi-new.sh

@@ -2,7 +2,7 @@
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 PATH=$SCRIPT_DIR/../bins:$PATH
-source "$SCRIPT_DIR/../testnet/params.sh"
+source "$SCRIPT_DIR/../params.sh"
 
 echo "Adding accounts to test kyering"
 echo $TESTNET_MNEMONIC
