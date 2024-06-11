@@ -5,18 +5,16 @@ use std::collections::HashSet;
 
 use crate::state::STATE;
 
-pub fn validate_address(address: &String, prefix: &str) -> StdResult<Addr> {
-    let validated_addr = bech32::decode(&address);
-
-    if validated_addr.is_err() {
-        return Err(StdError::generic_err("Invalid address"));
+pub fn validate_address(address: &str, prefix: &str) -> StdResult<Addr> {
+    if let Ok((decoded_prefix, _, _)) = bech32::decode(address) {
+        if decoded_prefix == prefix {
+            Ok(Addr::unchecked(address))
+        } else {
+            Err(StdError::generic_err("Invalid address prefix"))
+        }
+    } else {
+        Err(StdError::generic_err("Invalid address"))
     }
-
-    if &validated_addr.unwrap().0 != prefix {
-        return Err(StdError::generic_err("Invalid address prefix"));
-    }
-
-    Ok(Addr::unchecked(address))
 }
 
 // Validates addresses are valid and unique and returns a vector of validated addresses
@@ -94,16 +92,17 @@ pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
     bech32_prefix: &str,
-) -> Result<String, bech32_no_std::Error> {
-    use bech32_no_std::ToBase32;
+) -> Result<String, bech32::Error> {
+    use bech32::ToBase32;
     let sender_str = format!("{channel_id}/{original_sender}");
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32.to_base32();
-    bech32_no_std::encode(bech32_prefix, sender)
+    bech32::encode(bech32_prefix, sender, bech32::Variant::Bech32)
 }
 
 /// Generic function for paginating a list of (K, V) pairs in a
 /// CosmWasm Map.
+#[allow(clippy::type_complexity)]
 pub fn paginate_map<'a, 'b, K, V, R: 'static>(
     deps: Deps,
     map: &Map<'a, K, V>,
@@ -159,8 +158,10 @@ pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
         (Decimal::zero(), Decimal::zero())
     } else {
         // return redemption_rate, purchase_rate
-        (Decimal::from_ratio(total_native_token, total_liquid_stake_token),
-         Decimal::from_ratio(total_liquid_stake_token, total_native_token))
+        (
+            Decimal::from_ratio(total_native_token, total_liquid_stake_token),
+            Decimal::from_ratio(total_liquid_stake_token, total_native_token),
+        )
     }
 }
 
@@ -175,7 +176,7 @@ mod tests {
             "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"osmo".to_string()).unwrap();
+        let result = validate_addresses(&addresses, "osmo").unwrap();
 
         assert_eq!(2, result.len());
     }
@@ -187,7 +188,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"osmo".to_string());
+        let result = validate_addresses(&addresses, "osmo");
 
         assert!(result.is_err());
     }
@@ -199,7 +200,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"osmo".to_string());
+        let result = validate_addresses(&addresses, "osmo");
 
         assert!(result.is_err());
     }
@@ -211,7 +212,7 @@ mod tests {
             "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
         ];
 
-        let result = validate_addresses(&addresses, &"celestia".to_string());
+        let result = validate_addresses(&addresses, "celestia");
 
         assert!(result.is_err());
     }

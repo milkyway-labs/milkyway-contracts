@@ -33,9 +33,12 @@ pub struct InstantiateMsg {
     pub ibc_channel_id: String,
     // The redemption / purchase rate oracle address
     pub oracle_address: Option<String>,
+    // Whether to automatically send the collected fees to the treasury
+    pub send_fees_to_treasury: bool,
 }
 
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     LiquidStake {
         mint_to: Option<String>,
@@ -68,6 +71,7 @@ pub enum ExecuteMsg {
         monitors: Option<Vec<String>>,
         treasury_address: Option<String>,
         oracle_address: Option<String>,
+        send_fees_to_treasury: Option<bool>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {
@@ -104,6 +108,7 @@ pub struct ConfigResponse {
     pub ibc_channel_id: String,
     pub stopped: bool,
     pub oracle_address: String,
+    pub send_fees_to_treasury: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -194,7 +199,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    V0_4_18ToV0_4_19 {},
+    V0_4_18ToV0_4_20 { send_fees_to_treasury: bool },
 }
 
 #[cw_serde]

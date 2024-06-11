@@ -54,10 +54,7 @@ pub fn transfer_stake_msg(
         sender: env.contract.address.to_string(),
         timeout_height: None,
         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-        memo: format!(
-            "{{\"ibc_callback\":\"{}\"}}",
-            env.contract.address.to_string()
-        ),
+        memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
     };
 
     Ok(ibc_msg)
@@ -687,6 +684,7 @@ pub fn recover(
 }
 
 // Update the config; callable by the owner
+#[allow(clippy::too_many_arguments)]
 pub fn update_config(
     deps: DepsMut,
     _env: Env,
@@ -701,6 +699,7 @@ pub fn update_config(
     monitors: Option<Vec<String>>,
     treasury_address: Option<String>,
     oracle_address: Option<String>,
+    send_fees_to_treasury: Option<bool>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -722,12 +721,14 @@ pub fn update_config(
         config.protocol_fee_config = protocol_fee_config;
     }
     if let Some(monitors) = monitors {
-        validate_addresses(&monitors, "osmo")?;
-        config.monitors = Some(monitors.into_iter().map(|o| Addr::unchecked(o)).collect());
+        config.monitors = Some(validate_addresses(&monitors, "osmo")?);
     }
     if let Some(treasury_address) = treasury_address {
         validate_address(&treasury_address, "osmo")?;
         config.treasury_address = Addr::unchecked(treasury_address);
+    }
+    if let Some(send_fees_to_treasury) = send_fees_to_treasury {
+        config.send_fees_to_treasury = send_fees_to_treasury;
     }
 
     // TODO get reserve token from channel? Maybe leave as safeguard?
@@ -818,24 +819,37 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     let amount_after_fees = amount_after_fees.unwrap();
 
     // update the accounting of tokens
-    state.total_native_token += amount_after_fees.clone();
-    state.total_reward_amount += amount.clone();
-    state.total_fees += fee;
+    state.total_native_token += amount_after_fees;
+    state.total_reward_amount += amount;
+    if !config.send_fees_to_treasury {
+        state.total_fees += fee;
+    }
 
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg =
-        transfer_stake_sub_msg(&mut deps, &env, amount_after_fees.clone(), None)?;
+    let ibc_transfer_msg = transfer_stake_sub_msg(&mut deps, &env, amount_after_fees, None)?;
     let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
 
-    Ok(Response::new()
+    let mut response = Response::new()
         .add_attribute("action", "receive_rewards")
         .add_attribute("action", "transfer_stake")
         .add_attribute("amount", amount)
         .add_attribute("amount_after_fees", amount_after_fees)
         .add_messages(update_oracle_msgs)
-        .add_submessage(ibc_transfer_msg))
+        .add_submessage(ibc_transfer_msg);
+
+    if config.send_fees_to_treasury {
+        response = response.add_message(cosmwasm_std::BankMsg::Send {
+            to_address: config.treasury_address.to_string(),
+            amount: vec![cosmwasm_std::Coin::new(
+                fee.u128(),
+                config.native_token_denom,
+            )],
+        });
+    }
+
+    Ok(response)
 }
 
 pub fn receive_unstaked_tokens(
@@ -897,7 +911,7 @@ pub fn receive_unstaked_tokens(
         });
     }
 
-    batch.received_native_unstaked = Some(amount.clone());
+    batch.received_native_unstaked = Some(amount);
     batch.update_status(BatchStatus::Received, None);
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
@@ -913,16 +927,15 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err() {
-        if !config
-            .clone()
+    if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err()
+        && !config
             .monitors
-            .unwrap_or(vec![])
+            .as_deref()
+            .unwrap_or_default()
             .iter()
             .any(|v| *v == sender)
-        {
-            return Err(ContractError::Unauthorized { sender });
-        }
+    {
+        return Err(ContractError::Unauthorized { sender });
     }
 
     config.stopped = true;

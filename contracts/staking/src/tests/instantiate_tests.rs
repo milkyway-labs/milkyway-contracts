@@ -6,6 +6,7 @@ mod tests {
         init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
 
+    use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{Addr, Order, Uint128};
     use milky_way::staking::BatchStatus;
 
@@ -46,6 +47,7 @@ mod tests {
                 minimum_liquid_stake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
                 oracle_address: None,
+                send_fees_to_treasury: false,
             }
         }
 
@@ -156,6 +158,7 @@ mod tests {
             monitors: Some(vec![OSMO3.to_string()]),
             treasury_address: Some(OSMO3.to_string()),
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
 
         let res = crate::contract::execute(
@@ -167,8 +170,17 @@ mod tests {
         assert!(res.is_ok());
         let config: Config = CONFIG.load(&deps.storage).unwrap();
         assert!(config.clone().monitors.unwrap().len() == 1);
-        assert!(config.clone().monitors.unwrap().get(0).unwrap().to_string() == OSMO3.to_string());
-        assert!(config.treasury_address == OSMO3.to_string());
+        assert!(
+            config
+                .clone()
+                .monitors
+                .unwrap()
+                .first()
+                .unwrap()
+                .to_string()
+                == *OSMO3
+        );
+        assert!(config.treasury_address == OSMO3);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -186,6 +198,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -211,6 +224,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -236,6 +250,7 @@ mod tests {
             monitors: None,
             treasury_address: None,
             oracle_address: None,
+            send_fees_to_treasury: None,
         };
         let res = crate::contract::execute(
             deps.as_mut(),
@@ -244,5 +259,38 @@ mod tests {
             config_update_msg,
         );
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn update_send_fees_to_treasury() {
+        let mut deps = init();
+
+        let config = CONFIG.load(&deps.storage).unwrap();
+        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+            batch_period: None,
+            unbonding_period: None,
+            protocol_fee_config: None,
+            multisig_address_config: None,
+            minimum_liquid_stake_amount: None,
+            native_token_denom: None,
+            channel_id: None,
+            monitors: None,
+            treasury_address: None,
+            oracle_address: None,
+            send_fees_to_treasury: Some(!config.send_fees_to_treasury),
+        };
+        crate::contract::execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(OSMO3, &[]),
+            config_update_msg,
+        )
+        .unwrap();
+
+        let new_confg = CONFIG.load(&deps.storage).unwrap();
+        assert_eq!(
+            new_confg.send_fees_to_treasury,
+            !config.send_fees_to_treasury
+        );
     }
 }

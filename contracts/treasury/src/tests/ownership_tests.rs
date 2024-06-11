@@ -1,115 +1,113 @@
-#[cfg(test)]
-mod ownership_tests {
-    use crate::contract::execute;
-    use crate::msg::ExecuteMsg;
-    use crate::tests::test_helper::{init, OSMO3};
-    use cosmwasm_std::coins;
-    use cosmwasm_std::testing::{mock_env, mock_info};
 
-    #[test]
-    fn proper_transfer_ownership() {
-        let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
-        };
+use crate::contract::execute;
+use crate::msg::ExecuteMsg;
+use crate::tests::test_helper::{init, ADMIN};
+use cosmwasm_std::coins;
+use cosmwasm_std::testing::{mock_env, mock_info};
 
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-        assert!(res.is_ok());
+#[test]
+fn proper_transfer_ownership() {
+    let mut deps = init();
+    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: "new_owner".to_string(),
+    };
 
-        let attrs = res.unwrap().attributes;
-        assert_eq!(attrs[0].value, "transfer_ownership");
-        assert_eq!(attrs[1].value, "new_owner");
-    }
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_ok());
 
-    #[test]
-    fn non_admin_transfer_ownership() {
-        let mut deps = init();
-        let info = mock_info("bob", &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
-        };
+    let attrs = res.unwrap().attributes;
+    assert_eq!(attrs[0].value, "transfer_ownership");
+    assert_eq!(attrs[1].value, "new_owner");
+}
 
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-        assert!(res.is_err());
-    }
+#[test]
+fn non_admin_transfer_ownership() {
+    let mut deps = init();
+    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: "new_owner".to_string(),
+    };
 
-    #[test]
-    fn proper_claim_ownership() {
-        let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
-        };
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_err());
+}
 
-        let mut env = mock_env();
+#[test]
+fn proper_claim_ownership() {
+    let mut deps = init();
+    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: "new_owner".to_string(),
+    };
 
-        let res = execute(deps.as_mut(), env.clone(), info, msg);
-        assert!(res.is_ok());
+    let mut env = mock_env();
 
-        let info = mock_info("new_owner", &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::AcceptOwnership {};
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    assert!(res.is_ok());
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        assert!(res.is_err()); // no time yet
+    let info = mock_info("new_owner", &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::AcceptOwnership {};
 
-        env.block.time = mock_env().block.time.plus_seconds(60 * 60 * 24 * 7);
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(res.is_err()); // no time yet
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-        assert!(res.is_ok());
+    env.block.time = mock_env().block.time.plus_seconds(60 * 60 * 24 * 7);
 
-        let attrs = res.unwrap().attributes;
-        assert_eq!(attrs[0].value, "accept_ownership");
-        assert_eq!(attrs[1].value, "new_owner");
-    }
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert!(res.is_ok());
 
-    #[test]
-    fn unauthorized_claim_ownership() {
-        let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
-        };
+    let attrs = res.unwrap().attributes;
+    assert_eq!(attrs[0].value, "accept_ownership");
+    assert_eq!(attrs[1].value, "new_owner");
+}
 
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-        assert!(res.is_ok());
+#[test]
+fn unauthorized_claim_ownership() {
+    let mut deps = init();
+    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: "new_owner".to_string(),
+    };
 
-        let info = mock_info("bob", &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::AcceptOwnership {};
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_ok());
 
-        let res2 = execute(deps.as_mut(), mock_env(), info, msg);
+    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::AcceptOwnership {};
 
-        assert!(res2.is_err());
-    }
+    let res2 = execute(deps.as_mut(), mock_env(), info, msg);
 
-    #[test]
-    fn proper_revoke_ownership_transfer() {
-        let mut deps = init();
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: "new_owner".to_string(),
-        };
+    assert!(res2.is_err());
+}
 
-        let res = execute(deps.as_mut(), mock_env(), info, msg);
-        assert!(res.is_ok());
+#[test]
+fn proper_revoke_ownership_transfer() {
+    let mut deps = init();
+    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: "new_owner".to_string(),
+    };
 
-        let info = mock_info(OSMO3, &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::RevokeOwnershipTransfer {};
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_ok());
 
-        let res2 = execute(deps.as_mut(), mock_env(), info, msg);
+    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 
-        let attrs = res2.unwrap().attributes;
-        assert_eq!(attrs[0].value, "revoke_ownership_transfer");
-    }
+    let res2 = execute(deps.as_mut(), mock_env(), info, msg);
 
-    #[test]
-    fn non_admin_revoke_ownership_transfer() {
-        let mut deps = init();
-        let info = mock_info("bob", &coins(1000, "uosmo"));
-        let msg = ExecuteMsg::RevokeOwnershipTransfer {};
+    let attrs = res2.unwrap().attributes;
+    assert_eq!(attrs[0].value, "revoke_ownership_transfer");
+}
 
-        let res2 = execute(deps.as_mut(), mock_env(), info, msg);
+#[test]
+fn non_admin_revoke_ownership_transfer() {
+    let mut deps = init();
+    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 
-        assert!(res2.is_err());
-    }
+    let res2 = execute(deps.as_mut(), mock_env(), info, msg);
+
+    assert!(res2.is_err());
 }

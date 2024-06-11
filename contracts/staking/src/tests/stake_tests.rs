@@ -53,7 +53,7 @@ mod staking_tests {
                 assert_eq!(
                     result.messages[2],
                     SubMsg {
-                        id: ibc_sub_msg_id.clone(),
+                        id: ibc_sub_msg_id,
                         msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
                             source_channel: CHANNEL_ID.to_string(),
                             source_port: "transfer".to_string(),
@@ -64,7 +64,7 @@ mod staking_tests {
                             timeout_timestamp: timeout.timestamp().unwrap().nanos(),
                             memo: format!(
                                 "{{\"ibc_callback\":\"{}\"}}",
-                                env.contract.address.to_string()
+                                env.contract.address
                             ),
                         }),
                         gas_limit: None,
@@ -203,7 +203,7 @@ mod staking_tests {
     fn proper_ibc_liquid_stake() {
         let mut deps = init();
         let intermediate_sender =
-            derive_intermediate_sender(CHANNEL_ID, &CELESTIA1.to_string(), "osmo").unwrap();
+            derive_intermediate_sender(CHANNEL_ID, CELESTIA1, "osmo").unwrap();
 
         let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
         let msg: ExecuteMsg = ExecuteMsg::LiquidStake {
@@ -228,10 +228,9 @@ mod staking_tests {
         // received rewards in advance of any liquid stake requests
         let sender = derive_intermediate_sender(
             &config.ibc_channel_id,
-            &config
+            config
                 .multisig_address_config
-                .reward_collector_address
-                .to_string(),
+                .reward_collector_address.as_ref(),
             "osmo",
         )
         .unwrap();

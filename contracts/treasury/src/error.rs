@@ -4,7 +4,7 @@ use thiserror::Error;
 
 pub type ContractResult<T> = core::result::Result<T, ContractError>;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -21,4 +21,13 @@ pub enum ContractError {
 
     #[error("Ownership transfer not ready")]
     OwnershipTransferNotReady { time_to_claim: Timestamp },
+
+    #[error("Swap root not allowed")]
+    SwapRouteNotAllowed {},
+
+    #[error("Invalid token in denom {denom}")]
+    InvalidTokenInDenom { denom: String },
+
+    #[error("Invalid token out denom {denom}")]
+    InvalidTokenOutDenom { denom: String },
 }

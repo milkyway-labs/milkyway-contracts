@@ -45,6 +45,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .oracle_address
             .map(|v| v.to_string())
             .unwrap_or_default(),
+        send_fees_to_treasury: config.send_fees_to_treasury,
     };
     Ok(res)
 }
@@ -104,7 +105,7 @@ pub fn query_batches(
     )?;
 
     let res = BatchesResponse {
-        batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
+        batches: batches.into_iter().map(batch_to_response).collect(),
     };
     Ok(res)
 }
@@ -123,7 +124,7 @@ pub fn query_batches_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<BatchesRespo
         .collect();
 
     let res = BatchesResponse {
-        batches: batches.into_iter().map(|v| batch_to_response(v)).collect(),
+        batches: batches.into_iter().map(batch_to_response).collect(),
     };
     Ok(res)
 }

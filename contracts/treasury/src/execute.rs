@@ -1,4 +1,6 @@
-use cosmwasm_std::{attr, CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp};
+use cosmwasm_std::{
+    attr, to_json_string, CosmosMsg, DepsMut, Env, MessageInfo, Response, Timestamp,
+};
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin, ibc::applications::transfer::v1::MsgTransfer,
 };
@@ -6,7 +8,7 @@ use osmosis_std::types::{
 use crate::{
     error::{ContractError, ContractResult},
     helpers::validate_address,
-    state::{State, ADMIN, STATE},
+    state::{State, SwapRoute, ADMIN, CONFIG, STATE},
 };
 
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
@@ -102,19 +104,17 @@ pub fn execute_spend_funds(
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let msg_send: CosmosMsg;
-
-    if channel_id.is_none() {
+    let msg_send: CosmosMsg = if channel_id.is_none() {
         validate_address(&receiver, "osmo")?;
-        msg_send = cosmwasm_std::BankMsg::Send {
+        cosmwasm_std::BankMsg::Send {
             to_address: receiver.clone(),
             amount: vec![amount.clone()],
         }
-        .into();
+        .into()
     } else {
         validate_address(&receiver, "celestia")?;
         // not using the ibc queue here. if this fails, we just reexecute
-        msg_send = MsgTransfer {
+        MsgTransfer {
             source_channel: channel_id.clone().unwrap().clone(),
             source_port: "transfer".to_string(),
             token: Some(Coin {
@@ -125,13 +125,10 @@ pub fn execute_spend_funds(
             sender: env.contract.address.to_string(),
             timeout_height: None,
             timeout_timestamp: env.block.time.nanos() + IBC_TIMEOUT.nanos(),
-            memo: format!(
-                "{{\"ibc_callback\":\"{}\"}}",
-                env.contract.address.to_string()
-            ),
+            memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
         }
-        .into();
-    }
+        .into()
+    };
 
     let mut attributes = vec![
         attr("action", "spend_funds"),
@@ -148,4 +145,122 @@ pub fn execute_spend_funds(
         .add_message(msg_send)
         .add_attributes(attributes);
     Ok(res)
+}
+
+pub fn execute_swap_exact_amount_in(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    swap_routes: Vec<SwapRoute>,
+    token_in: cosmwasm_std::Coin,
+    token_out_min_amount: u128,
+) -> ContractResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    config.assert_trader(&info.sender)?;
+    config.assert_allowed_swap_route(&swap_routes)?;
+    // Check that the first route token in is the same as the token in
+    if swap_routes[0].token_in_denom != token_in.denom {
+        return Err(ContractError::InvalidTokenInDenom {
+            denom: token_in.denom,
+        });
+    }
+
+    let message = osmosis_std::types::osmosis::poolmanager::v1beta1::MsgSwapExactAmountIn {
+        sender: env.contract.address.to_string(),
+        routes: swap_routes
+            .iter()
+            .map(|swap_route| {
+                osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute {
+                    pool_id: swap_route.pool_id,
+                    token_out_denom: swap_route.token_out_denom.clone(),
+                }
+            })
+            .collect(),
+        token_in: Some(Coin {
+            denom: token_in.denom.clone(),
+            amount: token_in.amount.to_string(),
+        }),
+        token_out_min_amount: token_out_min_amount.to_string(),
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "swap_exact_amount_in")
+        .add_attribute("sender", info.sender)
+        .add_attribute("routes", to_json_string(&swap_routes)?)
+        .add_attribute("token_in", token_in.to_string())
+        .add_attribute("token_out_min_amount", token_out_min_amount.to_string())
+        .add_message(message))
+}
+
+pub fn execute_swap_exact_amount_out(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    swap_routes: Vec<SwapRoute>,
+    token_out: cosmwasm_std::Coin,
+    token_in_max_amount: u128,
+) -> ContractResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    config.assert_trader(&info.sender)?;
+    config.assert_allowed_swap_route(&swap_routes)?;
+    // Check that the last route token out is the same as the token out
+    if swap_routes.last().unwrap().token_out_denom != token_out.denom {
+        return Err(ContractError::InvalidTokenOutDenom {
+            denom: token_out.denom,
+        });
+    }
+
+    let message = osmosis_std::types::osmosis::poolmanager::v1beta1::MsgSwapExactAmountOut {
+        sender: env.contract.address.to_string(),
+        routes: swap_routes
+            .iter()
+            .map(|swap_route| {
+                osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountOutRoute {
+                    pool_id: swap_route.pool_id,
+                    token_in_denom: swap_route.token_in_denom.clone(),
+                }
+            })
+            .collect(),
+        token_out: Some(Coin {
+            denom: token_out.denom.clone(),
+            amount: token_out.amount.to_string(),
+        }),
+        token_in_max_amount: token_in_max_amount.to_string(),
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "swap_exact_amount_in")
+        .add_attribute("sender", info.sender)
+        .add_attribute("routes", to_json_string(&swap_routes)?)
+        .add_attribute("token_out", token_out.to_string())
+        .add_attribute("token_in_max_amount", token_in_max_amount.to_string())
+        .add_message(message))
+}
+
+pub fn execute_update_config(
+    deps: DepsMut,
+    info: MessageInfo,
+    trader: Option<String>,
+    routes: Option<Vec<Vec<SwapRoute>>>,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut response = Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute("sender", info.sender);
+
+    let mut config = CONFIG.load(deps.storage)?;
+    if let Some(trader) = trader {
+        config.trader = deps.api.addr_validate(&trader)?;
+        response = response.add_attribute("trader", trader);
+    }
+    if let Some(routes) = routes {
+        response = response.add_attribute("allowed_routes", to_json_string(&routes)?);
+        config.allowed_swap_routes = routes;
+    }
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(response)
 }

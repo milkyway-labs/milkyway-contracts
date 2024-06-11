@@ -4,6 +4,9 @@ use cosmwasm_std::Timestamp;
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
+use crate::error::ContractError;
+use crate::error::ContractResult;
+
 #[cw_serde]
 pub struct State {
     pub pending_owner: Option<Addr>,
@@ -12,3 +15,50 @@ pub struct State {
 
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("state");
+
+#[cw_serde]
+pub struct SwapRoute {
+    /// Id of the pool where the swap will be performed.
+    pub pool_id: u64,
+    /// Denom of the coin that will be swapped.
+    pub token_in_denom: String,
+    /// Denom of the coin that will be received after the swap.
+    pub token_out_denom: String,
+}
+
+#[cw_serde]
+pub struct Config {
+    /// User that will be allowed to perform the swap operations.
+    pub trader: Addr,
+    /// List of allowed swap routes that can be taken when performing a SwapExactAmountIn.
+    pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
+}
+
+pub const CONFIG: Item<Config> = Item::new("config");
+
+impl Config {
+    pub fn assert_trader(&self, address: &Addr) -> ContractResult<()> {
+        if self.trader.eq(address) {
+            Ok(())
+        } else {
+            Err(ContractError::Unauthorized {
+                sender: address.to_string(),
+            })
+        }
+    }
+
+    pub fn assert_allowed_swap_route(&self, swap_route: &[SwapRoute]) -> ContractResult<()> {
+        if swap_route.is_empty() {
+            return Err(ContractError::SwapRouteNotAllowed {});
+        }
+        if self
+            .allowed_swap_routes
+            .iter()
+            .any(|allowed_route| allowed_route.eq(swap_route))
+        {
+            Ok(())
+        } else {
+            Err(ContractError::SwapRouteNotAllowed {})
+        }
+    }
+}

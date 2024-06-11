@@ -1,16 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_json_binary, to_json_string, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+};
 use cw2::set_contract_version;
-// use cw2::set_contract_version;
+use semver::Version;
 
-use crate::error::ContractError;
+use crate::error::{ContractError, ContractResult};
 use crate::execute::{
     execute_accept_ownership, execute_revoke_ownership_transfer, execute_spend_funds,
-    execute_transfer_ownership,
+    execute_swap_exact_amount_in, execute_swap_exact_amount_out, execute_transfer_ownership,
+    execute_update_config,
 };
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, ADMIN, STATE};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::query::query_config;
+use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -20,12 +24,16 @@ pub fn instantiate(
     mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO: determine if info.sender is the admin or if we want to pass in with msg
-    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    let admin = msg
+        .admin
+        .map(|admin_str| deps.api.addr_validate(&admin_str))
+        .transpose()?
+        .unwrap_or(info.sender.clone());
+    ADMIN.set(deps.branch(), Some(admin))?;
 
     // Init State
     let state = State {
@@ -34,9 +42,25 @@ pub fn instantiate(
     };
     STATE.save(deps.storage, &state)?;
 
+    // Init Config
+    let config = Config {
+        trader: msg
+            .trader
+            .map(|trader_str| deps.api.addr_validate(&trader_str))
+            .transpose()?
+            .unwrap_or(info.sender.clone()),
+        allowed_swap_routes: msg.allowed_swap_routes,
+    };
+    CONFIG.save(deps.storage, &config)?;
+
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", info.sender)
+        .add_attribute("trader", config.trader)
+        .add_attribute(
+            "allowed_swap_routes",
+            to_json_string(&config.allowed_swap_routes)?,
+        ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -59,13 +83,55 @@ pub fn execute(
             receiver,
             channel_id,
         } => execute_spend_funds(deps, env, info, amount, receiver, channel_id),
+        ExecuteMsg::SwapExactAmountIn {
+            routes,
+            token_in,
+            token_out_min_amount,
+        } => execute_swap_exact_amount_in(deps, env, info, routes, token_in, token_out_min_amount),
+        ExecuteMsg::SwapExactAmountOut {
+            routes,
+            token_out,
+            token_in_max_amount,
+        } => execute_swap_exact_amount_out(deps, env, info, routes, token_out, token_in_max_amount),
+        ExecuteMsg::UpdateConfig {
+            trader,
+            allowed_swap_routes,
+        } => execute_update_config(deps, info, trader, allowed_swap_routes),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> ContractResult<Binary> {
+    match msg {
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+    }
+    .map_err(ContractError::from)
 }
 
-#[cfg(test)]
-mod tests {}
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Response> {
+    let current_version = cw2::get_contract_version(deps.storage)?;
+    if CONTRACT_NAME != current_version.contract.as_str() {
+        return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
+    }
+
+    let version: Version = current_version
+        .version
+        .parse()
+        .map_err(|_| StdError::generic_err("Invalid contract version"))?;
+    let new_version: Version = CONTRACT_VERSION
+        .parse()
+        .map_err(|_| StdError::generic_err("Invalid contract version"))?;
+
+    if version > new_version {
+        return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
+    }
+    if version == new_version {
+        return Err(StdError::generic_err("Cannot migrate to the same version.").into());
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_attribute("from_version", current_version.version)
+        .add_attribute("to_version", CONTRACT_VERSION))
+}
