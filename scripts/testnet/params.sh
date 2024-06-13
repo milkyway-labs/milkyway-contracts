@@ -16,6 +16,8 @@ TESTNET_MNEMONIC="boy view flame close solar robust crunch slot govern false jun
 
 # Osmosis accounts
 OSMOSIS_ACCOUNT="osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge"
+OSMOSIS_TRADER="osmo1lh0u9sug6qh922gjpal3frwtacaums4s7lkyl9"
+OSMOSIS_TRADER_ACCOUNT_INDEX=1
 
 # Celestia accounts
 CELESTIA_STAKER="celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx"

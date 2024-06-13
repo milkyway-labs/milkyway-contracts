@@ -16,6 +16,14 @@ wait_tx osmosisd tx bank send validator1 $OSMOSIS_ACCOUNT 50000000uosmo \
   $OSMOSIS_TX_PARAMS \
   --home=$HOME/.osmosisd/validator1 -y
 
+echo "Funding $OSMOSIS_TRADER (trader)"
+wait_tx osmosisd tx bank send validator1 $OSMOSIS_TRADER 50000000stake \
+  $OSMOSIS_TX_PARAMS \
+  --home=$HOME/.osmosisd/validator1 -y
+wait_tx osmosisd tx bank send validator1 $OSMOSIS_TRADER 50000000uosmo \
+  $OSMOSIS_TX_PARAMS \
+  --home=$HOME/.osmosisd/validator1 -y
+
 # Funds Celestia accounts
 echo "Funding $CELESTIA_STAKER (staker)"
 wait_tx celestia-appd tx bank send validator1 $CELESTIA_STAKER 500000000utia \
