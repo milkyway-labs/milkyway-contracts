@@ -78,7 +78,7 @@ INIT={\"trader\":\"$OSMOSIS_TRADER\",\"allowed_swap_routes\":[[{\"pool_id\":1,\"
 TREASURY_CONTRACT=$(init_contract "$TREASURY_CODE_ID" $INIT "Treasury")
 
 echo "Init staking contract"
-INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$TREASURY_CONTRACT\",\"monitors\":[\"$OSMOSIS_ACCOUNT\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\"],\"batch_period\":60,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"10\"},\"multisig_address_config\":{\"staker_address\":\"$CELESTIA_STAKER\",\"reward_collector_address\":\"$CELESTIA_REWARDS_COLLECTOR\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\",\"send_fees_to_treasury\":true}
+INIT={\"native_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"liquid_stake_token_denom\":\"milkTIA\",\"treasury_address\":\"$TREASURY_CONTRACT\",\"monitors\":[\"$OSMOSIS_ACCOUNT\"],\"validators\":[\"$CELESTIA_VALIDATOR_1\"],\"batch_period\":60,\"unbonding_period\":$UNBONDING_PERIOD,\"protocol_fee_config\":{\"dao_treasury_fee\":\"800\"},\"multisig_address_config\":{\"staker_address\":\"$CELESTIA_STAKER\",\"reward_collector_address\":\"$CELESTIA_REWARDS_COLLECTOR\"},\"minimum_liquid_stake_amount\":\"100\",\"ibc_channel_id\":\"channel-0\",\"send_fees_to_treasury\":true}
 STAKE_CONTRACT=$(init_contract $STAKING_CONTRACT_CODE_ID $INIT "Staking")
 
 # Init our oracle contract
