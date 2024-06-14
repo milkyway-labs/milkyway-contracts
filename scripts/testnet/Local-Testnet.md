@@ -36,18 +36,22 @@ Before deploying the contracts, you need to:
 3. Download the oracle contract from [here](https://github.com/milkyway-labs/milkyway-oracle/releases) and store it in the `artifacts/` folder.
 
 After completing the above steps, you can deploy the contracts by running:
+
 ```sh
 ./init_stake_contract.sh
 ```
+
 This script will initialize all the contracts and print out their addresses.
 
 Next, you can IBC transfer some TIA using the following command:
+
 ```sh
 celestia-appd tx ibc-transfer transfer transfer channel-0 osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge 1000000utia \
   --from staker --fees 21000utia -b block -y
 ```
 
 Upon reception, you can liquid stake the received tokens using the following command:
+
 ```sh
 osmosisd tx wasm execute osmo1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsll0sqv '{"liquid_stake":{}}' \
   --amount 1000000ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA \
