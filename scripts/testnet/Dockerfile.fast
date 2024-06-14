@@ -25,7 +25,7 @@ RUN bash -c "source /milkiway/bins/download.sh && \
 
 RUN ./local-osmosis-testnet-new.sh
 # Reduce unbonding time to 6 minutes
-RUN UNBONDING_TIME=360s sh ./local-celestia-testnet-multi-new.sh
+RUN UNBONDING_TIME=360s ./local-celestia-testnet-multi-new.sh
 
 # Reduce the trust threshold according to the fast unbonding time
 RUN sed -i -E 's|14d|300s|g' ./hermes-config.toml
