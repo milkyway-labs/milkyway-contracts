@@ -18,7 +18,7 @@ Upon creation, the following accounts will be funded:
 - `osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge`: Osmosis account used to deploy the contracts on the chain.
 - `osmo1lh0u9sug6qh922gjpal3frwtacaums4s7lkyl9`: Osmosis trader account used to swap the fee collected by the treasury contract.
 - `celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx`: Celestia account that stakes the TIA on the Celestia chain (staker).
-- `celestia1lh0u9sug6qh922gjpal3frwtacaums4s8w5yn6`: Celestia account that operates the staker account trough the `x/authz` module (grantee).
+- `celestia1lh0u9sug6qh922gjpal3frwtacaums4s8w5yn6`: Celestia account that operates the staker account through the `x/authz` module (grantee).
 - `celestia12rzczckgh8fqq533t0xqhqrrzdk76du3dxrx9q`: Celestia account where the staking reward will be withdrawn.
 
 NOTE: The `grantee` account will have all the on chain permissions to control the staker account.
