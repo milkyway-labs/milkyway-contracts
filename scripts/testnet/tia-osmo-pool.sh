@@ -1,27 +1,27 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-BINS_DIR=$SCRIPT_DIR/bins
-PATH=$BINS_DIR:$PATH
+BINS_DIR="$SCRIPT_DIR/bins"
+PATH="$BINS_DIR:$PATH"
 
-source $SCRIPT_DIR/params.sh
-source $SCRIPT_DIR/utils/tx.sh
+source "$SCRIPT_DIR/params.sh"
+source "$SCRIPT_DIR/utils/tx.sh"
 
 # this create a tia osmo pool on osmosis testnet
 
 # send tia
-OSMOSIS_VALIDATOR_1_ADDR=$(osmosisd keys show validator1 --address --keyring-backend=test --home=$HOME/.osmosisd/validator1)
-wait_tx celestia-appd tx ibc-transfer transfer transfer channel-0 $OSMOSIS_VALIDATOR_1_ADDR 10000000000000utia \
-  --from validator1  --keyring-backend=test --home=$HOME/.celestia-app/validator1 \
-  $CELESTIA_TX_PARAMS
+OSMOSIS_VALIDATOR_1_ADDR=$(osmosisd keys show validator1 --address --keyring-backend=test --home="$HOME/.osmosisd/validator1")
+wait_tx celestia-appd tx ibc-transfer transfer transfer channel-0 "$OSMOSIS_VALIDATOR_1_ADDR" 10000000000000utia \
+  --from validator1  --keyring-backend=test --home="$HOME"/.celestia-app/validator1 \
+  "$CELESTIA_TX_PARAMS"
 
 # get tia ibc token name
 echo "waiting for tia to arrive"
 NATIVE_TOKEN_DENOM=""
 while [ -z "$NATIVE_TOKEN_DENOM" ]; do
-  BALANCES=$(osmosisd query bank balances $OSMOSIS_VALIDATOR_1_ADDR --output json)
-  echo $BALANCES
-  NATIVE_TOKEN_DENOM=$(echo $BALANCES | jq -r '.balances[].denom | select(. | contains("ibc/"))')
+  BALANCES=$(osmosisd query bank balances "$OSMOSIS_VALIDATOR_1_ADDR" --output json)
+  echo "$BALANCES"
+  NATIVE_TOKEN_DENOM=$(echo "$BALANCES" | jq -r '.balances[].denom | select(. | contains("ibc/"))')
   sleep 3
 done
 
@@ -33,8 +33,8 @@ echo '{
 }' > pool.json
 
 wait_tx osmosisd tx gamm create-pool --pool-file ./pool.json \
-   --from validator1 --keyring-backend=test --home=$HOME/.osmosisd/validator1 \
-   $OSMOSIS_TX_PARAMS
+   --from validator1 --keyring-backend=test --home="$HOME"/.osmosisd/validator1 \
+   "$OSMOSIS_TX_PARAMS"
 
 # add liquidity
 # osmosisd tx gamm join-pool --pool-id 1 --max-amounts-in 1000000$NATIVE_TOKEN_DENOM,1000000uosmo --share-amount-out 1000 --from test_master --keyring-backend test -y \

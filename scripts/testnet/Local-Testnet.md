@@ -32,7 +32,7 @@ After the network is ready, you can configure the clients by using the `utils/co
 Before deploying the contracts, you need to:
 
 1. Import the accounts using the `utils/import-accounts-keys.sh` script.
-2. Compile the contracts using the `make optimize` command. This must be executed from the project root directory.
+2. Compile the contracts by navigating to the project root directory and running the `make optimize` command.
 3. Download the oracle contract from [here](https://github.com/milkyway-labs/milkyway-oracle/releases) and store it in the `artifacts/` folder.
 
 After completing the above steps, you can deploy the contracts by running:

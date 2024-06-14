@@ -5,7 +5,7 @@ BINS_DIR=$SCRIPT_DIR/bins
 PATH=$BINS_DIR:$PATH
 
 # Include the utils function
-source $SCRIPT_DIR/utils/tx.sh
+source "$SCRIPT_DIR"/utils/tx.sh
 
 # Stop script execution if an error is encountered
 set -o errexit
@@ -23,12 +23,12 @@ hermes keys add --chain osmosis-dev-1 --key-file './osmosis-relayer-key.json'
 hermes keys add --chain celestia-dev-1 --key-file './celestia-relayer-key.json'
 
 OSMOSIS_ADDR=$(jq -r '.address' ./osmosis-relayer-key.json)
-wait_tx osmosisd tx bank send validator1 $OSMOSIS_ADDR 50000000stake \
-  --keyring-backend=test --home=$HOME/.osmosisd/validator1 \
+wait_tx osmosisd tx bank send validator1 "$OSMOSIS_ADDR" 50000000stake \
+  --keyring-backend=test --home="$HOME"/.osmosisd/validator1 \
   --chain-id osmosis-dev-1 --fees 875stake -y
 CELESTIA_ADDR=$(jq -r '.address' ./celestia-relayer-key.json)
-wait_tx celestia-appd tx bank send validator1 $CELESTIA_ADDR 5000000000utia \
-  --keyring-backend=test --home=$HOME/.celestia-app/validator1 \
+wait_tx celestia-appd tx bank send validator1 "$CELESTIA_ADDR" 5000000000utia \
+  --keyring-backend=test --home="$HOME"/.celestia-app/validator1 \
   --chain-id celestia-dev-1 --fees 21000utia -y --node http://0.0.0.0:26661
 
 hermes create client --host-chain celestia-dev-1 --reference-chain osmosis-dev-1

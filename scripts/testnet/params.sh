@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Osmosis config
 OSMOSIS_NODE="http://localhost:26657"
 OSMOSIS_CHAIN_ID="osmosis-dev-1"

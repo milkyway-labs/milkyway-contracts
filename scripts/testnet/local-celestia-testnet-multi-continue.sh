@@ -13,9 +13,9 @@ killall celestia-appd || true
 
 # Start celestia-app
 echo "Starting celestia-app..."
-tmux new -s celestia2 -d celestia-appd start --home=$HOME/.celestia-app/validator2
-tmux new -s celestia3 -d celestia-appd start --home=$HOME/.celestia-app/validator3
-tmux new -s celestia1 -d celestia-appd start --home=$HOME/.celestia-app/validator1 \
+tmux new -s celestia2 -d celestia-appd start --home="$HOME"/.celestia-app/validator2
+tmux new -s celestia3 -d celestia-appd start --home="$HOME"/.celestia-app/validator3
+tmux new -s celestia1 -d celestia-appd start --home="$HOME"/.celestia-app/validator1 \
   --api.enable \
   --grpc.enable \
   --grpc-web.enable \
