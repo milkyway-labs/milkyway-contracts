@@ -1,5 +1,4 @@
 #!/bin/bash
-# cargo install --git https://github.com/cmoog/bech32
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ARTIFACTS_DIR="${SCRIPT_DIR}/../../artifacts"
