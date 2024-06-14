@@ -14,16 +14,16 @@ Now you can always boot into the clean config
 docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 -p 9090:9090 docker.io/library/mw-testnet
 ```
 
-Upon creation the following accounts will be funded:
+Upon creation, the following accounts will be funded:
 - `osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge`: Osmosis account used to deploy the contracts on the chain.
 - `osmo1lh0u9sug6qh922gjpal3frwtacaums4s7lkyl9`: Osmosis trader account used to swap the fee collected by the treasury contract.
 - `celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx`: Celestia account that stakes the TIA on the Celestia chain (staker).
-- `celestia1lh0u9sug6qh922gjpal3frwtacaums4s8w5yn6`: Celestia account that operate the staker account trough the `x/authz` module (grantee).
+- `celestia1lh0u9sug6qh922gjpal3frwtacaums4s8w5yn6`: Celestia account that operates the staker account trough the `x/authz` module (grantee).
 - `celestia12rzczckgh8fqq533t0xqhqrrzdk76du3dxrx9q`: Celestia account where the staking reward will be withdrawn.
 
 NOTE: The `grantee` account will have all the on chain permissions to control the staker account.
 
-Those account can be imported into a test keyring trough the `utils/import-accounts-keys.sh` script.
+Those accounts can be imported into a test keyring trough the `utils/import-accounts-keys.sh` script.
 
 After the network is ready, you can configure the clients by using the `utils/configure-localnet.sh` script.
 
@@ -53,7 +53,7 @@ osmosisd tx wasm execute osmo1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4n
   --amount 1000000ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA \
   --from test_master
 ```
-NOTE: All the applications binaries are available in the `bins` folder and they will be lazy downloaded on first use.
+NOTE: All the application binaries are available in the `bins` folder and will be lazily downloaded on first use.
 
 ### Fast testnet to test unbonding
 
