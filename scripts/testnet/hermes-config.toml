@@ -45,6 +45,7 @@ clock_drift = '5s'
 max_block_time = '30s'
 trusting_period = '14d'
 trust_threshold = { numerator = '2', denominator = '3' }
+compat_mode = '0.34'
 
 [chains.packet_filter]
 policy = 'allow'
@@ -72,6 +73,7 @@ clock_drift = '5s'
 max_block_time = '30s'
 trusting_period = '14d'
 trust_threshold = { numerator = '2', denominator = '3' }
+compat_mode = '0.37'
 
 [chains.packet_filter]
 policy = 'allow'

@@ -14,33 +14,50 @@ Now you can always boot into the clean config
 docker run --name mw-testnet -d -p 26661:26661/udp -p 26657:26657/udp -p 26661:26661/tcp -p 26657:26657/tcp -p 1317:1317 -p 1314:1314 -p 9090:9090 docker.io/library/mw-testnet
 ```
 
-Test accounts are funded, check out `./local-accounts.sh`
-But you need to import the mnemonic:
+Upon creation, the following accounts will be funded:
+- `osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge`: Osmosis account used to deploy the contracts on the chain.
+- `osmo1lh0u9sug6qh922gjpal3frwtacaums4s7lkyl9`: Osmosis trader account used to swap the fee collected by the treasury contract.
+- `celestia1sfhy3emrgp26wnzuu64p06kpkxd9phel74e0yx`: Celestia account that stakes the TIA on the Celestia chain (staker).
+- `celestia1lh0u9sug6qh922gjpal3frwtacaums4s8w5yn6`: Celestia account that operates the staker account through the `x/authz` module (grantee).
+- `celestia12rzczckgh8fqq533t0xqhqrrzdk76du3dxrx9q`: Celestia account where the staking reward will be withdrawn.
 
-```
-MNEMONIC="boy view flame close solar robust crunch slot govern false jungle dirt blade minor shield bounce rent expand anxiety busy pull inject grace require"
+NOTE: The `grantee` account will have all the on chain permissions to control the staker account.
 
-echo $MNEMONIC | osmosisd keys add test_master --recover
-echo $MNEMONIC | celestia-appd keys add test_master --recover
+Those accounts can be imported into a test keyring through the `utils/import-accounts-keys.sh` script.
+
+After the network is ready, you can configure the clients by using the `utils/configure-localnet.sh` script.
+
+## Deploy Contracts
+
+Before deploying the contracts, you need to:
+
+1. Import the accounts using the `utils/import-accounts-keys.sh` script.
+2. Compile the contracts by navigating to the project root directory and running the `make optimize` command.
+3. Download the oracle contract from [here](https://github.com/milkyway-labs/milkyway-oracle/releases) and store it in the `artifacts/` folder.
+
+After completing the above steps, you can deploy the contracts by running:
+
+```sh
+./init_stake_contract.sh
 ```
 
-Now you can deploy the contract:
+This script will initialize all the contracts and print out their addresses.
 
-You will need the bech32 dep to parse validator addresses:
+Next, you can IBC transfer some TIA using the following command:
 
-```
-cargo install --git https://github.com/cmoog/bech32
-```
-
-```
-sh ./init_stake_contract.sh
+```sh
+celestia-appd tx ibc-transfer transfer transfer channel-0 osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge 1000000utia \
+  --from staker --fees 21000utia -b block -y
 ```
 
-After this you can liquid stake (currently you need to wait a couple of seconds after ibc transfer TIA to Osmosis):
+Upon reception, you can liquid stake the received tokens using the following command:
 
+```sh
+osmosisd tx wasm execute osmo1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsll0sqv '{"liquid_stake":{}}' \
+  --amount 1000000ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA \
+  --from test_master
 ```
-sh ./liquid_stake.sh
-```
+NOTE: All the application binaries are available in the `bins` folder and will be lazily downloaded on first use.
 
 ### Fast testnet to test unbonding
 
