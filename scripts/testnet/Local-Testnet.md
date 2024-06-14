@@ -23,7 +23,7 @@ Upon creation, the following accounts will be funded:
 
 NOTE: The `grantee` account will have all the on chain permissions to control the staker account.
 
-Those accounts can be imported into a test keyring trough the `utils/import-accounts-keys.sh` script.
+Those accounts can be imported into a test keyring through the `utils/import-accounts-keys.sh` script.
 
 After the network is ready, you can configure the clients by using the `utils/configure-localnet.sh` script.
 
