@@ -10,4 +10,7 @@ set -e
 killall osmosisd || true
 
 # start all three validators
-tmux new -s osmosis1 -d osmosisd start --home="$HOME"/.osmosisd/validator1 --rpc.laddr tcp://0.0.0.0:26657
+tmux new -s osmosis1 -d osmosisd start --home="$HOME"/.osmosisd/validator1 \
+  --grpc.enable \
+  --rpc.laddr tcp://0.0.0.0:26657 \
+  --grpc.address 0.0.0.0:9090 \

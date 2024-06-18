@@ -38,7 +38,7 @@ Before deploying the contracts, you need to:
 After completing the above steps, you can deploy the contracts by running:
 
 ```sh
-./init_stake_contract.sh
+./init-stake-contract.sh
 ```
 
 This script will initialize all the contracts and print out their addresses.
