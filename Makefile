@@ -26,7 +26,4 @@ optimize:
 
 initlocal: optimize _initlocal
 _initlocal:
-	bash scripts/testnet/init_stake_contract.sh
-migratelocal: optimize _migratelocal
-_migratelocal:
-	bash scripts/testnet/migrate_stake_contract.sh
+	bash scripts/testnet/init-stake-contract.sh
