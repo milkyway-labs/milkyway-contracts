@@ -70,4 +70,4 @@ pub struct ConfigResponse {
 }
 
 #[cw_serde]
-pub enum MigrateMsg {}
+pub struct MigrateMsg {}
