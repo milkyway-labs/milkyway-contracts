@@ -1,7 +1,7 @@
-FROM ubuntu:latest
+FROM --platform=linux/amd64 ubuntu:latest
 
 RUN apt-get update && \
-  apt-get install -y tmux git make golang-go wget unzip psmisc jq
+  apt-get install -y tmux git make golang-go wget unzip psmisc jq 
 
 # Binaries versions
 # Remember to update the hermes compatibility mode when bumping the versions
@@ -39,9 +39,9 @@ EXPOSE 9090
 # As the relayer times out very fast, we do create a bridge on start of the docker.
 # Continues runs will though create new bridges so you need to reset the docker every time.
 CMD ./local-celestia-testnet-multi-continue.sh && \
-    ./local-osmosis-testnet-continue.sh && \
-    ./check-node-running.sh osmosis1 && \
-    ./check-node-running.sh celestia1 && \
-    ./local-hermes-new.sh && \
-    ./local-account.sh && \
-    tail -f /dev/null
+  ./local-osmosis-testnet-continue.sh && \
+  ./check-node-running.sh osmosis1 && \
+  ./check-node-running.sh celestia1 && \
+  ./local-hermes-new.sh && \
+  ./fund-accounts.sh && \
+  tail -f /dev/null
