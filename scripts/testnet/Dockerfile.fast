@@ -1,7 +1,9 @@
 FROM --platform=linux/amd64 ubuntu:latest
 
 RUN apt-get update && \
-  apt-get install -y tmux git make golang-go wget unzip psmisc jq 
+RUN apt-get update && \
+  apt-get install -y tmux git make golang-go wget unzip psmisc jq && \
+  rm -rf /var/lib/apt/lists/*
 
 # Binaries versions
 # Remember to update the hermes compatibility mode when bumping the versions
