@@ -1,5 +1,4 @@
-FROM ubuntu:latest
-
+FROM --platform=linux/amd64 ubuntu:latest
 
 RUN apt-get update && \
   apt-get install -y tmux git make golang-go wget unzip psmisc jq
@@ -27,12 +26,12 @@ RUN bash -c "source /milkiway/bins/download.sh && \
 RUN ./local-osmosis-testnet-new.sh
 RUN ./local-celestia-testnet-multi-new.sh
 RUN ./local-celestia-testnet-multi-continue.sh && \
-    ./local-osmosis-testnet-continue.sh && \
-    ./check-node-running.sh osmosis1 && \
-    ./check-node-running.sh celestia1 && \
-    ./fund-accounts.sh && \
-    ./local-hermes-new.sh && \
-    ./tia-osmo-pool.sh
+  ./local-osmosis-testnet-continue.sh && \
+  ./check-node-running.sh osmosis1 && \
+  ./check-node-running.sh celestia1 && \
+  ./fund-accounts.sh && \
+  ./local-hermes-new.sh && \
+  ./tia-osmo-pool.sh
 
 EXPOSE 26661
 EXPOSE 26657
@@ -42,9 +41,9 @@ EXPOSE 9090
 
 # last command needs to be persistant to keep container running
 CMD ./local-celestia-testnet-multi-continue.sh && \
-    ./local-osmosis-testnet-continue.sh && \
-    ./check-node-running.sh osmosis1 && \
-    ./check-node-running.sh celestia1 && \
-    ./local-hermes-clear-packets.sh && \
-    ./local-hermes-continue.sh && \
-    tail -f /dev/null
+  ./local-osmosis-testnet-continue.sh && \
+  ./check-node-running.sh osmosis1 && \
+  ./check-node-running.sh celestia1 && \
+  ./local-hermes-clear-packets.sh && \
+  ./local-hermes-continue.sh && \
+  tail -f /dev/null
