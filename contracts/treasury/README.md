@@ -50,7 +50,7 @@ Here are listed the actions that can be performed by the contract
 This allows the treasury to withdraw their funds to another account.
 
 ```shell
-osmosisd tx wasm execute <contract-address> '{"spend_funds": {"amunt": <coin>, "receiver": "<receiver-addr>", "chain-id": <optional-ibc-channel>}}' \
+osmosisd tx wasm execute <contract-address> '{"spend_funds": {"amount": <coin>, "receiver": "<receiver-addr>", "chain-id": <optional-ibc-channel>}}' \
     --from <your-address> --chain-id "osmosis-1" \
     --gas=auto --gas-prices=0.04uosmo --gas-adjustment=1.5 \
     --node https://rpc.osmosis.zone:443
