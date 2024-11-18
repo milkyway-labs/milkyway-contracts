@@ -2,7 +2,7 @@
 
 ## Use Docker as a simple setup with an isolated environment
 
-First build the image, this will take a while and leaves you with a setup testnet for both networks and a setup relayer
+First build the image, this will take a while and leaves you with a set up testnet for both networks and a setup relayer
 
 ```
 docker build . --tag mw-testnet
@@ -111,7 +111,7 @@ Notes:
 
 ## Start Relayer
 
-Create a key for the relayer on Celestia side and store in in a file celestia-relayer-key.json
+Create a key for the relayer on Celestia side and store in a file celestia-relayer-key.json
 
 ```
 celestia-appd keys add relayer --output=json > celestia-relayer-key.json
