@@ -22,7 +22,7 @@ fn get_config() {
             assert_eq!(res.native_token_denom, NATIVE_TOKEN.to_string());
             assert_eq!(
                 res.liquid_stake_token_denom,
-                "factory/cosmos2contract/stTIA".to_string()
+                format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")).to_string()
             );
             assert_eq!(res.treasury_address, OSMO1.to_string());
             assert_eq!(res.monitors, vec![OSMO2.to_string(), OSMO3.to_string()]);
@@ -114,7 +114,10 @@ fn get_batch() {
     // unStake 1
     let info = message_info(
         &deps.api.addr_make("bob"),
-        &coins(500, "factory/cosmos2contract/stTIA"),
+        &coins(
+            500,
+            format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")),
+        ),
     );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg.clone());
@@ -123,7 +126,10 @@ fn get_batch() {
     // unStake 2
     let info = message_info(
         &deps.api.addr_make("alice"),
-        &coins(1500, "factory/cosmos2contract/stTIA"),
+        &coins(
+            1500,
+            format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")),
+        ),
     );
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg);
     assert!(res.is_ok());
@@ -178,7 +184,10 @@ fn get_batches() {
     // unStake 1
     let info = message_info(
         &deps.api.addr_make("bob"),
-        &coins(500, "factory/cosmos2contract/stTIA"),
+        &coins(
+            500,
+            format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")),
+        ),
     );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg.clone());
@@ -196,7 +205,10 @@ fn get_batches() {
     // unStake 2 - for the next batch
     let info = message_info(
         &deps.api.addr_make("alice"),
-        &coins(1500, "factory/cosmos2contract/stTIA"),
+        &coins(
+            1500,
+            format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")),
+        ),
     );
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg);
     assert!(res.is_ok());
@@ -271,7 +283,10 @@ fn get_pending_batch() {
 
     let info = message_info(
         &deps.api.addr_make("bob"),
-        &coins(1000, "factory/cosmos2contract/stTIA"),
+        &coins(
+            1000,
+            format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")),
+        ),
     );
     let msg = ExecuteMsg::LiquidUnstake {};
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);

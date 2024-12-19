@@ -56,7 +56,10 @@ fn circuit_breaker() {
     STATE.save(&mut deps.storage, &state).unwrap();
     let info = message_info(
         &deps.api.addr_make("bob"),
-        &coins(1000, "factory/cosmos2contract/stTIA"),
+        &coins(
+            1000,
+            format!("factory/{}/stTIA", deps.api.addr_make("cosmos2contract")),
+        ),
     );
     let msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);

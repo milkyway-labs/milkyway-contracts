@@ -79,7 +79,10 @@ mod staking_tests {
                         msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
                             sender: MOCK_CONTRACT_ADDR.to_string(),
                             amount: Some(Coin {
-                                denom: "factory/cosmos2contract/stTIA".to_string(),
+                                denom: format!(
+                                    "factory/{}/stTIA",
+                                    deps.api.addr_make("cosmos2contract").to_string()
+                                ),
                                 amount: "1000".to_string(),
                             }),
                             mint_to_address: OSMO3.to_string(),
