@@ -95,7 +95,7 @@ fn success_ibc_queue() {
             payload: Binary::new(vec![]),
             id: ibc_sub_msg_id,
             result: SubMsgResult::Ok(SubMsgResponse {
-                data: None,         // No data returned
+                data: Some(Binary::from(MsgTransferResponse { sequence })),
                 events: Vec::new(), // No events
                 msg_responses: vec![MsgResponse {
                     type_url: MsgTransferResponse::TYPE_URL.to_string(),
@@ -200,7 +200,7 @@ fn fail_ibc_queue() {
         Reply {
             id: ibc_sub_msg_id,
             result: SubMsgResult::Ok(SubMsgResponse {
-                data: None,         // No data returned
+                data: Some(Binary::from(MsgTransferResponse { sequence })),
                 events: Vec::new(), // No events
                 msg_responses: vec![MsgResponse {
                     type_url: MsgTransferResponse::TYPE_URL.to_string(),
@@ -286,7 +286,7 @@ fn timeout_ibc_queue() {
         Reply {
             id: ibc_sub_msg_id,
             result: SubMsgResult::Ok(SubMsgResponse {
-                data: None,         // No data returned
+                data: Some(Binary::from(MsgTransferResponse { sequence })),
                 events: Vec::new(), // No events
                 msg_responses: vec![MsgResponse {
                     type_url: MsgTransferResponse::TYPE_URL.to_string(),
@@ -514,8 +514,8 @@ fn recover_recursive() {
         Reply {
             id: 2,
             result: SubMsgResult::Ok(SubMsgResponse {
-                data: None,         // No data returned
-                events: Vec::new(), // No events
+                data: Some(Binary::from(MsgTransferResponse { sequence: 2 })), // No data returned
+                events: Vec::new(),                                            // No events
                 msg_responses: vec![MsgResponse {
                     type_url: MsgTransferResponse::TYPE_URL.to_string(),
                     value: cosmwasm_std::Binary::from(MsgTransferResponse { sequence: 2 }),

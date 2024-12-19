@@ -105,9 +105,9 @@ mod staking_tests {
                 payload: Binary::new(vec![]),
                 id: ibc_sub_msg_id,
                 result: SubMsgResult::Ok(SubMsgResponse {
-                    data: None,
-                    events: Vec::new(),        // No events
-                    msg_responses: Vec::new(), // No messages
+                    data: Some(Binary::new(Vec::new())), // No data returned
+                    events: Vec::new(),                  // No events
+                    msg_responses: Vec::new(),           // No messages
                 }),
             },
         );
