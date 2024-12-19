@@ -113,7 +113,7 @@ fn get_batch() {
 
     // unStake 1
     let info = message_info(
-        &Addr::unchecked("bob"),
+        &deps.api.addr_make("bob"),
         &coins(500, "factory/cosmos2contract/stTIA"),
     );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
@@ -122,7 +122,7 @@ fn get_batch() {
 
     // unStake 2
     let info = message_info(
-        &Addr::unchecked("alice"),
+        &deps.api.addr_make("alice"),
         &coins(1500, "factory/cosmos2contract/stTIA"),
     );
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg);
@@ -177,7 +177,7 @@ fn get_batches() {
 
     // unStake 1
     let info = message_info(
-        &Addr::unchecked("bob"),
+        &deps.api.addr_make("bob"),
         &coins(500, "factory/cosmos2contract/stTIA"),
     );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
@@ -195,7 +195,7 @@ fn get_batches() {
 
     // unStake 2 - for the next batch
     let info = message_info(
-        &Addr::unchecked("alice"),
+        &deps.api.addr_make("alice"),
         &coins(1500, "factory/cosmos2contract/stTIA"),
     );
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg);
@@ -270,7 +270,7 @@ fn get_pending_batch() {
     STATE.save(&mut deps.storage, &state).unwrap();
 
     let info = message_info(
-        &Addr::unchecked("bob"),
+        &deps.api.addr_make("bob"),
         &coins(1000, "factory/cosmos2contract/stTIA"),
     );
     let msg = ExecuteMsg::LiquidUnstake {};

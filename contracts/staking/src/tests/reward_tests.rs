@@ -36,7 +36,7 @@ fn receive_rewards() {
     .unwrap();
 
     let info = message_info(
-        &Addr::unchecked(sender.clone()),
+        &Addr::unchecked(&sender),
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
             denom: "uosmo".to_string(),
@@ -62,7 +62,7 @@ fn receive_rewards() {
     CONFIG.save(&mut deps.storage, &config).unwrap();
 
     let info = message_info(
-        &Addr::unchecked(sender),
+        &Addr::unchecked(&sender),
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),
@@ -128,7 +128,7 @@ fn receive_rewards_and_send_fees_to_treasury() {
     .unwrap();
 
     let info = message_info(
-        &Addr::unchecked(sender),
+        &Addr::unchecked(&sender),
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),

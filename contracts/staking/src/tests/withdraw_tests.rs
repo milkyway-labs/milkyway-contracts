@@ -20,9 +20,10 @@ fn withdraw() {
 
     let mut pending_batch: Batch =
         Batch::new(1, Uint128::new(130_000), env.block.time.seconds() + 10_000);
+    let bob_addr = deps.api.addr_make("bob");
     new_unstake_request(
         &mut deps.as_mut(),
-        "bob".to_string(),
+        bob_addr.to_string(),
         1,
         Uint128::from(40_000u128),
     )
@@ -39,7 +40,7 @@ fn withdraw() {
 
     // batch not ready
     let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-    let info = message_info(&Addr::unchecked("bob"), &[]);
+    let info = message_info(&deps.api.addr_make("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
@@ -51,12 +52,12 @@ fn withdraw() {
 
     // no request in batch
     let msg = ExecuteMsg::Withdraw { batch_id: 2 };
-    let info = message_info(&Addr::unchecked("bob"), &[]);
+    let info = message_info(&deps.api.addr_make("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
     let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-    let info = message_info(&Addr::unchecked("alice"), &[]);
+    let info = message_info(&deps.api.addr_make("alice"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
@@ -64,14 +65,14 @@ fn withdraw() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = message_info(&Addr::unchecked("bob"), &[]);
+    let info = message_info(&deps.api.addr_make("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
     assert_eq!(messages.len(), 2); // withdraw and redemption/purchase rate update
 
     let msg = QueryMsg::UnstakeRequests {
-        user: Addr::unchecked("bob"),
+        user: deps.api.addr_make("bob"),
     };
     let res = query(deps.as_ref(), env.clone(), msg);
     assert!(res.is_ok());
@@ -94,7 +95,7 @@ fn withdraw() {
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                to_address: "bob".to_string(),
+                to_address: deps.api.addr_make("bob").to_string(),
                 amount: coins,
             }),
             gas_limit: None,
@@ -106,14 +107,14 @@ fn withdraw() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = message_info(&Addr::unchecked("tom"), &[]);
+    let info = message_info(&deps.api.addr_make("tom"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
     assert_eq!(messages.len(), 2); // withdraw and redemption/purchase rate update
 
     let msg = QueryMsg::UnstakeRequests {
-        user: Addr::unchecked("tom"),
+        user: deps.api.addr_make("tom"),
     };
     let res = query(deps.as_ref(), env.clone(), msg);
     assert!(res.is_ok());
@@ -136,7 +137,7 @@ fn withdraw() {
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                to_address: "tom".to_string(),
+                to_address: deps.api.addr_make("tom").to_string(),
                 amount: coins,
             }),
             gas_limit: None,
@@ -157,9 +158,10 @@ fn withdraw_slashing() {
 
     let mut pending_batch: Batch =
         Batch::new(1, Uint128::new(130_000), env.block.time.seconds() + 10_000);
+    let bob_addr = deps.api.addr_make("bob");
     new_unstake_request(
         &mut deps.as_mut(),
-        "bob".to_string(),
+        bob_addr.to_string(),
         1,
         Uint128::from(40_000u128),
     )
@@ -184,14 +186,14 @@ fn withdraw_slashing() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = message_info(&Addr::unchecked("bob"), &[]);
+    let info = message_info(&deps.api.addr_make("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
     assert_eq!(messages.len(), 2); // withdraw and redemption rate update
 
     let msg = QueryMsg::UnstakeRequests {
-        user: Addr::unchecked("bob"),
+        user: deps.api.addr_make("bob"),
     };
     let res = query(deps.as_ref(), env.clone(), msg);
     assert!(res.is_ok());
@@ -214,7 +216,7 @@ fn withdraw_slashing() {
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                to_address: "bob".to_string(),
+                to_address: deps.api.addr_make("bob").to_string(),
                 amount: coins,
             }),
             gas_limit: None,
@@ -226,14 +228,14 @@ fn withdraw_slashing() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = message_info(&Addr::unchecked("tom"), &[]);
+    let info = message_info(&deps.api.addr_make("tom"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
     assert_eq!(messages.len(), 2); // withdraw and redemption/purchase rate update
 
     let msg = QueryMsg::UnstakeRequests {
-        user: Addr::unchecked("tom"),
+        user: deps.api.addr_make("tom"),
     };
     let res = query(deps.as_ref(), env.clone(), msg);
     assert!(res.is_ok());
@@ -256,7 +258,7 @@ fn withdraw_slashing() {
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
-                to_address: "tom".to_string(),
+                to_address: deps.api.addr_make("tom").to_string(),
                 amount: coins,
             }),
             gas_limit: None,
@@ -276,7 +278,7 @@ fn fee_withdraw() {
     let msg = ExecuteMsg::FeeWithdraw {
         amount: Uint128::from(2000u128),
     };
-    let info = message_info(&Addr::unchecked("bob"), &[]);
+    let info = message_info(&deps.api.addr_make("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err()); // because not admin
 

@@ -61,7 +61,7 @@ fn invalid_remove_validator() {
 #[test]
 fn non_admin_remove_validator() {
     let mut deps = init();
-    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
+    let info = message_info(&deps.api.addr_make("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RemoveValidator {
         validator: CELESTIAVAL1.to_string(),
     };
@@ -72,7 +72,7 @@ fn non_admin_remove_validator() {
 #[test]
 fn non_admin_add_validator() {
     let mut deps = init();
-    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
+    let info = message_info(&deps.api.addr_make("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AddValidator {
         new_validator: CELESTIAVAL3.to_string(),
     };

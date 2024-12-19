@@ -69,13 +69,15 @@ mod staking_tests {
                         reply_on: ReplyOn::Always,
                     }
                 );
+                println!("{:?}", result.messages.len());
+                println!("{:?}", result.messages[0].msg);
                 assert_eq!(
                     result.messages[0],
                     SubMsg {
                         payload: Binary::new(vec![]),
                         id: 0,
                         msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
-                            sender: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                            sender: MOCK_CONTRACT_ADDR.to_string(),
                             amount: Some(Coin {
                                 denom: "factory/cosmos2contract/stTIA".to_string(),
                                 amount: "1000".to_string(),
@@ -214,7 +216,7 @@ mod staking_tests {
             derive_intermediate_sender(CHANNEL_ID, CELESTIA1, "osmo").unwrap();
 
         let info = message_info(
-            &Addr::unchecked(intermediate_sender),
+            &Addr::unchecked(&intermediate_sender),
             &coins(1000, NATIVE_TOKEN),
         );
         let msg: ExecuteMsg = ExecuteMsg::LiquidStake {
@@ -246,10 +248,11 @@ mod staking_tests {
             "osmo",
         )
         .unwrap();
+        let sender_addr = Addr::unchecked(&sender);
         let resp = execute(
             deps.as_mut(),
             env.clone(),
-            message_info(&Addr::unchecked(sender), &coins(1_000, NATIVE_TOKEN)),
+            message_info(&sender_addr, &coins(1_000, NATIVE_TOKEN)),
             ExecuteMsg::ReceiveRewards {},
         );
 

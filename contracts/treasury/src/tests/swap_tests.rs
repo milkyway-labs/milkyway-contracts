@@ -56,10 +56,11 @@ fn swap_amount_in_with_empty_routes_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -80,10 +81,11 @@ fn swap_amount_in_from_unauthorized_pool_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -108,10 +110,11 @@ fn swap_amount_in_from_unauthorized_pool_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -131,10 +134,11 @@ fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -150,10 +154,11 @@ fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
         token_in: Coin::new(1000u128, USDC_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -181,10 +186,11 @@ fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -204,10 +210,11 @@ fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -230,10 +237,11 @@ fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -255,10 +263,11 @@ fn swap_amount_in() {
         token_out_min_amount: 100,
     };
     let env = mock_env();
+    let trader_addr = Addr::unchecked(TRADER);
     let response = execute(
         deps.as_mut(),
         env.clone(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap();
@@ -304,10 +313,11 @@ fn swap_amount_in() {
         token_out_min_amount: 100,
     };
     let env = mock_env();
+    let trader_addr = Addr::unchecked(TRADER);
     let response = execute(
         deps.as_mut(),
         env.clone(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap();
@@ -382,10 +392,11 @@ fn swap_amount_out_with_empty_routes_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -405,10 +416,11 @@ fn swap_amount_out_from_unauthorized_pool_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -431,10 +443,11 @@ fn swap_amount_out_from_unauthorized_pool_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -454,10 +467,11 @@ fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -480,10 +494,11 @@ fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -503,10 +518,11 @@ fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -523,10 +539,11 @@ fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
         token_out: Coin::new(1000u128, TIA_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -553,10 +570,11 @@ fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
+    let trader_addr = Addr::unchecked(TRADER);
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -577,10 +595,11 @@ fn swap_amount_out() {
         token_in_max_amount: 100,
     };
     let env = mock_env();
+    let trader_addr = Addr::unchecked(TRADER);
     let response = execute(
         deps.as_mut(),
         env.clone(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap();
@@ -627,10 +646,11 @@ fn swap_amount_out() {
         token_in_max_amount: 100,
     };
     let env = mock_env();
+    let trader_addr = Addr::unchecked(TRADER);
     let response = execute(
         deps.as_mut(),
         env.clone(),
-        message_info(&Addr::unchecked(TRADER), &[]),
+        message_info(&trader_addr, &[]),
         msg,
     )
     .unwrap();

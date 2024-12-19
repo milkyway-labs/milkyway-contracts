@@ -1,4 +1,4 @@
-use bech32::{Bech32, Hrp};
+use bech32::{Bech32m, Hrp};
 use cosmwasm_std::{Addr, Decimal, Deps, Order, StdError, StdResult, Uint128};
 use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
@@ -8,10 +8,15 @@ use crate::state::STATE;
 
 pub fn validate_address(address: &str, prefix: &str) -> StdResult<Addr> {
     if let Ok((decoded_prefix, _)) = bech32::decode(address) {
-        if decoded_prefix == bech32::Hrp::parse_unchecked(prefix) {
-            Ok(Addr::unchecked(address))
-        } else {
-            Err(StdError::generic_err("Invalid address prefix"))
+        match bech32::Hrp::parse(prefix) {
+            Ok(pr3fix) => {
+                if decoded_prefix == pr3fix {
+                    return Ok(Addr::unchecked(address));
+                } else {
+                    return Err(StdError::generic_err("Invalid address prefix"));
+                }
+            }
+            Err(_) => return Err(StdError::generic_err("Invalid address prefix")),
         }
     } else {
         Err(StdError::generic_err("Invalid address"))
@@ -98,7 +103,7 @@ pub fn derive_intermediate_sender(
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
     let sender = sender_hash_32;
     let hrp: Hrp = Hrp::parse_unchecked(bech32_prefix);
-    bech32::encode::<Bech32>(hrp, &sender)
+    bech32::encode::<Bech32m>(hrp, &sender)
 }
 
 /// Generic function for paginating a list of (K, V) pairs in a

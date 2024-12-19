@@ -23,7 +23,7 @@ fn proper_transfer_ownership() {
 #[test]
 fn non_admin_transfer_ownership() {
     let mut deps = init();
-    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
+    let info = message_info(&deps.api.addr_make("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: "new_owner".to_string(),
     };
@@ -45,7 +45,7 @@ fn proper_claim_ownership() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
 
-    let info = message_info(&Addr::unchecked("new_owner"), &coins(1000, "uosmo"));
+    let info = message_info(&deps.api.addr_make("new_owner"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AcceptOwnership {};
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -72,7 +72,7 @@ fn unauthorized_claim_ownership() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert!(res.is_ok());
 
-    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
+    let info = message_info(&deps.api.addr_make("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AcceptOwnership {};
 
     let res2 = execute(deps.as_mut(), mock_env(), info, msg);
@@ -103,7 +103,7 @@ fn proper_revoke_ownership_transfer() {
 #[test]
 fn non_admin_revoke_ownership_transfer() {
     let mut deps = init();
-    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
+    let info = message_info(&deps.api.addr_make("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 
     let res2 = execute(deps.as_mut(), mock_env(), info, msg);

@@ -39,10 +39,11 @@ fn update_config() {
         allowed_swap_routes: Some(vec![]),
         trader: Some(new_trader.to_string()),
     };
+    let admin_addr = Addr::unchecked(ADMIN);
     execute(
         deps.as_mut(),
         mock_env(),
-        message_info(&Addr::unchecked(ADMIN), &[]),
+        message_info(&admin_addr, &[]),
         update_config,
     )
     .unwrap();

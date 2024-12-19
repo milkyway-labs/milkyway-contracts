@@ -28,7 +28,7 @@ mod tests {
     fn config_validation() {
         let mut deps = init();
 
-        fn get_msg() -> InstantiateMsg {
+        fn get_msg(addr1: Addr, addr2: Addr) -> InstantiateMsg {
             InstantiateMsg {
                 native_token_denom: NATIVE_TOKEN.to_string(),
                 liquid_stake_token_denom: "stTIA".to_string(),
@@ -41,8 +41,8 @@ mod tests {
                     dao_treasury_fee: Uint128::from(10u128),
                 },
                 multisig_address_config: MultisigAddressConfig {
-                    staker_address: Addr::unchecked(CELESTIA1),
-                    reward_collector_address: Addr::unchecked(CELESTIA2),
+                    staker_address: addr1,
+                    reward_collector_address: addr2,
                 },
                 minimum_liquid_stake_amount: Uint128::from(100u128),
                 ibc_channel_id: CHANNEL_ID.to_string(),
@@ -53,7 +53,7 @@ mod tests {
 
         let info = cosmwasm_std::testing::message_info(&Addr::unchecked(OSMO3), &[]);
 
-        let mut msg = get_msg();
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
         msg.native_token_denom = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -63,7 +63,7 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
         msg.ibc_channel_id = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -73,7 +73,7 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
         msg.treasury_address = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -83,7 +83,7 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
         msg.monitors[1] = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -93,7 +93,7 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
         msg.monitors[1] = CELESTIA1.to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -103,7 +103,7 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
         msg.validators[1] = OSMO1.to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
@@ -113,8 +113,8 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
-        msg.multisig_address_config.staker_address = Addr::unchecked(OSMO1.to_string());
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
+        msg.multisig_address_config.staker_address = Addr::unchecked(OSMO1);
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -123,8 +123,8 @@ mod tests {
         );
         assert!(res.is_err());
 
-        let mut msg = get_msg();
-        msg.multisig_address_config.reward_collector_address = Addr::unchecked(OSMO1.to_string());
+        let mut msg = get_msg(Addr::unchecked(CELESTIA1), Addr::unchecked(CELESTIA2));
+        msg.multisig_address_config.reward_collector_address = Addr::unchecked(OSMO1);
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -279,10 +279,11 @@ mod tests {
             oracle_address: None,
             send_fees_to_treasury: Some(!config.send_fees_to_treasury),
         };
+        let addr = Addr::unchecked(OSMO3);
         crate::contract::execute(
             deps.as_mut(),
             mock_env(),
-            message_info(&Addr::unchecked(OSMO3), &[]),
+            message_info(&addr, &[]),
             config_update_msg,
         )
         .unwrap();

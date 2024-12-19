@@ -55,7 +55,7 @@ fn circuit_breaker() {
     state.total_native_token = Uint128::from(300_000u128);
     STATE.save(&mut deps.storage, &state).unwrap();
     let info = message_info(
-        &Addr::unchecked("bob"),
+        &deps.api.addr_make("bob"),
         &coins(1000, "factory/cosmos2contract/stTIA"),
     );
     let msg = ExecuteMsg::LiquidUnstake {};
@@ -74,7 +74,7 @@ fn circuit_breaker() {
     )
     .unwrap();
     let info = message_info(
-        &Addr::unchecked(sender.clone()),
+        &Addr::unchecked(&sender),
         &[Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),
@@ -86,7 +86,7 @@ fn circuit_breaker() {
     // receive unstaked tokens
     let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
     let info = message_info(
-        &Addr::unchecked(sender),
+        &Addr::unchecked(&sender),
         &[Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),
@@ -107,7 +107,7 @@ fn circuit_breaker() {
     pending_batch.status = milky_way::staking::BatchStatus::Received;
     let _res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
     let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-    let info = message_info(&Addr::unchecked("bob"), &[]);
+    let info = message_info(&deps.api.addr_make("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 

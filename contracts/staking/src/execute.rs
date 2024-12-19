@@ -23,8 +23,6 @@ use osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContract;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
-use prost::Message;
-use serde::Deserialize;
 
 pub fn transfer_stake_msg(
     deps: &Deps,
