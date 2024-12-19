@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    testing::{mock_env, mock_info},
-    Coin, CosmosMsg, ReplyOn, SubMsg,
+    testing::{message_info, mock_env},
+    Addr, Binary, Coin, CosmosMsg, ReplyOn, SubMsg,
 };
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::{
@@ -34,7 +34,7 @@ fn swap_amount_in_from_user_fail() {
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        mock_info(user_addr.as_str(), &[]),
+        message_info(&user_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -56,7 +56,13 @@ fn swap_amount_in_with_empty_routes_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -74,7 +80,13 @@ fn swap_amount_in_from_unauthorized_pool_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 
     // Test multi hop
@@ -96,7 +108,13 @@ fn swap_amount_in_from_unauthorized_pool_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -113,7 +131,13 @@ fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 
     // Test convert USDC back to TIA using the token in denom.
@@ -126,7 +150,13 @@ fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
         token_in: Coin::new(1000u128, USDC_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(
         ContractError::InvalidTokenInDenom {
             denom: USDC_DENOM.to_string()
@@ -151,7 +181,13 @@ fn swap_amount_in_with_unauthorized_token_in_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -168,7 +204,13 @@ fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
 
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 
@@ -188,7 +230,13 @@ fn swap_amount_in_with_unauthorized_token_out_denom_fail() {
         token_in: Coin::new(1000u128, TIA_DENOM),
         token_out_min_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
 
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
@@ -207,7 +255,13 @@ fn swap_amount_in() {
         token_out_min_amount: 100,
     };
     let env = mock_env();
-    let response = execute(deps.as_mut(), env.clone(), mock_info(TRADER, &[]), msg).unwrap();
+    let response = execute(
+        deps.as_mut(),
+        env.clone(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap();
 
     let messages = response.messages;
     assert_eq!(1, messages.len());
@@ -229,6 +283,7 @@ fn swap_amount_in() {
             }),
             gas_limit: None,
             reply_on: ReplyOn::Never,
+            payload: Binary::default(),
         }
     );
 
@@ -249,7 +304,13 @@ fn swap_amount_in() {
         token_out_min_amount: 100,
     };
     let env = mock_env();
-    let response = execute(deps.as_mut(), env.clone(), mock_info(TRADER, &[]), msg).unwrap();
+    let response = execute(
+        deps.as_mut(),
+        env.clone(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap();
 
     let messages = response.messages;
     assert_eq!(1, messages.len());
@@ -277,6 +338,7 @@ fn swap_amount_in() {
             }),
             gas_limit: None,
             reply_on: ReplyOn::Never,
+            payload: Binary::default(),
         }
     );
 }
@@ -298,7 +360,7 @@ fn swap_amount_out_from_user_fail() {
     let error = execute(
         deps.as_mut(),
         mock_env(),
-        mock_info(user_addr.as_str(), &[]),
+        message_info(&user_addr, &[]),
         msg,
     )
     .unwrap_err();
@@ -320,7 +382,13 @@ fn swap_amount_out_with_empty_routes_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -337,7 +405,13 @@ fn swap_amount_out_from_unauthorized_pool_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 
     // Multi hop
@@ -357,7 +431,13 @@ fn swap_amount_out_from_unauthorized_pool_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -374,7 +454,13 @@ fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 
     // Multi hop
@@ -394,7 +480,13 @@ fn swap_amount_out_with_unauthorized_token_in_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -411,7 +503,13 @@ fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
 
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 
@@ -425,7 +523,13 @@ fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
         token_out: Coin::new(1000u128, TIA_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(
         ContractError::InvalidTokenOutDenom {
             denom: TIA_DENOM.to_string()
@@ -449,7 +553,13 @@ fn swap_amount_out_with_unauthorized_token_out_denom_fail() {
         token_out: Coin::new(1000u128, USDC_DENOM),
         token_in_max_amount: 100,
     };
-    let error = execute(deps.as_mut(), mock_env(), mock_info(TRADER, &[]), msg).unwrap_err();
+    let error = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap_err();
     assert_eq!(ContractError::SwapRouteNotAllowed {}, error);
 }
 
@@ -467,7 +577,13 @@ fn swap_amount_out() {
         token_in_max_amount: 100,
     };
     let env = mock_env();
-    let response = execute(deps.as_mut(), env.clone(), mock_info(TRADER, &[]), msg).unwrap();
+    let response = execute(
+        deps.as_mut(),
+        env.clone(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap();
 
     let messages = response.messages;
     assert_eq!(1, messages.len());
@@ -489,6 +605,7 @@ fn swap_amount_out() {
             }),
             gas_limit: None,
             reply_on: ReplyOn::Never,
+            payload: Binary::default(),
         }
     );
 
@@ -510,7 +627,13 @@ fn swap_amount_out() {
         token_in_max_amount: 100,
     };
     let env = mock_env();
-    let response = execute(deps.as_mut(), env.clone(), mock_info(TRADER, &[]), msg).unwrap();
+    let response = execute(
+        deps.as_mut(),
+        env.clone(),
+        message_info(&Addr::unchecked(TRADER), &[]),
+        msg,
+    )
+    .unwrap();
 
     let messages = response.messages;
     assert_eq!(1, messages.len());
@@ -538,6 +661,7 @@ fn swap_amount_out() {
             }),
             gas_limit: None,
             reply_on: ReplyOn::Never,
+            payload: Binary::default(),
         }
     );
 }

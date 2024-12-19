@@ -1,13 +1,13 @@
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
 use crate::tests::test_helper::{init, OSMO3};
-use cosmwasm_std::coins;
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_env};
+use cosmwasm_std::{coins, Addr};
 
 #[test]
 fn proper_transfer_ownership() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: "new_owner".to_string(),
     };
@@ -23,7 +23,7 @@ fn proper_transfer_ownership() {
 #[test]
 fn non_admin_transfer_ownership() {
     let mut deps = init();
-    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: "new_owner".to_string(),
     };
@@ -35,7 +35,7 @@ fn non_admin_transfer_ownership() {
 #[test]
 fn proper_claim_ownership() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: "new_owner".to_string(),
     };
@@ -45,7 +45,7 @@ fn proper_claim_ownership() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
 
-    let info = mock_info("new_owner", &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked("new_owner"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AcceptOwnership {};
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -64,7 +64,7 @@ fn proper_claim_ownership() {
 #[test]
 fn unauthorized_claim_ownership() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: "new_owner".to_string(),
     };
@@ -72,7 +72,7 @@ fn unauthorized_claim_ownership() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert!(res.is_ok());
 
-    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AcceptOwnership {};
 
     let res2 = execute(deps.as_mut(), mock_env(), info, msg);
@@ -83,7 +83,7 @@ fn unauthorized_claim_ownership() {
 #[test]
 fn proper_revoke_ownership_transfer() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: "new_owner".to_string(),
     };
@@ -91,7 +91,7 @@ fn proper_revoke_ownership_transfer() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert!(res.is_ok());
 
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 
     let res2 = execute(deps.as_mut(), mock_env(), info, msg);
@@ -103,7 +103,7 @@ fn proper_revoke_ownership_transfer() {
 #[test]
 fn non_admin_revoke_ownership_transfer() {
     let mut deps = init();
-    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RevokeOwnershipTransfer {};
 
     let res2 = execute(deps.as_mut(), mock_env(), info, msg);

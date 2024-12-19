@@ -63,7 +63,7 @@ pub struct UnstakeRequest {
 }
 
 pub struct UnstakeRequestIndexes<'a> {
-    pub by_user: UniqueIndex<'a, (String, u64), UnstakeRequest>,
+    pub by_user: UniqueIndex<'a, (String, u64), UnstakeRequest, ()>,
 }
 
 impl<'a> IndexList<UnstakeRequest> for UnstakeRequestIndexes<'a> {
@@ -73,8 +73,8 @@ impl<'a> IndexList<UnstakeRequest> for UnstakeRequestIndexes<'a> {
     }
 }
 
-pub fn unstake_requests<'a>(
-) -> IndexedMap<'a, (u64, String), UnstakeRequest, UnstakeRequestIndexes<'a>> {
+pub fn unstake_requests<'a>() -> IndexedMap<(u64, String), UnstakeRequest, UnstakeRequestIndexes<'a>>
+{
     let indexes = UnstakeRequestIndexes {
         by_user: UniqueIndex::new(|r| (r.user.clone(), r.batch_id), "unstake_requests_by_user"),
     };

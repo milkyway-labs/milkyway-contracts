@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, Timestamp, Uint128};
+use cosmwasm_std::{Addr, StdError, Timestamp, Uint128};
 use cw2::VersionError;
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;

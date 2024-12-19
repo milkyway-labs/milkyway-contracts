@@ -3,10 +3,10 @@ use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
 use crate::query::query_ibc_queue;
 use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
 use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3};
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_env};
 use cosmwasm_std::{
-    attr, coins, Addr, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse, SubMsgResult,
-    Timestamp,
+    attr, coins, Addr, Binary, CosmosMsg, IbcTimeout, MsgResponse, Reply, ReplyOn, SubMsg,
+    SubMsgResponse, SubMsgResult, Timestamp,
 };
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
@@ -17,7 +17,7 @@ use std::vec::Vec;
 fn success_ibc_queue() {
     let mut deps = init();
     let env = mock_env();
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
         expected_mint_amount: None,
@@ -48,6 +48,7 @@ fn success_ibc_queue() {
             assert_eq!(
                 result.messages[2],
                 SubMsg {
+                    payload: Binary::new(vec![]),
                     id: ibc_sub_msg_id,
                     msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
                         source_channel: CHANNEL_ID.to_string(),
@@ -90,10 +91,16 @@ fn success_ibc_queue() {
         deps.as_mut(),
         mock_env(),
         Reply {
+            gas_used: 0,
+            payload: Binary::new(vec![]),
             id: ibc_sub_msg_id,
             result: SubMsgResult::Ok(SubMsgResponse {
                 data: Some(cosmwasm_std::Binary::from(MsgTransferResponse { sequence })), // No data returned
                 events: Vec::new(), // No events
+                msg_responses: vec![MsgResponse {
+                    type_url: MsgTransferResponse::TYPE_URL.to_string(),
+                    value: Binary::from(MsgTransferResponse { sequence }),
+                }],
             }),
         },
     );
@@ -161,7 +168,7 @@ fn success_ibc_queue() {
 fn fail_ibc_queue() {
     let mut deps = init();
     let env = mock_env();
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
         expected_mint_amount: None,
@@ -195,7 +202,13 @@ fn fail_ibc_queue() {
             result: SubMsgResult::Ok(SubMsgResponse {
                 data: Some(cosmwasm_std::Binary::from(MsgTransferResponse { sequence })), // No data returned
                 events: Vec::new(), // No events
+                msg_responses: vec![MsgResponse {
+                    type_url: MsgTransferResponse::TYPE_URL.to_string(),
+                    value: cosmwasm_std::Binary::from(MsgTransferResponse { sequence }),
+                }],
             }),
+            gas_used: 0,                              // Add missing gas_used field
+            payload: cosmwasm_std::Binary::default(), // Add missing payload field
         },
     );
 
@@ -241,7 +254,7 @@ fn fail_ibc_queue() {
 fn timeout_ibc_queue() {
     let mut deps = init();
     let env = mock_env();
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
         expected_mint_amount: None,
@@ -275,7 +288,13 @@ fn timeout_ibc_queue() {
             result: SubMsgResult::Ok(SubMsgResponse {
                 data: Some(cosmwasm_std::Binary::from(MsgTransferResponse { sequence })), // No data returned
                 events: Vec::new(), // No events
+                msg_responses: vec![MsgResponse {
+                    type_url: MsgTransferResponse::TYPE_URL.to_string(),
+                    value: cosmwasm_std::Binary::from(MsgTransferResponse { sequence }),
+                }],
             }),
+            gas_used: 0,
+            payload: cosmwasm_std::Binary::default(),
         },
     );
 
@@ -318,7 +337,7 @@ fn timeout_ibc_queue() {
 #[test]
 fn recover_non_paginated() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
 
     for i in 1..=15 {
         let res = INFLIGHT_PACKETS.save(
@@ -347,7 +366,7 @@ fn recover_non_paginated() {
 #[test]
 fn recover_paginated() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
 
     for i in 1..=15 {
         let res = INFLIGHT_PACKETS.save(
@@ -395,11 +414,11 @@ fn recover_forced() {
         paginated: Some(true),
         selected_packets: Some(vec![1, 2, 3]),
     };
-    let info = mock_info(OSMO1, &[]);
+    let info = message_info(&Addr::unchecked(OSMO1), &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
     assert!(res.is_err()); // not an admin
 
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
     assert!(res.is_ok());
     let res = res.unwrap();
@@ -410,7 +429,7 @@ fn recover_forced() {
 fn recover_multiple() {
     let mut deps = init();
     let env = mock_env();
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
 
     let res = INFLIGHT_PACKETS.save(
         &mut deps.storage,
@@ -467,7 +486,7 @@ fn recover_multiple() {
 #[test]
 fn recover_recursive() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
 
     let res = INFLIGHT_PACKETS.save(
         &mut deps.storage,
@@ -499,7 +518,13 @@ fn recover_recursive() {
                     sequence: 2,
                 })), // No data returned
                 events: Vec::new(), // No events
+                msg_responses: vec![MsgResponse {
+                    type_url: MsgTransferResponse::TYPE_URL.to_string(),
+                    value: cosmwasm_std::Binary::from(MsgTransferResponse { sequence: 2 }),
+                }],
             }),
+            gas_used: 0,
+            payload: cosmwasm_std::Binary::default(),
         },
     );
 

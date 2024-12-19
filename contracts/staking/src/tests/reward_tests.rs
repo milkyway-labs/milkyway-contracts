@@ -4,7 +4,7 @@ use crate::msg::ExecuteMsg;
 use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
 
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_env};
 use cosmwasm_std::{Addr, CosmosMsg, ReplyOn, Uint128};
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 
@@ -23,7 +23,7 @@ fn receive_rewards() {
 
     let msg = ExecuteMsg::ReceiveRewards {};
 
-    let contract = env.contract.address.clone().to_string();
+    let contract = env.contract.address.clone();
 
     let sender = derive_intermediate_sender(
         &config.ibc_channel_id,
@@ -35,8 +35,8 @@ fn receive_rewards() {
     )
     .unwrap();
 
-    let info = mock_info(
-        &sender,
+    let info = message_info(
+        &Addr::unchecked(sender.clone()),
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
             denom: "uosmo".to_string(),
@@ -46,7 +46,7 @@ fn receive_rewards() {
 
     assert!(res.is_err()); // wrong denom
 
-    let info = mock_info(
+    let info = message_info(
         &contract,
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
@@ -61,8 +61,8 @@ fn receive_rewards() {
     config.send_fees_to_treasury = false;
     CONFIG.save(&mut deps.storage, &config).unwrap();
 
-    let info = mock_info(
-        &sender,
+    let info = message_info(
+        &Addr::unchecked(sender),
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),
@@ -127,8 +127,8 @@ fn receive_rewards_and_send_fees_to_treasury() {
     )
     .unwrap();
 
-    let info = mock_info(
-        &sender,
+    let info = message_info(
+        &Addr::unchecked(sender),
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),

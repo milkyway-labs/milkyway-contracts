@@ -8,8 +8,8 @@ use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::{
     init, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
 };
-use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{coins, from_json, Decimal, Uint128};
+use cosmwasm_std::testing::{message_info, mock_env};
+use cosmwasm_std::{coins, from_json, Addr, Decimal, Uint128};
 
 #[test]
 fn get_config() {
@@ -60,7 +60,7 @@ fn get_state() {
     }
 
     // stake
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
     let stake_msg = ExecuteMsg::LiquidStake {
         mint_to: None,
         expected_mint_amount: None,
@@ -112,13 +112,19 @@ fn get_batch() {
     assert!(result.is_err()); //not found
 
     // unStake 1
-    let info = mock_info("bob", &coins(500, "factory/cosmos2contract/stTIA"));
+    let info = message_info(
+        &Addr::unchecked("bob"),
+        &coins(500, "factory/cosmos2contract/stTIA"),
+    );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg.clone());
     assert!(res.is_ok());
 
     // unStake 2
-    let info = mock_info("alice", &coins(1500, "factory/cosmos2contract/stTIA"));
+    let info = message_info(
+        &Addr::unchecked("alice"),
+        &coins(1500, "factory/cosmos2contract/stTIA"),
+    );
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg);
     assert!(res.is_ok());
 
@@ -170,7 +176,10 @@ fn get_batches() {
     }
 
     // unStake 1
-    let info = mock_info("bob", &coins(500, "factory/cosmos2contract/stTIA"));
+    let info = message_info(
+        &Addr::unchecked("bob"),
+        &coins(500, "factory/cosmos2contract/stTIA"),
+    );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg.clone());
     assert!(res.is_ok());
@@ -179,13 +188,16 @@ fn get_batches() {
     let config = CONFIG.load(&deps.storage).unwrap();
     env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
     let submit_batch_msg = ExecuteMsg::SubmitBatch {};
-    let contract = env.contract.address.clone().to_string();
-    let submit_info = mock_info(&contract, &[]);
+    let contract = env.contract.address.clone();
+    let submit_info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env.clone(), submit_info, submit_batch_msg);
     assert!(res.is_ok());
 
     // unStake 2 - for the next batch
-    let info = mock_info("alice", &coins(1500, "factory/cosmos2contract/stTIA"));
+    let info = message_info(
+        &Addr::unchecked("alice"),
+        &coins(1500, "factory/cosmos2contract/stTIA"),
+    );
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg);
     assert!(res.is_ok());
 
@@ -257,14 +269,17 @@ fn get_pending_batch() {
     state.total_native_token = Uint128::from(300_000u128);
     STATE.save(&mut deps.storage, &state).unwrap();
 
-    let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+    let info = message_info(
+        &Addr::unchecked("bob"),
+        &coins(1000, "factory/cosmos2contract/stTIA"),
+    );
     let msg = ExecuteMsg::LiquidUnstake {};
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
     env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
     let submit_batch_msg = ExecuteMsg::SubmitBatch {};
-    let contract = env.contract.address.clone().to_string();
-    let submit_info = mock_info(&contract, &[]);
+    let contract = env.contract.address.clone();
+    let submit_info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env.clone(), submit_info, submit_batch_msg);
     if res.is_err() {
         // print error

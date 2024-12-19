@@ -1,4 +1,7 @@
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{
+    testing::{message_info, mock_env},
+    Addr,
+};
 
 use crate::{
     contract::execute, error::ContractError, msg::ExecuteMsg, state::CONFIG,
@@ -19,7 +22,7 @@ fn update_config_not_admin_fail() {
     let err = execute(
         deps.as_mut(),
         mock_env(),
-        mock_info(new_trader.as_str(), &[]),
+        message_info(&new_trader, &[]),
         update_config,
     )
     .unwrap_err();
@@ -39,7 +42,7 @@ fn update_config() {
     execute(
         deps.as_mut(),
         mock_env(),
-        mock_info(ADMIN, &[]),
+        message_info(&Addr::unchecked(ADMIN), &[]),
         update_config,
     )
     .unwrap();

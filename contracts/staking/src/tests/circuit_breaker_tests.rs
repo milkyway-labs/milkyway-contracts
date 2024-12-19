@@ -3,8 +3,8 @@ use crate::helpers::derive_intermediate_sender;
 use crate::msg::ExecuteMsg;
 use crate::state::{new_unstake_request, State, BATCHES, CONFIG, STATE};
 use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO2, OSMO3};
-use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{coins, Coin, Uint128};
+use cosmwasm_std::testing::{message_info, mock_env};
+use cosmwasm_std::{coins, Addr, Coin, Uint128};
 use milky_way::staking::Batch;
 
 #[test]
@@ -21,28 +21,28 @@ fn circuit_breaker() {
 
     let msg = ExecuteMsg::CircuitBreaker {};
 
-    let contract = env.contract.address.clone().to_string();
+    let contract = env.contract.address.clone();
 
     // not correct sender
-    let info = mock_info(&contract, &[]);
+    let info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_err());
 
     // correct sender (admin)
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_ok());
 
     // correct sender (operator)
-    let info = mock_info(OSMO2, &[]);
+    let info = message_info(&Addr::unchecked(OSMO2), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_ok());
 
     // liquid stake
-    let info = mock_info(OSMO3, &coins(1000, "osmoTIA"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "osmoTIA"));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
         expected_mint_amount: None,
@@ -54,7 +54,10 @@ fn circuit_breaker() {
     state.total_liquid_stake_token = Uint128::from(100_000u128);
     state.total_native_token = Uint128::from(300_000u128);
     STATE.save(&mut deps.storage, &state).unwrap();
-    let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+    let info = message_info(
+        &Addr::unchecked("bob"),
+        &coins(1000, "factory/cosmos2contract/stTIA"),
+    );
     let msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_err());
@@ -65,12 +68,13 @@ fn circuit_breaker() {
         &config.ibc_channel_id,
         config
             .multisig_address_config
-            .reward_collector_address.as_ref(),
+            .reward_collector_address
+            .as_ref(),
         "osmo",
     )
     .unwrap();
-    let info = mock_info(
-        &sender,
+    let info = message_info(
+        &Addr::unchecked(sender.clone()),
         &[Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),
@@ -81,8 +85,8 @@ fn circuit_breaker() {
 
     // receive unstaked tokens
     let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
-    let info = mock_info(
-        &sender,
+    let info = message_info(
+        &Addr::unchecked(sender),
         &[Coin {
             amount: Uint128::from(100u128),
             denom: config.native_token_denom.clone(),
@@ -103,14 +107,14 @@ fn circuit_breaker() {
     pending_batch.status = milky_way::staking::BatchStatus::Received;
     let _res = BATCHES.save(&mut deps.storage, 1, &pending_batch);
     let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-    let info = mock_info("bob", &[]);
+    let info = message_info(&Addr::unchecked("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
     // submit batch
     env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
     let msg = ExecuteMsg::SubmitBatch {};
-    let info = mock_info(&contract, &[]);
+    let info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
@@ -122,13 +126,13 @@ fn circuit_breaker() {
     };
 
     // not correct sender
-    let info = mock_info(&contract, &[]);
+    let info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_err());
 
     // correct sender
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_ok());
@@ -140,7 +144,7 @@ fn circuit_breaker() {
     assert_eq!(state.total_reward_amount, Uint128::from(10000u128));
 
     // test enabled
-    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         expected_mint_amount: None,
         mint_to: None,

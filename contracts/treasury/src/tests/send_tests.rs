@@ -1,13 +1,13 @@
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
 use crate::tests::test_helper::{init, ADMIN};
-use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::testing::{message_info, mock_env};
+use cosmwasm_std::{Addr, Coin, Uint128};
 
 #[test]
 fn proper_send() {
     let mut deps = init();
-    let info = mock_info(ADMIN, &[]);
+    let info = message_info(&Addr::unchecked(ADMIN), &[]);
 
     let msg = ExecuteMsg::SpendFunds {
         amount: Coin {
@@ -46,7 +46,7 @@ fn proper_send() {
 #[test]
 fn proper_send_ibc() {
     let mut deps = init();
-    let info = mock_info(ADMIN, &[]);
+    let info = message_info(&Addr::unchecked(ADMIN), &[]);
 
     let msg = ExecuteMsg::SpendFunds {
         amount: Coin {

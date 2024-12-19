@@ -3,7 +3,7 @@ use crate::msg::InstantiateMsg;
 use crate::state::{Config, MultisigAddressConfig, ProtocolFeeConfig, CONFIG};
 
 use cosmwasm_std::testing::{
-    mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+    message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_std::{coins, Addr, OwnedDeps, Uint128};
 
@@ -42,7 +42,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         oracle_address: Some(OSMO4.to_string()),
         send_fees_to_treasury: true,
     };
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
 
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
     if res.is_err() {

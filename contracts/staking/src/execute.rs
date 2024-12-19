@@ -12,8 +12,8 @@ use crate::state::{
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
 use cosmwasm_std::{
-    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
-    SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
+    ensure, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn,
+    Response, SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus};
@@ -24,6 +24,7 @@ use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
+use serde::Deserialize;
 
 pub fn transfer_stake_msg(
     deps: &Deps,
@@ -85,6 +86,7 @@ fn transfer_stake_sub_msg(
         msg: ibc_msg.into(),
         gas_limit: None,
         reply_on: ReplyOn::Always,
+        payload: Binary::new(vec![]),
     })
 }
 
@@ -790,7 +792,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
             sender: info.sender.to_string(),
         });
     }
-    if info.sender != expected_sender.unwrap() {
+    if info.sender.to_string() != expected_sender.unwrap() {
         return Err(ContractError::Unauthorized {
             sender: info.sender.to_string(),
         });
@@ -872,7 +874,7 @@ pub fn receive_unstaked_tokens(
             sender: info.sender.to_string(),
         });
     }
-    if info.sender != expected_sender.unwrap() {
+    if info.sender.to_string() != expected_sender.unwrap() {
         return Err(ContractError::Unauthorized {
             sender: info.sender.to_string(),
         });
@@ -923,8 +925,6 @@ pub fn receive_unstaked_tokens(
 }
 
 pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractResult<Response> {
-    let sender = info.sender.to_string();
-
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err()
@@ -933,9 +933,11 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
             .as_deref()
             .unwrap_or_default()
             .iter()
-            .any(|v| *v == sender)
+            .any(|v| *v == info.sender)
     {
-        return Err(ContractError::Unauthorized { sender });
+        return Err(ContractError::Unauthorized {
+            sender: info.sender.to_string(),
+        });
     }
 
     config.stopped = true;
@@ -988,8 +990,8 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
     // The response contains the packet sequence. This is needed to be able to
     // ensure that, if there is a delivery failure, the packet that failed is
     // the same one that we stored recovery information for
-    let transfer_response =
-        MsgTransferResponse::decode(&b[..]).map_err(|_e| ContractError::FailedIBCTransfer {
+    let transfer_response: MsgTransferResponse =
+        serde_json::from_slice(&b[..]).map_err(|_e| ContractError::FailedIBCTransfer {
             msg: format!("could not decode response: {b}"),
         })?;
 

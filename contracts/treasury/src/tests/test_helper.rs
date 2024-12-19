@@ -3,9 +3,9 @@ use crate::msg::InstantiateMsg;
 use crate::state::SwapRoute;
 
 use cosmwasm_std::testing::{
-    mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+    message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_std::{coins, OwnedDeps};
+use cosmwasm_std::{coins, Addr, OwnedDeps};
 
 pub static ADMIN: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
 pub static TRADER: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
@@ -43,7 +43,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
             ],
         ],
     };
-    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(ADMIN), &coins(1000, "uosmo"));
 
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
     if res.is_err() {

@@ -1,13 +1,13 @@
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
 use crate::tests::test_helper::{init, CELESTIAVAL1, CELESTIAVAL3, OSMO3};
-use cosmwasm_std::coins;
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_env};
+use cosmwasm_std::{coins, Addr};
 
 #[test]
 fn proper_add_validator() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AddValidator {
         new_validator: CELESTIAVAL3.to_string(),
     };
@@ -23,7 +23,7 @@ fn proper_add_validator() {
 #[test]
 fn duplicate_add_validator() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AddValidator {
         new_validator: CELESTIAVAL1.to_string(),
     };
@@ -34,7 +34,7 @@ fn duplicate_add_validator() {
 #[test]
 fn proper_remove_validator() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RemoveValidator {
         validator: CELESTIAVAL1.to_string(),
     };
@@ -50,7 +50,7 @@ fn proper_remove_validator() {
 #[test]
 fn invalid_remove_validator() {
     let mut deps = init();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RemoveValidator {
         validator: CELESTIAVAL3.to_string(),
     };
@@ -61,7 +61,7 @@ fn invalid_remove_validator() {
 #[test]
 fn non_admin_remove_validator() {
     let mut deps = init();
-    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::RemoveValidator {
         validator: CELESTIAVAL1.to_string(),
     };
@@ -72,7 +72,7 @@ fn non_admin_remove_validator() {
 #[test]
 fn non_admin_add_validator() {
     let mut deps = init();
-    let info = mock_info("bob", &coins(1000, "uosmo"));
+    let info = message_info(&Addr::unchecked("bob"), &coins(1000, "uosmo"));
     let msg = ExecuteMsg::AddValidator {
         new_validator: CELESTIAVAL3.to_string(),
     };

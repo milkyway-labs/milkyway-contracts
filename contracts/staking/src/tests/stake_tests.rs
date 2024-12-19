@@ -6,10 +6,10 @@ mod staking_tests {
     use crate::msg::ExecuteMsg;
     use crate::state::{State, BATCHES, CONFIG, STATE};
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
-    use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
+    use cosmwasm_std::testing::{message_info, mock_env, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
-        attr, coins, Addr, CosmosMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg, SubMsgResponse,
-        SubMsgResult, Timestamp, Uint128, Decimal
+        attr, coins, Addr, Binary, CosmosMsg, Decimal, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
+        SubMsgResponse, SubMsgResult, Timestamp, Uint128,
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -21,7 +21,7 @@ mod staking_tests {
     fn proper_liquid_stake() {
         let mut deps = init();
         let env = mock_env();
-        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             mint_to: None,
             expected_mint_amount: None,
@@ -53,6 +53,7 @@ mod staking_tests {
                 assert_eq!(
                     result.messages[2],
                     SubMsg {
+                        payload: Binary::new(vec![]),
                         id: ibc_sub_msg_id,
                         msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
                             source_channel: CHANNEL_ID.to_string(),
@@ -62,10 +63,7 @@ mod staking_tests {
                             token: Some(ibc_coin),
                             timeout_height: None,
                             timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-                            memo: format!(
-                                "{{\"ibc_callback\":\"{}\"}}",
-                                env.contract.address
-                            ),
+                            memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
                         }),
                         gas_limit: None,
                         reply_on: ReplyOn::Always,
@@ -74,6 +72,7 @@ mod staking_tests {
                 assert_eq!(
                     result.messages[0],
                     SubMsg {
+                        payload: Binary::new(vec![]),
                         id: 0,
                         msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
                             sender: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
@@ -99,10 +98,13 @@ mod staking_tests {
             deps.as_mut(),
             mock_env(),
             Reply {
+                gas_used: 0,
+                payload: Binary::new(vec![]),
                 id: ibc_sub_msg_id,
                 result: SubMsgResult::Ok(SubMsgResponse {
-                    data: Some(cosmwasm_std::Binary(Vec::new())), // No data returned
-                    events: Vec::new(),                           // No events
+                    data: None,
+                    events: Vec::new(),        // No events
+                    msg_responses: Vec::new(), // No messages
                 }),
             },
         );
@@ -120,7 +122,7 @@ mod staking_tests {
         assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
         assert_eq!(state.total_native_token, Uint128::from(1000u128));
 
-        let info = mock_info(OSMO3, &coins(10000, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(10000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
 
         assert!(res.is_ok());
@@ -139,7 +141,7 @@ mod staking_tests {
         state.total_native_token = Uint128::from(1_000_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let info = mock_info(OSMO3, &coins(50_000_000, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(50_000_000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
         assert!(res.is_ok());
 
@@ -158,7 +160,7 @@ mod staking_tests {
         state.total_native_token = Uint128::from(1_000_000_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let info = mock_info(OSMO3, &coins(50_000_000, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(50_000_000, NATIVE_TOKEN));
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(res.is_ok());
 
@@ -168,14 +170,20 @@ mod staking_tests {
 
         // test redemption rate, purchase rate
         let (redemption_rate, purchase_rate) = get_rates(&deps.as_ref());
-        assert_eq!(redemption_rate, Decimal::from_ratio(1_050_000_000u128, 1_050_000u128));
-        assert_eq!(purchase_rate, Decimal::from_ratio(1_050_000u128, 1_050_000_000u128));
+        assert_eq!(
+            redemption_rate,
+            Decimal::from_ratio(1_050_000_000u128, 1_050_000u128)
+        );
+        assert_eq!(
+            purchase_rate,
+            Decimal::from_ratio(1_050_000u128, 1_050_000_000u128)
+        );
     }
 
     #[test]
     fn liquid_stake_less_than_minimum() {
         let mut deps = init();
-        let info = mock_info(OSMO3, &coins(10, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(10, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             mint_to: None,
             expected_mint_amount: None,
@@ -205,7 +213,10 @@ mod staking_tests {
         let intermediate_sender =
             derive_intermediate_sender(CHANNEL_ID, CELESTIA1, "osmo").unwrap();
 
-        let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
+        let info = message_info(
+            &Addr::unchecked(intermediate_sender),
+            &coins(1000, NATIVE_TOKEN),
+        );
         let msg: ExecuteMsg = ExecuteMsg::LiquidStake {
             mint_to: Some(OSMO3.to_string()),
             expected_mint_amount: None,
@@ -230,14 +241,15 @@ mod staking_tests {
             &config.ibc_channel_id,
             config
                 .multisig_address_config
-                .reward_collector_address.as_ref(),
+                .reward_collector_address
+                .as_ref(),
             "osmo",
         )
         .unwrap();
         let resp = execute(
             deps.as_mut(),
             env.clone(),
-            mock_info(&sender, &coins(1_000, NATIVE_TOKEN)),
+            message_info(&Addr::unchecked(sender), &coins(1_000, NATIVE_TOKEN)),
             ExecuteMsg::ReceiveRewards {},
         );
 
@@ -251,7 +263,7 @@ mod staking_tests {
         state.total_native_token = Uint128::from(1_000_000u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             mint_to: None,
             expected_mint_amount: Some(Uint128::from(2_000_000u128)),
@@ -281,7 +293,7 @@ mod staking_tests {
         state.total_fees = Uint128::from(100u128);
         STATE.save(&mut deps.storage, &state).unwrap();
 
-        let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+        let info = message_info(&Addr::unchecked(OSMO3), &coins(1000, NATIVE_TOKEN));
         let msg = ExecuteMsg::LiquidStake {
             mint_to: None,
             expected_mint_amount: None,

@@ -6,7 +6,7 @@ mod tests {
         init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
 
-    use cosmwasm_std::testing::{mock_env, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_env};
     use cosmwasm_std::{Addr, Order, Uint128};
     use milky_way::staking::BatchStatus;
 
@@ -51,7 +51,7 @@ mod tests {
             }
         }
 
-        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+        let info = cosmwasm_std::testing::message_info(&Addr::unchecked(OSMO3), &[]);
 
         let mut msg = get_msg();
         msg.native_token_denom = "".to_string();
@@ -138,7 +138,7 @@ mod tests {
     fn update_config() {
         let mut deps = init();
 
-        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+        let info = cosmwasm_std::testing::message_info(&Addr::unchecked(OSMO3), &[]);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -180,7 +180,7 @@ mod tests {
                 .to_string()
                 == *OSMO3
         );
-        assert!(config.treasury_address == OSMO3);
+        assert!(config.treasury_address.to_string() == OSMO3);
 
         let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
             batch_period: Some(86400),
@@ -282,7 +282,7 @@ mod tests {
         crate::contract::execute(
             deps.as_mut(),
             mock_env(),
-            mock_info(OSMO3, &[]),
+            message_info(&Addr::unchecked(OSMO3), &[]),
             config_update_msg,
         )
         .unwrap();

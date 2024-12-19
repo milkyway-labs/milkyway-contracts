@@ -2,8 +2,8 @@ use crate::contract::{execute, query};
 use crate::msg::{ExecuteMsg, QueryMsg};
 use crate::state::{new_unstake_request, UnstakeRequest, BATCHES, CONFIG, STATE};
 use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO1, OSMO3};
-use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{from_json, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
+use cosmwasm_std::testing::{message_info, mock_env, MOCK_CONTRACT_ADDR};
+use cosmwasm_std::{from_json, Addr, Binary, CosmosMsg, ReplyOn, SubMsg, Uint128};
 use milky_way::staking::Batch;
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -39,7 +39,7 @@ fn withdraw() {
 
     // batch not ready
     let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-    let info = mock_info("bob", &[]);
+    let info = message_info(&Addr::unchecked("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
@@ -51,12 +51,12 @@ fn withdraw() {
 
     // no request in batch
     let msg = ExecuteMsg::Withdraw { batch_id: 2 };
-    let info = mock_info("bob", &[]);
+    let info = message_info(&Addr::unchecked("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
     let msg = ExecuteMsg::Withdraw { batch_id: 1 };
-    let info = mock_info("alice", &[]);
+    let info = message_info(&Addr::unchecked("alice"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err());
 
@@ -64,7 +64,7 @@ fn withdraw() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = mock_info("bob", &[]);
+    let info = message_info(&Addr::unchecked("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
@@ -90,6 +90,7 @@ fn withdraw() {
     assert_eq!(
         messages[0],
         SubMsg {
+            payload: Binary::new(vec![]),
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
@@ -105,7 +106,7 @@ fn withdraw() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = mock_info("tom", &[]);
+    let info = message_info(&Addr::unchecked("tom"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
@@ -131,6 +132,7 @@ fn withdraw() {
     assert_eq!(
         messages[0],
         SubMsg {
+            payload: Binary::new(vec![]),
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
@@ -182,7 +184,7 @@ fn withdraw_slashing() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = mock_info("bob", &[]);
+    let info = message_info(&Addr::unchecked("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
@@ -208,6 +210,7 @@ fn withdraw_slashing() {
     assert_eq!(
         messages[0],
         SubMsg {
+            payload: Binary::new(vec![]),
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
@@ -223,7 +226,7 @@ fn withdraw_slashing() {
     let msg = ExecuteMsg::Withdraw {
         batch_id: pending_batch.id,
     };
-    let info = mock_info("tom", &[]);
+    let info = message_info(&Addr::unchecked("tom"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     let messages = res.unwrap().messages;
@@ -249,6 +252,7 @@ fn withdraw_slashing() {
     assert_eq!(
         messages[0],
         SubMsg {
+            payload: Binary::new(vec![]),
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
@@ -272,23 +276,24 @@ fn fee_withdraw() {
     let msg = ExecuteMsg::FeeWithdraw {
         amount: Uint128::from(2000u128),
     };
-    let info = mock_info("bob", &[]);
+    let info = message_info(&Addr::unchecked("bob"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err()); // because not admin
 
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_err()); // because too high amount
 
     let msg = ExecuteMsg::FeeWithdraw {
         amount: Uint128::from(1000u128),
     };
-    let info = mock_info(OSMO3, &[]);
+    let info = message_info(&Addr::unchecked(OSMO3), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert!(res.is_ok());
     assert_eq!(
         res.unwrap().messages[0],
         SubMsg {
+            payload: Binary::new(vec![]),
             id: 0,
             msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
                 from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),

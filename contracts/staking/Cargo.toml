@@ -14,10 +14,9 @@ keywords      = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
+imported = []
 
 [dependencies]
 bech32.workspace = true
@@ -27,17 +26,17 @@ cosmwasm-std = { workspace = true, features = ["stargate"]}
 cw-controllers.workspace = true
 cw-storage-plus.workspace = true
 cw-utils.workspace = true
-enum-repr = "0.2.6"
+enum-repr.workspace = true
 milky_way = { path = "../../packages/milky_way" }
 osmosis-std.workspace = true
-prost = { version = "0.12.3", default-features = false, features = ["prost-derive"] }
-prost-derive = "0.12.3"
+prost = { workspace = true, default-features = false, features = ["prost-derive"] }
+prost-derive.workspace = true
 schemars.workspace = true
 serde.workspace = true
-serde_json = "1.0"
-sha2 = "0.10.8"
+serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 semver.workspace = true
 
 [dev-dependencies]
-cw-multi-test = "0.17.0"
+cw-multi-test.workspace = true

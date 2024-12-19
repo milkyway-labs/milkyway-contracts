@@ -1,3 +1,4 @@
+use bech32::{Bech32, Hrp};
 use cosmwasm_std::{Addr, Decimal, Deps, Order, StdError, StdResult, Uint128};
 use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
@@ -6,8 +7,8 @@ use std::collections::HashSet;
 use crate::state::STATE;
 
 pub fn validate_address(address: &str, prefix: &str) -> StdResult<Addr> {
-    if let Ok((decoded_prefix, _, _)) = bech32::decode(address) {
-        if decoded_prefix == prefix {
+    if let Ok((decoded_prefix, _)) = bech32::decode(address) {
+        if decoded_prefix == bech32::Hrp::parse_unchecked(prefix) {
             Ok(Addr::unchecked(address))
         } else {
             Err(StdError::generic_err("Invalid address prefix"))
@@ -92,12 +93,12 @@ pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
     bech32_prefix: &str,
-) -> Result<String, bech32::Error> {
-    use bech32::ToBase32;
+) -> Result<String, bech32::EncodeError> {
     let sender_str = format!("{channel_id}/{original_sender}");
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
-    let sender = sender_hash_32.to_base32();
-    bech32::encode(bech32_prefix, sender, bech32::Variant::Bech32)
+    let sender = sender_hash_32;
+    let hrp: Hrp = Hrp::parse_unchecked(bech32_prefix);
+    bech32::encode::<Bech32>(hrp, &sender)
 }
 
 /// Generic function for paginating a list of (K, V) pairs in a
@@ -105,7 +106,7 @@ pub fn derive_intermediate_sender(
 #[allow(clippy::type_complexity)]
 pub fn paginate_map<'a, 'b, K, V, R: 'static>(
     deps: Deps,
-    map: &Map<'a, K, V>,
+    map: &Map<K, V>,
     start_after: Option<K>,
     limit: Option<u32>,
     order: Order,

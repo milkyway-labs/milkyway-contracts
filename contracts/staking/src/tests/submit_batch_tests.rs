@@ -2,7 +2,7 @@ use crate::contract::execute;
 use crate::msg::ExecuteMsg;
 use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::init;
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_env};
 use cosmwasm_std::Uint128;
 
 #[test]
@@ -19,9 +19,9 @@ fn empty_submit_batch() {
     env.block.time = env.block.time.plus_seconds(config.batch_period + 1);
     let msg = ExecuteMsg::SubmitBatch {};
 
-    let contract = env.contract.address.clone().to_string();
+    let contract = env.contract.address.clone();
 
-    let info = mock_info(&contract, &[]);
+    let info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     print!("{:?}", res);
     assert!(res.is_err());
@@ -43,9 +43,9 @@ fn not_ready_submit_batch() {
     env.block.time = env.block.time.plus_seconds(config.batch_period - 1);
     let msg = ExecuteMsg::SubmitBatch {};
 
-    let contract = env.contract.address.clone().to_string();
+    let contract = env.contract.address.clone();
 
-    let info = mock_info(&contract, &[]);
+    let info = message_info(&contract, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
 
     assert!(res.is_err());
