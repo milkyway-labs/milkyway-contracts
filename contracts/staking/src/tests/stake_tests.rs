@@ -69,8 +69,6 @@ mod staking_tests {
                         reply_on: ReplyOn::Always,
                     }
                 );
-                println!("{:?}", result.messages.len());
-                println!("{:?}", result.messages[0].msg);
                 assert_eq!(
                     result.messages[0],
                     SubMsg {
