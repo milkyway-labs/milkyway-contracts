@@ -8,8 +8,8 @@ mod staking_tests {
     use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
     use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{
-        attr, coins, Addr, CosmosMsg, IbcTimeout, Order, Reply, ReplyOn, SubMsg, SubMsgResponse,
-        SubMsgResult, Timestamp, Uint128, Decimal
+        attr, coins, Addr, CosmosMsg, Decimal, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
+        SubMsgResponse, SubMsgResult, Timestamp, Uint128,
     };
     use milky_way::staking::BatchStatus;
     use osmosis_std::types::cosmos::base::v1beta1::Coin;
@@ -62,10 +62,7 @@ mod staking_tests {
                             token: Some(ibc_coin),
                             timeout_height: None,
                             timeout_timestamp: timeout.timestamp().unwrap().nanos(),
-                            memo: format!(
-                                "{{\"ibc_callback\":\"{}\"}}",
-                                env.contract.address
-                            ),
+                            memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
                         }),
                         gas_limit: None,
                         reply_on: ReplyOn::Always,
@@ -168,8 +165,14 @@ mod staking_tests {
 
         // test redemption rate, purchase rate
         let (redemption_rate, purchase_rate) = get_rates(&deps.as_ref());
-        assert_eq!(redemption_rate, Decimal::from_ratio(1_050_000_000u128, 1_050_000u128));
-        assert_eq!(purchase_rate, Decimal::from_ratio(1_050_000u128, 1_050_000_000u128));
+        assert_eq!(
+            redemption_rate,
+            Decimal::from_ratio(1_050_000_000u128, 1_050_000u128)
+        );
+        assert_eq!(
+            purchase_rate,
+            Decimal::from_ratio(1_050_000u128, 1_050_000_000u128)
+        );
     }
 
     #[test]
@@ -228,9 +231,7 @@ mod staking_tests {
         // received rewards in advance of any liquid stake requests
         let sender = derive_intermediate_sender(
             &config.ibc_channel_id,
-            config
-                .multisig_address_config
-                .reward_collector_address.as_ref(),
+            config.address_config.reward_collector_address.as_ref(),
             "osmo",
         )
         .unwrap();

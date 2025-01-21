@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::msg::InstantiateMsg;
-    use crate::state::{Config, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG};
+    use crate::state::{AddressConfig, Config, ProtocolFeeConfig, BATCHES, CONFIG};
     use crate::tests::test_helper::{
         init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
     };
@@ -40,7 +40,7 @@ mod tests {
                 protocol_fee_config: ProtocolFeeConfig {
                     dao_treasury_fee: Uint128::from(10u128),
                 },
-                multisig_address_config: MultisigAddressConfig {
+                multisig_address_config: AddressConfig {
                     staker_address: Addr::unchecked(CELESTIA1),
                     reward_collector_address: Addr::unchecked(CELESTIA2),
                 },
@@ -146,7 +146,7 @@ mod tests {
             protocol_fee_config: Some(ProtocolFeeConfig {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
-            multisig_address_config: Some(MultisigAddressConfig {
+            multisig_address_config: Some(AddressConfig {
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
@@ -188,7 +188,7 @@ mod tests {
             protocol_fee_config: Some(ProtocolFeeConfig {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
-            multisig_address_config: Some(MultisigAddressConfig {
+            multisig_address_config: Some(AddressConfig {
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
@@ -214,7 +214,7 @@ mod tests {
             protocol_fee_config: Some(ProtocolFeeConfig {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
-            multisig_address_config: Some(MultisigAddressConfig {
+            multisig_address_config: Some(AddressConfig {
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),
@@ -240,7 +240,7 @@ mod tests {
             protocol_fee_config: Some(ProtocolFeeConfig {
                 dao_treasury_fee: Uint128::from(10u128),
             }),
-            multisig_address_config: Some(MultisigAddressConfig {
+            multisig_address_config: Some(AddressConfig {
                 staker_address: Addr::unchecked(CELESTIA1),
                 reward_collector_address: Addr::unchecked(CELESTIA2),
             }),

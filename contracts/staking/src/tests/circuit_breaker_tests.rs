@@ -63,9 +63,7 @@ fn circuit_breaker() {
     let msg = ExecuteMsg::ReceiveRewards {};
     let sender = derive_intermediate_sender(
         &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address.as_ref(),
+        config.address_config.reward_collector_address.as_ref(),
         "osmo",
     )
     .unwrap();

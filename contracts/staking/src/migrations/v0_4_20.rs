@@ -13,8 +13,6 @@ pub mod v0_4_18_state {
     use cosmwasm_std::{Addr, Uint128};
     use cw_storage_plus::Item;
 
-    use crate::state::{MultisigAddressConfig, ProtocolFeeConfig};
-
     pub const CONFIG: Item<Config> = Item::new("config");
 
     #[cw_serde]
@@ -53,7 +51,7 @@ pub fn migrate(deps: DepsMut, _env: Env, send_fees_to_treasury: bool) -> Contrac
         batch_period: old_config.batch_period,
         unbonding_period: old_config.unbonding_period,
         protocol_fee_config: old_config.protocol_fee_config,
-        multisig_address_config: old_config.multisig_address_config,
+        address_config: old_config.multisig_address_config,
         minimum_liquid_stake_amount: old_config.minimum_liquid_stake_amount,
         ibc_channel_id: old_config.ibc_channel_id,
         stopped: old_config.stopped,

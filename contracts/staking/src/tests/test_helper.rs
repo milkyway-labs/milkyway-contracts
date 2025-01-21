@@ -1,6 +1,6 @@
 use crate::contract::instantiate;
 use crate::msg::InstantiateMsg;
-use crate::state::{Config, MultisigAddressConfig, ProtocolFeeConfig, CONFIG};
+use crate::state::{AddressConfig, Config, ProtocolFeeConfig, CONFIG};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -33,7 +33,7 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         protocol_fee_config: ProtocolFeeConfig {
             dao_treasury_fee: Uint128::from(10000u128),
         },
-        multisig_address_config: MultisigAddressConfig {
+        multisig_address_config: AddressConfig {
             staker_address: Addr::unchecked(CELESTIA1),
             reward_collector_address: Addr::unchecked(CELESTIA2),
         },

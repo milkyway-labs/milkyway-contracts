@@ -11,8 +11,7 @@ use crate::query::{
     query_state, query_unstake_requests,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
+    Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -24,7 +23,7 @@ use crate::{
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
@@ -41,7 +40,6 @@ pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO
 
 pub const CELESTIA_ACCOUNT_PREFIX: &str = "celestia";
 pub const OSMOSIS_ACCOUNT_PREFIX: &str = "osmo";
-pub const CELESTIA_VALIDATOR_PREFIX: &str = "celestiavaloper";
 
 ///////////////////
 /// INSTANTIATE ///
@@ -59,63 +57,23 @@ pub fn instantiate(
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
 
-    // validations
-    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
-    assert!(
-        msg.liquid_stake_token_denom.len() > 3,
-        "liquid_stake_token_denom is required"
-    );
-    assert!(
-        msg.liquid_stake_token_denom
-            .chars()
-            .all(|c| c.is_ascii_alphabetic()),
-        "liquid_stake_token_denom must be alphabetic"
-    );
-
     // Init Config
+    let native_chain_config = msg.native_chain_config.validate()?;
+    let protocol_chain_config = msg.protocol_chain_config.validate()?;
+    let protocol_fee_config = msg.protocol_fee_config.validate(&protocol_chain_config)?;
+
     let config = Config {
-        native_token_denom: "".to_string(),
-        liquid_stake_token_denom: format!(
-            "factory/{0}/{1}",
-            env.contract.address, msg.liquid_stake_token_denom
-        ),
-        treasury_address: Addr::unchecked(""),
-        monitors: Some(vec![]),
-        validators,
-        batch_period: 0,
-        unbonding_period: 0,
-        protocol_fee_config: ProtocolFeeConfig {
-            dao_treasury_fee: Uint128::zero(),
-        },
-        multisig_address_config: MultisigAddressConfig {
-            staker_address: Addr::unchecked(""),
-            reward_collector_address: Addr::unchecked(""),
-        },
-        minimum_liquid_stake_amount: Uint128::zero(),
-        ibc_channel_id: "".to_string(),
+        native_chain_config,
+        protocol_chain_config,
+        protocol_fee_config,
+        monitors: validate_addresses(
+            &msg.monitors,
+            &msg.protocol_chain_config.account_address_prefix,
+        )?,
+        batch_period: msg.batch_period,
         stopped: true, // we start stopped
-        oracle_address: None,
-        send_fees_to_treasury: msg.send_fees_to_treasury,
     };
-
     CONFIG.save(deps.storage, &config)?;
-
-    update_config(
-        deps.branch(),
-        env.clone(),
-        info.clone(),
-        Some(msg.batch_period),
-        Some(msg.unbonding_period),
-        Some(msg.minimum_liquid_stake_amount),
-        Some(msg.multisig_address_config),
-        Some(msg.protocol_fee_config),
-        Some(msg.native_token_denom),
-        Some(msg.ibc_channel_id.clone()),
-        Some(msg.monitors),
-        Some(msg.treasury_address),
-        msg.oracle_address,
-        Some(msg.send_fees_to_treasury),
-    )?;
 
     // Init State
     let state = State {
@@ -134,7 +92,7 @@ pub fn instantiate(
     // Create liquid stake token denom
     let tokenfactory_msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
-        subdenom: msg.liquid_stake_token_denom,
+        subdenom: config.protocol_chain_config.liquid_stake_token_denom,
     };
 
     let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
@@ -142,7 +100,7 @@ pub fn instantiate(
     let pending_batch = Batch::new(
         1,
         Uint128::zero(),
-        env.block.time.seconds() + config.batch_period,
+        env.block.time.seconds() + config.native_chain_config.unbonding_period,
     );
 
     // Set pending batch and batches
@@ -173,11 +131,14 @@ pub fn execute(
             mint_to,
             expected_mint_amount,
         } => {
-            let payment = must_pay(&info, &config.native_token_denom)?;
+            let payment = must_pay(&info, &config.native_chain_config.token_denom)?;
             execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
         }
         ExecuteMsg::LiquidUnstake {} => {
-            let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
+            let payment = must_pay(
+                &info,
+                &config.protocol_chain_config.lst_token_factory_denom(env),
+            )?;
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::SubmitBatch {} => execute_submit_batch(deps, env, info),
@@ -196,32 +157,18 @@ pub fn execute(
             execute_revoke_ownership_transfer(deps, env, info)
         }
         ExecuteMsg::UpdateConfig {
-            batch_period,
-            unbonding_period,
-            minimum_liquid_stake_amount,
-            multisig_address_config,
+            native_chain_config,
+            protocol_chain_config,
             protocol_fee_config,
-            native_token_denom,
-            channel_id,
             monitors,
-            treasury_address,
-            oracle_address,
-            send_fees_to_treasury,
         } => update_config(
             deps,
             env,
             info,
-            batch_period,
-            unbonding_period,
-            minimum_liquid_stake_amount,
-            multisig_address_config,
+            native_chain_config,
+            protocol_chain_config,
             protocol_fee_config,
-            native_token_denom,
-            channel_id,
             monitors,
-            treasury_address,
-            oracle_address,
-            send_fees_to_treasury,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
@@ -259,9 +206,9 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps, env)?),
         QueryMsg::State {} => to_json_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_json_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {

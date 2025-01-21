@@ -165,6 +165,31 @@ pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
     }
 }
 
+/// Checks if the provided denom is valid or not.
+pub fn validate_denom(denom: impl Into<String>) -> StdResult<String> {
+    let denom: String = denom.into();
+
+    if denom.len() < 3 {
+        return Err(StdError::generic_err("denom len is less than 3"));
+    }
+    if !denom.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Err(StdError::generic_err("denom must be alphabetic"));
+    }
+
+    Ok(denom)
+}
+
+/// Checks the provided denom is a valid ibc denom or not.
+pub fn validate_ibc_denom(ibc_denom: impl Into<String>) -> StdResult<String> {
+    let ibc_denom: String = ibc_denom.into();
+
+    if ibc_denom.starts_with("ibc/") && ibc_denom.strip_prefix("ibc/").unwrap().len() == 64 {
+        Ok(ibc_denom)
+    } else {
+        Err(StdError::generic_err("ibc denom is invalid"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

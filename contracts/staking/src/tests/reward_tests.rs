@@ -27,10 +27,7 @@ fn receive_rewards() {
 
     let sender = derive_intermediate_sender(
         &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
+        config.address_config.reward_collector_address.as_ref(),
         "osmo",
     )
     .unwrap();
@@ -119,10 +116,7 @@ fn receive_rewards_and_send_fees_to_treasury() {
 
     let sender = derive_intermediate_sender(
         &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
+        config.address_config.reward_collector_address.as_ref(),
         "osmo",
     )
     .unwrap();

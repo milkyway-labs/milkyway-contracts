@@ -202,7 +202,7 @@ fn receive_unstaked_tokens() {
 
     let sender = derive_intermediate_sender(
         &config.ibc_channel_id,
-        config.multisig_address_config.staker_address.as_ref(),
+        config.address_config.staker_address.as_ref(),
         "osmo",
     )
     .unwrap();
@@ -412,7 +412,7 @@ fn claimable_batches() {
             CONFIG
                 .load(&deps.storage)
                 .unwrap()
-                .multisig_address_config
+                .address_config
                 .staker_address
                 .as_ref(),
             "osmo",

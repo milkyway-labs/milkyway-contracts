@@ -1,18 +1,19 @@
-use crate::contract::{CELESTIA_VALIDATOR_PREFIX, IBC_TIMEOUT};
+use crate::contract::IBC_TIMEOUT;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
+use crate::msg::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
 use crate::oracle::Oracle;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
-    Config, IbcWaitingForReply, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES,
-    CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
+    Config, IbcWaitingForReply, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY,
+    INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
 use cosmwasm_std::{
-    ensure, Addr, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
+    ensure, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
     SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
@@ -32,12 +33,12 @@ pub fn transfer_stake_msg(
 ) -> Result<MsgTransfer, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
 
-    if config.ibc_channel_id.is_empty() {
+    if config.protocol_chain_config.ibc_channel_id.is_empty() {
         return Err(ContractError::IbcChannelNotFound {});
     }
 
     let ibc_coin = Coin {
-        denom: config.native_token_denom,
+        denom: config.protocol_chain_config.ibc_token_denom,
         amount: amount.to_string(),
     };
 
@@ -45,9 +46,9 @@ pub fn transfer_stake_msg(
         env.block.time.nanos() + IBC_TIMEOUT.nanos(),
     ));
 
-    let to_address = config.multisig_address_config.staker_address.to_string();
+    let to_address = config.native_chain_config.staker_address.to_string();
     let ibc_msg = MsgTransfer {
-        source_channel: config.ibc_channel_id,
+        source_channel: config.protocol_chain_config.ibc_channel_id,
         source_port: "transfer".to_string(),
         token: Some(ibc_coin),
         receiver: to_address.clone(),
@@ -99,14 +100,19 @@ fn update_oracle_msgs(
     let post_rates_msg = Oracle::PostRates {
         purchase_rate: purchase_rate.to_string(),
         redemption_rate: redemption_rate.to_string(),
-        denom: config.liquid_stake_token_denom.clone(),
+        denom: config.protocol_chain_config.lst_token_factory_denom(env),
     };
 
     let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
     messages.push(
         MsgExecuteContract {
             sender: env.contract.address.to_string(),
-            contract: config.oracle_address.clone().unwrap().to_string(),
+            contract: config
+                .protocol_chain_config
+                .oracle_address
+                .clone()
+                .unwrap()
+                .to_string(),
             msg: post_rate_msg_json.as_bytes().to_vec(),
             funds: vec![],
         }
@@ -155,10 +161,10 @@ pub fn execute_liquid_stake(
 
     let mut state: State = STATE.load(deps.storage)?;
     ensure!(
-        amount >= config.minimum_liquid_stake_amount,
+        amount >= config.protocol_chain_config.minimum_liquid_stake_amount,
         ContractError::MinimumLiquidStakeAmount {
-            minimum_stake_amount: (config.minimum_liquid_stake_amount),
-            sent_amount: (amount)
+            minimum_stake_amount: config.protocol_chain_config.minimum_liquid_stake_amount,
+            sent_amount: amount,
         }
     );
 
@@ -197,7 +203,7 @@ pub fn execute_liquid_stake(
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.liquid_stake_token_denom.clone(),
+            denom: config.protocol_chain_config.lst_token_factory_denom(env),
             amount: mint_amount.to_string(),
         }),
         mint_to_address,
@@ -352,7 +358,7 @@ pub fn execute_submit_batch(
     let tokenfactory_burn_msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.liquid_stake_token_denom.clone(),
+            denom: config.protocol_chain_config.lst_token_factory_denom(env),
             amount: batch.batch_total_liquid_stake.to_string(),
         }),
         burn_from_address: env.contract.address.to_string(),
@@ -382,7 +388,7 @@ pub fn execute_submit_batch(
     batch.expected_native_unstaked = Some(unbond_amount);
     batch.update_status(
         BatchStatus::Submitted,
-        Some(env.block.time.seconds() + config.unbonding_period),
+        Some(env.block.time.seconds() + config.native_chain_config.unbonding_period),
     );
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
@@ -441,7 +447,7 @@ pub fn execute_withdraw(
         from_address: env.contract.address.to_string(),
         to_address: info.sender.to_string(),
         amount: vec![Coin {
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom,
             amount: amount.to_string(),
         }],
     };
@@ -466,10 +472,14 @@ pub fn execute_add_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let new_validator_addr = validate_address(&new_validator, CELESTIA_VALIDATOR_PREFIX)?;
+    let new_validator_addr = validate_address(
+        &new_validator,
+        &config.native_chain_config.validator_address_prefix,
+    )?;
 
     // Check if the new_validator is already in the list.
     if config
+        .native_chain_config
         .validators
         .iter()
         .any(|validator| *validator == new_validator_addr)
@@ -480,7 +490,10 @@ pub fn execute_add_validator(
     }
 
     // Add the new validator to the list.
-    config.validators.push(new_validator_addr.clone());
+    config
+        .native_chain_config
+        .validators
+        .push(new_validator_addr.clone());
 
     // Save the updated config.
     CONFIG.save(deps.storage, &config)?;
@@ -500,17 +513,20 @@ pub fn execute_remove_validator(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config = CONFIG.load(deps.storage)?;
-    let validator_addr_to_remove =
-        validate_address(&validator_to_remove, CELESTIA_VALIDATOR_PREFIX)?;
+    let validator_addr_to_remove = validate_address(
+        &validator_to_remove,
+        &config.native_chain_config.validator_address_prefix,
+    )?;
 
     // Find the position of the validator to be removed.
     if let Some(pos) = config
+        .native_chain_config
         .validators
         .iter()
         .position(|validator| *validator == validator_addr_to_remove)
     {
         // Remove the validator if found.
-        config.validators.remove(pos);
+        config.native_chain_config.validators.remove(pos);
     } else {
         // If the validator is not found, return an error.
         return Err(ContractError::ValidatorNotFound {
@@ -689,77 +705,29 @@ pub fn update_config(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    batch_period: Option<u64>,
-    unbonding_period: Option<u64>,
-    minimum_liquid_stake_amount: Option<Uint128>,
-    multisig_address_config: Option<MultisigAddressConfig>,
-    protocol_fee_config: Option<ProtocolFeeConfig>,
-    native_token_denom: Option<String>,
-    channel_id: Option<String>,
+    native_chain_config: Option<UnsafeNativeChainConfig>,
+    protocol_chain_config: Option<UnsafeProtocolChainConfig>,
+    protocol_fee_config: Option<UnsafeProtocolFeeConfig>,
     monitors: Option<Vec<String>>,
-    treasury_address: Option<String>,
-    oracle_address: Option<String>,
-    send_fees_to_treasury: Option<bool>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if let Some(batch_period) = batch_period {
-        config.batch_period = batch_period;
+    if let Some(native_chain_config) = native_chain_config {
+        config.native_chain_config = native_chain_config.validate()?;
     }
-    if let Some(unbonding_period) = unbonding_period {
-        config.unbonding_period = unbonding_period;
-    }
-    if let Some(minimum_liquid_stake_amount) = minimum_liquid_stake_amount {
-        config.minimum_liquid_stake_amount = minimum_liquid_stake_amount;
-    }
-    if let Some(multisig_address_config) = multisig_address_config {
-        config.multisig_address_config = multisig_address_config;
+    if let Some(protocol_chain_config) = protocol_chain_config {
+        config.protocol_chain_config = protocol_chain_config.validate()?;
     }
     if let Some(protocol_fee_config) = protocol_fee_config {
-        config.protocol_fee_config = protocol_fee_config;
+        config.protocol_fee_config = protocol_fee_config.validate(&config.protocol_chain_config)?
     }
     if let Some(monitors) = monitors {
-        config.monitors = Some(validate_addresses(&monitors, "osmo")?);
-    }
-    if let Some(treasury_address) = treasury_address {
-        validate_address(&treasury_address, "osmo")?;
-        config.treasury_address = Addr::unchecked(treasury_address);
-    }
-    if let Some(send_fees_to_treasury) = send_fees_to_treasury {
-        config.send_fees_to_treasury = send_fees_to_treasury;
-    }
-
-    // TODO get reserve token from channel? Maybe leave as safeguard?
-    if channel_id.is_some() || native_token_denom.is_some() {
-        if channel_id.is_none() || native_token_denom.is_none() {
-            return Err(ContractError::IbcChannelConfigWrong {});
-        }
-
-        let channel_id = channel_id.unwrap();
-        let native_token_denom = native_token_denom.unwrap();
-        let channel_id_correct = channel_id.starts_with("channel-")
-            && channel_id
-                .strip_prefix("channel-")
-                .unwrap()
-                .parse::<u64>()
-                .is_ok();
-        let native_token_denom_correct = native_token_denom.starts_with("ibc/")
-            && native_token_denom.strip_prefix("ibc/").unwrap().len() == 64;
-
-        if !channel_id_correct || !native_token_denom_correct {
-            return Err(ContractError::IbcChannelConfigWrong {});
-        }
-
-        config.ibc_channel_id = channel_id;
-        config.native_token_denom = native_token_denom;
-    }
-
-    if oracle_address.is_some() {
-        let oracle_address = oracle_address.unwrap();
-        let address = validate_address(&oracle_address, "osmo")?;
-        config.oracle_address = Some(address);
+        config.monitors = validate_addresses(
+            &monitors,
+            &config.protocol_chain_config.account_address_prefix,
+        )?;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -778,12 +746,9 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     }
 
     let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
-        "osmo",
+        &config.protocol_chain_config.ibc_channel_id,
+        &config.native_chain_config.account_address_prefix,
+        &config.protocol_chain_config.account_address_prefix,
     );
     if expected_sender.is_err() {
         return Err(ContractError::Unauthorized {
@@ -799,7 +764,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     let coin = info
         .funds
         .iter()
-        .find(|c| c.denom == config.native_token_denom);
+        .find(|c| c.denom == config.protocol_chain_config.ibc_token_denom);
     if coin.is_none() {
         return Err(ContractError::Payment(PaymentError::NoFunds {}));
     }
@@ -821,7 +786,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     // update the accounting of tokens
     state.total_native_token += amount_after_fees;
     state.total_reward_amount += amount;
-    if !config.send_fees_to_treasury {
+    if config.protocol_fee_config.treasury_address.is_none() {
         state.total_fees += fee;
     }
 
@@ -839,12 +804,12 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
         .add_messages(update_oracle_msgs)
         .add_submessage(ibc_transfer_msg);
 
-    if config.send_fees_to_treasury {
+    if let Some(treasury_address) = config.protocol_fee_config.treasury_address {
         response = response.add_message(cosmwasm_std::BankMsg::Send {
-            to_address: config.treasury_address.to_string(),
+            to_address: treasury_address.to_string(),
             amount: vec![cosmwasm_std::Coin::new(
                 fee.u128(),
-                config.native_token_denom,
+                config.protocol_chain_config.ibc_token_denom,
             )],
         });
     }
@@ -863,9 +828,9 @@ pub fn receive_unstaked_tokens(
     check_stopped(&config)?;
 
     let expected_sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config.multisig_address_config.staker_address.as_ref(),
-        "osmo",
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.staker_address.as_str(),
+        &config.protocol_chain_config.account_address_prefix,
     );
     if expected_sender.is_err() {
         return Err(ContractError::Unauthorized {
@@ -881,7 +846,7 @@ pub fn receive_unstaked_tokens(
     let coin = info
         .funds
         .iter()
-        .find(|c| c.denom == config.native_token_denom);
+        .find(|c| c.denom == config.protocol_chain_config.ibc_token_denom);
     if coin.is_none() {
         return Err(ContractError::Payment(PaymentError::NoFunds {}));
     }
@@ -928,12 +893,7 @@ pub fn circuit_breaker(deps: DepsMut, _env: Env, info: MessageInfo) -> ContractR
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     if ADMIN.assert_admin(deps.as_ref(), &info.sender).is_err()
-        && !config
-            .monitors
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
-            .any(|v| *v == sender)
+        && !config.monitors.iter().any(|v| *v == sender)
     {
         return Err(ContractError::Unauthorized { sender });
     }
@@ -1052,21 +1012,36 @@ pub fn fee_withdraw(
         return Err(ContractError::InsufficientFunds {});
     }
 
+    if config.protocol_fee_config.treasury_address.is_none() {
+        return Err(ContractError::TreasuryNotConfigured {});
+    }
+
     state.total_fees = state.total_fees.checked_sub(amount).unwrap();
     STATE.save(deps.storage, &state)?;
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
-        to_address: config.treasury_address.to_string(),
+        to_address: config
+            .protocol_fee_config
+            .treasury_address
+            .unwrap()
+            .to_string(),
         amount: vec![Coin {
-            denom: config.native_token_denom,
+            denom: config.protocol_chain_config.ibc_token_denom,
             amount: amount.to_string(),
         }],
     };
 
     Ok(Response::new()
         .add_attribute("action", "fee_withdraw")
-        .add_attribute("receiver", config.treasury_address.to_string())
+        .add_attribute(
+            "receiver",
+            config
+                .protocol_fee_config
+                .treasury_address
+                .unwrap()
+                .to_string(),
+        )
         .add_attribute("amount", amount)
         .add_message(send_msg))
 }

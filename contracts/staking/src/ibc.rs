@@ -33,7 +33,7 @@ pub fn receive_ack(
     // ));
 
     let config: Config = CONFIG.load(deps.storage)?;
-    if source_channel != config.ibc_channel_id {
+    if source_channel != config.protocol_chain_config.ibc_channel_id {
         // If the ack is not for this contract, return a success
         return Ok(Response::new()
             .add_attribute("action", "receive_ack")
@@ -72,7 +72,7 @@ pub fn receive_timeout(
     sequence: u64,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-    if source_channel != config.ibc_channel_id {
+    if source_channel != config.protocol_chain_config.ibc_channel_id {
         // If the ack is not for this contract, return a success
         return Ok(Response::new()
             .add_attribute("action", "receive_ack")
