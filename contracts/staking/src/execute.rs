@@ -100,7 +100,7 @@ fn update_oracle_msgs(
     let post_rates_msg = Oracle::PostRates {
         purchase_rate: purchase_rate.to_string(),
         redemption_rate: redemption_rate.to_string(),
-        denom: config.protocol_chain_config.lst_token_factory_denom(&env),
+        denom: config.liquid_stake_token_denom.clone(),
     };
 
     let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
@@ -203,7 +203,7 @@ pub fn execute_liquid_stake(
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.protocol_chain_config.lst_token_factory_denom(&env),
+            denom: config.liquid_stake_token_denom.clone(),
             amount: mint_amount.to_string(),
         }),
         mint_to_address,
@@ -358,7 +358,7 @@ pub fn execute_submit_batch(
     let tokenfactory_burn_msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.protocol_chain_config.lst_token_factory_denom(&env),
+            denom: config.liquid_stake_token_denom.clone(),
             amount: batch.batch_total_liquid_stake.to_string(),
         }),
         burn_from_address: env.contract.address.to_string(),

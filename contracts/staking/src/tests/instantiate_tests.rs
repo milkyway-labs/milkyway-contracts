@@ -146,7 +146,7 @@ mod tests {
         let info = mock_info(OSMO3, &[]);
         let mut msg = mock_init_msg();
 
-        msg.protocol_chain_config.liquid_stake_token_denom = "".to_string();
+        msg.liquid_stake_token_denom = "".to_string();
         let res = crate::contract::instantiate(
             deps.as_mut(),
             cosmwasm_std::testing::mock_env(),
@@ -243,7 +243,6 @@ mod tests {
             ProtocolChainConfig {
                 account_address_prefix: "osmo".to_string(),
                 ibc_token_denom: NATIVE_TOKEN.to_string(),
-                liquid_stake_token_denom: "stTIA".to_string(),
                 ibc_channel_id: CHANNEL_ID.to_string(),
                 oracle_address: Some(Addr::unchecked(OSMO4)),
                 minimum_liquid_stake_amount: Uint128::from(100u128),

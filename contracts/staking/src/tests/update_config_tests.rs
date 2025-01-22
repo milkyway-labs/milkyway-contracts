@@ -166,7 +166,6 @@ fn update_protocol_chain_config_with_invalid_account_address_prefix_fails() {
         protocol_chain_config: Some(UnsafeProtocolChainConfig {
             account_address_prefix: "".to_string(),
             ibc_token_denom: NATIVE_TOKEN.to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
             ibc_channel_id: CHANNEL_ID.to_string(),
             oracle_address: Some(OSMO4.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
@@ -194,35 +193,6 @@ fn update_protocol_chain_config_with_invalid_ibc_token_fails() {
         protocol_chain_config: Some(UnsafeProtocolChainConfig {
             account_address_prefix: "osmo".to_string(),
             ibc_token_denom: "utia".to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
-            ibc_channel_id: CHANNEL_ID.to_string(),
-            oracle_address: Some(OSMO4.to_string()),
-            minimum_liquid_stake_amount: Uint128::from(100u128),
-        }),
-        protocol_fee_config: None,
-        batch_period: None,
-        monitors: None,
-    };
-
-    let res = crate::contract::execute(
-        deps.as_mut(),
-        cosmwasm_std::testing::mock_env(),
-        info.clone(),
-        config_update_msg,
-    );
-    assert!(res.is_err());
-}
-
-#[test]
-fn update_protocol_chain_config_with_invalid_lst_token_denom_fails() {
-    let mut deps = init();
-    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
-    let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
-        native_chain_config: None,
-        protocol_chain_config: Some(UnsafeProtocolChainConfig {
-            account_address_prefix: "osmo".to_string(),
-            ibc_token_denom: "utia".to_string(),
-            liquid_stake_token_denom: "".to_string(),
             ibc_channel_id: CHANNEL_ID.to_string(),
             oracle_address: Some(OSMO4.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
@@ -250,7 +220,6 @@ fn update_protocol_chain_config_with_invalid_ibc_channel_id_fails() {
         protocol_chain_config: Some(UnsafeProtocolChainConfig {
             account_address_prefix: "osmo".to_string(),
             ibc_token_denom: "utia".to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
             ibc_channel_id: "".to_string(),
             oracle_address: Some(OSMO4.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
@@ -278,7 +247,6 @@ fn update_protocol_chain_config_with_invalid_oracle_address_fails() {
         protocol_chain_config: Some(UnsafeProtocolChainConfig {
             account_address_prefix: "osmo".to_string(),
             ibc_token_denom: "utia".to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
             ibc_channel_id: CHANNEL_ID.to_string(),
             oracle_address: Some(CELESTIA1.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
@@ -306,7 +274,6 @@ fn update_protocol_chain_config_properly() {
         account_address_prefix: "celestia".to_string(),
         ibc_token_denom: "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56AA"
             .to_string(),
-        liquid_stake_token_denom: "stTIA".to_string(),
         ibc_channel_id: "channel-234".to_string(),
         oracle_address: Some(CELESTIA1.to_string()),
         minimum_liquid_stake_amount: Uint128::from(1000u128),
@@ -335,10 +302,6 @@ fn update_protocol_chain_config_properly() {
     assert_eq!(
         new_config.ibc_token_denom,
         config.protocol_chain_config.ibc_token_denom
-    );
-    assert_eq!(
-        new_config.liquid_stake_token_denom,
-        config.protocol_chain_config.liquid_stake_token_denom
     );
     assert_eq!(
         new_config.ibc_channel_id,

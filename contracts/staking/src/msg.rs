@@ -92,9 +92,6 @@ pub struct UnsafeProtocolChainConfig {
     /// IBC denom of the supported token (e.g. IBC denom of TIA, INIT, etc)
     pub ibc_token_denom: String,
 
-    /// Denomination of the liquid staking token (stTIA)
-    pub liquid_stake_token_denom: String,
-
     /// IBC channel id from the Protocol chain to the base chain (e.g. Osmosis -> Celestia)
     pub ibc_channel_id: String,
 
@@ -121,7 +118,6 @@ impl UnsafeProtocolChainConfig {
         Ok(ProtocolChainConfig {
             account_address_prefix: self.account_address_prefix.clone(),
             ibc_token_denom: validate_ibc_denom(&self.ibc_token_denom)?,
-            liquid_stake_token_denom: validate_denom(&self.liquid_stake_token_denom)?,
             ibc_channel_id: self.ibc_channel_id.clone(),
             minimum_liquid_stake_amount: self.minimum_liquid_stake_amount,
             oracle_address: self
@@ -138,6 +134,10 @@ pub struct InstantiateMsg {
     pub native_chain_config: UnsafeNativeChainConfig,
     pub protocol_chain_config: UnsafeProtocolChainConfig,
     pub protocol_fee_config: UnsafeProtocolFeeConfig,
+
+    /// Denomination of the liquid staking token (stTIA)
+    pub liquid_stake_token_denom: String,
+
     pub batch_period: u64,
     pub monitors: Vec<String>,
 }
@@ -193,10 +193,11 @@ pub enum ExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ConfigResponse {
-    pub native_chain_config: crate::state::NativeChainConfig,
-    pub protocol_chain_config: crate::state::ProtocolChainConfig,
-    pub protocol_fee_config: crate::state::ProtocolFeeConfig,
+    pub native_chain_config: NativeChainConfig,
+    pub protocol_chain_config: ProtocolChainConfig,
+    pub protocol_fee_config: ProtocolFeeConfig,
     pub monitors: Vec<Addr>,
+    pub liquid_stake_token_denom: String,
     pub batch_period: u64,
     pub stopped: bool,
 }

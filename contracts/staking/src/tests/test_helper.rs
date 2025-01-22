@@ -36,11 +36,11 @@ pub fn mock_init_msg() -> InstantiateMsg {
         protocol_chain_config: UnsafeProtocolChainConfig {
             account_address_prefix: "osmo".to_string(),
             ibc_token_denom: NATIVE_TOKEN.to_string(),
-            liquid_stake_token_denom: "stTIA".to_string(),
             ibc_channel_id: CHANNEL_ID.to_string(),
             oracle_address: Some(OSMO4.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
         },
+        liquid_stake_token_denom: "stTIA".to_string(),
         monitors: vec![OSMO2.to_string(), OSMO3.to_string()],
         batch_period: 86400,
         protocol_fee_config: UnsafeProtocolFeeConfig {

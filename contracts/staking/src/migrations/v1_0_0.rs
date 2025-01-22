@@ -38,13 +38,6 @@ pub fn migrate(
         },
         protocol_chain_config: ProtocolChainConfig {
             account_address_prefix: protocol_account_address_prefix,
-            // We extract just the last part that contains the token denom
-            liquid_stake_token_denom: old_config
-                .liquid_stake_token_denom
-                .split('/')
-                .last()
-                .unwrap()
-                .to_string(),
             ibc_channel_id: old_config.ibc_channel_id,
             ibc_token_denom: old_config.native_token_denom,
             minimum_liquid_stake_amount: old_config.minimum_liquid_stake_amount,
@@ -58,6 +51,7 @@ pub fn migrate(
                 None
             },
         },
+        liquid_stake_token_denom: old_config.liquid_stake_token_denom,
         batch_period: old_config.batch_period,
         monitors: old_config.monitors.unwrap_or_default(),
         stopped: old_config.stopped,

@@ -19,6 +19,7 @@ pub fn query_config(deps: Deps, _env: Env) -> StdResult<ConfigResponse> {
         native_chain_config: config.native_chain_config,
         protocol_chain_config: config.protocol_chain_config,
         protocol_fee_config: config.protocol_fee_config,
+        liquid_stake_token_denom: config.liquid_stake_token_denom,
         monitors: config.monitors,
         batch_period: config.batch_period,
         stopped: config.stopped,

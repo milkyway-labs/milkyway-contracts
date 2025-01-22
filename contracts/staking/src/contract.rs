@@ -2,7 +2,7 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
-use crate::helpers::validate_addresses;
+use crate::helpers::{validate_addresses, validate_denom};
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::migrations;
 use crate::query::{
@@ -63,6 +63,11 @@ pub fn instantiate(
         native_chain_config,
         protocol_chain_config,
         protocol_fee_config,
+        liquid_stake_token_denom: format!(
+            "factory/{0}/{1}",
+            env.contract.address,
+            validate_denom(&msg.liquid_stake_token_denom)?
+        ),
         monitors: validate_addresses(
             &msg.monitors,
             &msg.protocol_chain_config.account_address_prefix,
@@ -89,7 +94,7 @@ pub fn instantiate(
     // Create liquid stake token denom
     let tokenfactory_msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
-        subdenom: config.protocol_chain_config.liquid_stake_token_denom,
+        subdenom: msg.liquid_stake_token_denom,
     };
 
     let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
@@ -132,10 +137,7 @@ pub fn execute(
             execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
         }
         ExecuteMsg::LiquidUnstake {} => {
-            let payment = must_pay(
-                &info,
-                &config.protocol_chain_config.lst_token_factory_denom(&env),
-            )?;
+            let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
             execute_liquid_unstake(deps, env, info, payment)
         }
         ExecuteMsg::SubmitBatch {} => execute_submit_batch(deps, env, info),
