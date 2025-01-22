@@ -258,7 +258,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
         .parse()
         .map_err(|_| StdError::generic_err("Invalid contract version"))?;
 
-    // current version not launchpad v2
+    // Prevent downgrade
     if version > new_version {
         return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
     }
@@ -271,6 +271,19 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
         MigrateMsg::V0_4_18ToV0_4_20 {
             send_fees_to_treasury,
         } => migrations::v0_4_20::migrate(deps.branch(), env, send_fees_to_treasury)?,
+        MigrateMsg::V0_4_20ToV1_0_0 {
+            native_account_address_prefix,
+            native_validator_address_prefix,
+            native_token_denom,
+            protocol_account_address_prefix,
+        } => migrations::v1_0_0::migrate(
+            deps.branch(),
+            env,
+            native_account_address_prefix,
+            native_validator_address_prefix,
+            native_token_denom,
+            protocol_account_address_prefix,
+        )?,
     };
 
     // set new contract version
