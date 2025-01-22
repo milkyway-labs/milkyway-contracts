@@ -12,7 +12,7 @@ use cosmwasm_std::{Deps, Env, StdResult, Timestamp, Uint128};
 use cw_storage_plus::Bound;
 use milky_way::staking::{Batch, BatchStatus};
 
-pub fn query_config(deps: Deps, env: Env) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps, _env: Env) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
 
     let res = ConfigResponse {

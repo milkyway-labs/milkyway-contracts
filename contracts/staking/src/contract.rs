@@ -137,7 +137,7 @@ pub fn execute(
         ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(
                 &info,
-                &config.protocol_chain_config.lst_token_factory_denom(env),
+                &config.protocol_chain_config.lst_token_factory_denom(&env),
             )?;
             execute_liquid_unstake(deps, env, info, payment)
         }

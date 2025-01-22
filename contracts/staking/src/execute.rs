@@ -100,7 +100,7 @@ fn update_oracle_msgs(
     let post_rates_msg = Oracle::PostRates {
         purchase_rate: purchase_rate.to_string(),
         redemption_rate: redemption_rate.to_string(),
-        denom: config.protocol_chain_config.lst_token_factory_denom(env),
+        denom: config.protocol_chain_config.lst_token_factory_denom(&env),
     };
 
     let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
@@ -203,7 +203,7 @@ pub fn execute_liquid_stake(
     let mint_msg = MsgMint {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.protocol_chain_config.lst_token_factory_denom(env),
+            denom: config.protocol_chain_config.lst_token_factory_denom(&env),
             amount: mint_amount.to_string(),
         }),
         mint_to_address,
@@ -358,7 +358,7 @@ pub fn execute_submit_batch(
     let tokenfactory_burn_msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(Coin {
-            denom: config.protocol_chain_config.lst_token_factory_denom(env),
+            denom: config.protocol_chain_config.lst_token_factory_denom(&env),
             amount: batch.batch_total_liquid_stake.to_string(),
         }),
         burn_from_address: env.contract.address.to_string(),
@@ -447,7 +447,7 @@ pub fn execute_withdraw(
         from_address: env.contract.address.to_string(),
         to_address: info.sender.to_string(),
         amount: vec![Coin {
-            denom: config.protocol_chain_config.ibc_token_denom,
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
             amount: amount.to_string(),
         }],
     };
@@ -1024,6 +1024,7 @@ pub fn fee_withdraw(
         to_address: config
             .protocol_fee_config
             .treasury_address
+            .as_ref()
             .unwrap()
             .to_string(),
         amount: vec![Coin {

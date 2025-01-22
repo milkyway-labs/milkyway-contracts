@@ -29,7 +29,8 @@ impl UnsafeProtocolFeeConfig {
             dao_treasury_fee: self.dao_treasury_fee,
             treasury_address: self
                 .treasury_address
-                .map(|a| validate_address(&a, &config.account_address_prefix))
+                .as_ref()
+                .map(|a| validate_address(a, &config.account_address_prefix))
                 .transpose()?,
         })
     }
@@ -71,9 +72,9 @@ impl UnsafeNativeChainConfig {
             validate_address(&self.reward_collector_address, &self.account_address_prefix)?;
 
         Ok(NativeChainConfig {
-            account_address_prefix: self.account_address_prefix,
-            validator_address_prefix: self.validator_address_prefix,
-            token_denom: validate_denom(self.token_denom)?,
+            account_address_prefix: self.account_address_prefix.clone(),
+            validator_address_prefix: self.validator_address_prefix.clone(),
+            token_denom: validate_denom(&self.token_denom)?,
             validators,
             unbonding_period: self.unbonding_period,
             staker_address,
@@ -118,14 +119,15 @@ impl UnsafeProtocolChainConfig {
         }
 
         Ok(ProtocolChainConfig {
-            account_address_prefix: self.account_address_prefix,
-            ibc_token_denom: validate_ibc_denom(self.ibc_token_denom)?,
-            liquid_stake_token_denom: validate_denom(self.liquid_stake_token_denom)?,
-            ibc_channel_id: self.ibc_channel_id,
+            account_address_prefix: self.account_address_prefix.clone(),
+            ibc_token_denom: validate_ibc_denom(&self.ibc_token_denom)?,
+            liquid_stake_token_denom: validate_denom(&self.liquid_stake_token_denom)?,
+            ibc_channel_id: self.ibc_channel_id.clone(),
             minimum_liquid_stake_amount: self.minimum_liquid_stake_amount,
             oracle_address: self
                 .oracle_address
-                .map(|a| validate_address(&a, &self.account_address_prefix))
+                .as_ref()
+                .map(|a| validate_address(a, &self.account_address_prefix))
                 .transpose()?,
         })
     }
@@ -286,7 +288,15 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    V0_4_18ToV0_4_20 { send_fees_to_treasury: bool },
+    V0_4_18ToV0_4_20 {
+        send_fees_to_treasury: bool,
+    },
+    V0_4_20ToV1_0_0 {
+        native_account_address_prefix: String,
+        native_validator_address_prefix: String,
+        native_token_denom: String,
+        protocol_account_address_prefix: String,
+    },
 }
 
 #[cw_serde]
