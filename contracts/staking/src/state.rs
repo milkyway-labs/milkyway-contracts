@@ -6,16 +6,29 @@ use milky_way::staking::Batch;
 
 #[cw_serde]
 pub struct Config {
+    /// Config related to the chain for which we are creating
+    /// the LST token.
+    /// For example Celestia is the native chain of milkTIA LST token.
     pub native_chain_config: NativeChainConfig,
+
+    /// Config related to the chain where the smart contract is deployed.
     pub protocol_chain_config: ProtocolChainConfig,
+
+    /// Config related to the fees collected by the contract to
+    /// operate the liquid staking protocol.
     pub protocol_fee_config: ProtocolFeeConfig,
 
     /// Denomination of the liquid staking token that have been
-    /// minted through the tokenfactory module
+    /// minted through the tokenfactory module.
     pub liquid_stake_token_denom: String,
 
+    /// Accounts that can execute the [crate::msg::ExecuteMsg::CircuitBreaker].
     pub monitors: Vec<Addr>,
+
+    /// Time in seconds between each batch.
     pub batch_period: u64,
+
+    /// If true, the contract is stopped and no actions are allowed.
     pub stopped: bool,
 }
 
