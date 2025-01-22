@@ -1,4 +1,3 @@
-// use serde_json;
 use crate::contract::{execute, query};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, QueryMsg, StateResponse,
@@ -6,38 +5,61 @@ use crate::msg::{
 use crate::query::query_pending_batch;
 use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::{
-    init, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
+    init, CELESTIA1, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO2, OSMO3,
+    OSMO4,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{coins, from_json, Decimal, Uint128};
+use cosmwasm_std::{coins, from_json, Addr, Decimal, Uint128};
 
 #[test]
 fn get_config() {
     let deps = init();
     let msg = QueryMsg::Config {};
     let bin = query(deps.as_ref(), mock_env(), msg.clone()).unwrap();
-    let result = from_json::<ConfigResponse>(&bin);
-    match result {
-        Ok(res) => {
-            assert_eq!(res.native_token_denom, NATIVE_TOKEN.to_string());
-            assert_eq!(
-                res.liquid_stake_token_denom,
-                "factory/cosmos2contract/stTIA".to_string()
-            );
-            assert_eq!(res.treasury_address, OSMO1.to_string());
-            assert_eq!(res.monitors, vec![OSMO2.to_string(), OSMO3.to_string()]);
-            assert_eq!(
-                res.validators,
-                vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
-            );
-            assert_eq!(res.batch_period, 86400);
-            assert_eq!(res.unbonding_period, 1209600);
-            assert_eq!(res.minimum_liquid_stake_amount, Uint128::from(100u128));
-            assert_eq!(res.ibc_channel_id, CHANNEL_ID.to_string());
-            assert!(!res.stopped);
-        }
-        Err(e) => panic!("Unexpected error: {:?}", e),
-    }
+    let result = from_json::<ConfigResponse>(&bin).unwrap();
+
+    // Native chain config
+    assert_eq!(result.native_chain_config.token_denom, "utia");
+    assert_eq!(
+        result.native_chain_config.account_address_prefix,
+        "celestia"
+    );
+    assert_eq!(
+        result.native_chain_config.validator_address_prefix,
+        "celestiavaloper"
+    );
+    assert_eq!(
+        result.native_chain_config.validators,
+        vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
+    );
+    assert_eq!(result.native_chain_config.unbonding_period, 1209600);
+    assert_eq!(result.native_chain_config.staker_address, CELESTIA1);
+    assert_eq!(
+        result.native_chain_config.reward_collector_address,
+        CELESTIA2
+    );
+
+    // Protocol chain config
+    assert_eq!(result.protocol_chain_config.account_address_prefix, "osmo");
+    assert_eq!(result.protocol_chain_config.ibc_token_denom, NATIVE_TOKEN);
+    assert_eq!(result.protocol_chain_config.ibc_channel_id, CHANNEL_ID);
+    assert_eq!(
+        result.protocol_chain_config.oracle_address,
+        Some(Addr::unchecked(OSMO4))
+    );
+    assert_eq!(
+        result.protocol_chain_config.minimum_liquid_stake_amount,
+        Uint128::from(100u128)
+    );
+
+    // other Config struct fields
+    assert_eq!(
+        result.liquid_stake_token_denom,
+        "factory/cosmos2contract/stTIA".to_string()
+    );
+    assert_eq!(result.monitors, vec![OSMO2.to_string(), OSMO3.to_string()]);
+    assert_eq!(result.batch_period, 86400);
+    assert!(!result.stopped);
 }
 
 #[test]
