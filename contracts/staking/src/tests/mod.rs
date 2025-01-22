@@ -9,5 +9,6 @@ mod stake_tests;
 mod submit_batch_tests;
 mod test_helper;
 mod unstake_tests;
+mod update_config_tests;
 mod validator_tests;
 mod withdraw_tests;

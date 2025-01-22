@@ -709,6 +709,7 @@ pub fn update_config(
     protocol_chain_config: Option<UnsafeProtocolChainConfig>,
     protocol_fee_config: Option<UnsafeProtocolFeeConfig>,
     monitors: Option<Vec<String>>,
+    batch_period: Option<u64>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -717,17 +718,24 @@ pub fn update_config(
     if let Some(native_chain_config) = native_chain_config {
         config.native_chain_config = native_chain_config.validate()?;
     }
+
     if let Some(protocol_chain_config) = protocol_chain_config {
         config.protocol_chain_config = protocol_chain_config.validate()?;
     }
+
     if let Some(protocol_fee_config) = protocol_fee_config {
         config.protocol_fee_config = protocol_fee_config.validate(&config.protocol_chain_config)?
     }
+
     if let Some(monitors) = monitors {
         config.monitors = validate_addresses(
             &monitors,
             &config.protocol_chain_config.account_address_prefix,
         )?;
+    }
+
+    if let Some(batch_period) = batch_period {
+        config.batch_period = batch_period;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -747,7 +755,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
 
     let expected_sender = derive_intermediate_sender(
         &config.protocol_chain_config.ibc_channel_id,
-        &config.native_chain_config.account_address_prefix,
+        config.native_chain_config.reward_collector_address.as_str(),
         &config.protocol_chain_config.account_address_prefix,
     );
     if expected_sender.is_err() {

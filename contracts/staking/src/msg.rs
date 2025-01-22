@@ -170,6 +170,7 @@ pub enum ExecuteMsg {
         protocol_chain_config: Option<UnsafeProtocolChainConfig>,
         protocol_fee_config: Option<UnsafeProtocolFeeConfig>,
         monitors: Option<Vec<String>>,
+        batch_period: Option<u64>,
     },
     ReceiveRewards {},
     ReceiveUnstakedTokens {

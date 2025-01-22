@@ -62,16 +62,16 @@ fn circuit_breaker() {
     // receive rewards
     let msg = ExecuteMsg::ReceiveRewards {};
     let sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config.address_config.reward_collector_address.as_ref(),
-        "osmo",
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.reward_collector_address.as_ref(),
+        &config.protocol_chain_config.account_address_prefix,
     )
     .unwrap();
     let info = mock_info(
         &sender,
         &[Coin {
             amount: Uint128::from(100u128),
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
         }],
     );
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
@@ -83,7 +83,7 @@ fn circuit_breaker() {
         &sender,
         &[Coin {
             amount: Uint128::from(100u128),
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
         }],
     );
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());

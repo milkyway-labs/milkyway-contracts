@@ -230,9 +230,9 @@ mod staking_tests {
 
         // received rewards in advance of any liquid stake requests
         let sender = derive_intermediate_sender(
-            &config.ibc_channel_id,
-            config.address_config.reward_collector_address.as_ref(),
-            "osmo",
+            &config.protocol_chain_config.ibc_channel_id,
+            config.native_chain_config.reward_collector_address.as_str(),
+            config.native_chain_config.account_address_prefix.as_str(),
         )
         .unwrap();
         let resp = execute(

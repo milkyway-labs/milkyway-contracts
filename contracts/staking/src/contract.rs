@@ -38,9 +38,6 @@ pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
 
-pub const CELESTIA_ACCOUNT_PREFIX: &str = "celestia";
-pub const OSMOSIS_ACCOUNT_PREFIX: &str = "osmo";
-
 ///////////////////
 /// INSTANTIATE ///
 ///////////////////
@@ -100,7 +97,7 @@ pub fn instantiate(
     let pending_batch = Batch::new(
         1,
         Uint128::zero(),
-        env.block.time.seconds() + config.native_chain_config.unbonding_period,
+        env.block.time.seconds() + config.batch_period,
     );
 
     // Set pending batch and batches
@@ -131,7 +128,7 @@ pub fn execute(
             mint_to,
             expected_mint_amount,
         } => {
-            let payment = must_pay(&info, &config.native_chain_config.token_denom)?;
+            let payment = must_pay(&info, &config.protocol_chain_config.ibc_token_denom)?;
             execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
         }
         ExecuteMsg::LiquidUnstake {} => {
@@ -161,6 +158,7 @@ pub fn execute(
             protocol_chain_config,
             protocol_fee_config,
             monitors,
+            batch_period,
         } => update_config(
             deps,
             env,
@@ -169,6 +167,7 @@ pub fn execute(
             protocol_chain_config,
             protocol_fee_config,
             monitors,
+            batch_period,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {

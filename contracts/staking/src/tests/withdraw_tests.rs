@@ -81,7 +81,7 @@ fn withdraw() {
 
     let config = CONFIG.load(&deps.storage).unwrap();
     let coin = Coin {
-        denom: config.native_token_denom.clone(),
+        denom: config.protocol_chain_config.ibc_token_denom.clone(),
         amount: "40000".to_string(),
     };
 
@@ -122,7 +122,7 @@ fn withdraw() {
 
     let config = CONFIG.load(&deps.storage).unwrap();
     let coin = Coin {
-        denom: config.native_token_denom.clone(),
+        denom: config.protocol_chain_config.ibc_token_denom.clone(),
         amount: "90000".to_string(),
     };
 
@@ -199,7 +199,7 @@ fn withdraw_slashing() {
 
     let config = CONFIG.load(&deps.storage).unwrap();
     let coin = Coin {
-        denom: config.native_token_denom.clone(),
+        denom: config.protocol_chain_config.ibc_token_denom.clone(),
         amount: "304615".to_string(), //304615.384... = 304615
     };
 
@@ -240,7 +240,7 @@ fn withdraw_slashing() {
 
     let config = CONFIG.load(&deps.storage).unwrap();
     let coin = Coin {
-        denom: config.native_token_denom.clone(),
+        denom: config.protocol_chain_config.ibc_token_denom.clone(),
         amount: "685384".to_string(), //685,384.615... = 685384
     };
 
