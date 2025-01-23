@@ -1,8 +1,7 @@
 use crate::contract::instantiate;
-use crate::msg::{
-    InstantiateMsg, UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig,
-};
+use crate::msg::InstantiateMsg;
 use crate::state::{Config, CONFIG};
+use crate::types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
 
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,

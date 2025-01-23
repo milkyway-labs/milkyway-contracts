@@ -207,9 +207,9 @@ pub fn execute(
 /////////////
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_json_binary(&query_config(deps, env)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::State {} => to_json_binary(&query_state(deps)?),
         QueryMsg::Batch { id } => to_json_binary(&query_batch(deps, id)?),
         QueryMsg::Batches {

@@ -1,11 +1,11 @@
 use cosmwasm_std::{Addr, Uint128};
 
 use crate::{
-    msg::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig},
     state::CONFIG,
     tests::test_helper::{
         init, CELESTIA1, CELESTIA2, CELESTIAVAL1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, OSMO4,
     },
+    types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig},
 };
 
 #[test]

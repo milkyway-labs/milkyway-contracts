@@ -1,7 +1,7 @@
 use crate::{
     contract::{CONTRACT_NAME, CONTRACT_VERSION},
     error::ContractResult,
-    migrations::states::v0_4_18 as v0_4_18_state,
+    migrations::states::v0_4_18,
     migrations::states::v0_4_20,
 };
 use cosmwasm_std::{DepsMut, Env, Response};
@@ -13,7 +13,7 @@ pub fn migrate(deps: DepsMut, _env: Env, send_fees_to_treasury: bool) -> Contrac
     // Ensure that we are migrating from the correct version.
     assert_contract_version(deps.storage, CONTRACT_NAME, FROM_VERSION)?;
 
-    let old_config = v0_4_18_state::CONFIG.load(deps.storage)?;
+    let old_config = v0_4_18::CONFIG.load(deps.storage)?;
     // Convert the old config format to the new one.
     let new_config = v0_4_20::Config {
         native_token_denom: old_config.native_token_denom,

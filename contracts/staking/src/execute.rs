@@ -4,7 +4,6 @@ use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
-use crate::msg::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
 use crate::oracle::Oracle;
 use crate::state::{
     ibc::{IBCTransfer, PacketLifecycleStatus},
@@ -12,6 +11,7 @@ use crate::state::{
     INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
+use crate::types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
 use cosmwasm_std::{
     ensure, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
     SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
@@ -1023,18 +1023,18 @@ pub fn fee_withdraw(
     if config.protocol_fee_config.treasury_address.is_none() {
         return Err(ContractError::TreasuryNotConfigured {});
     }
+    let treasury_address = config
+        .protocol_fee_config
+        .treasury_address
+        .unwrap()
+        .to_string();
 
     state.total_fees = state.total_fees.checked_sub(amount).unwrap();
     STATE.save(deps.storage, &state)?;
 
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
-        to_address: config
-            .protocol_fee_config
-            .treasury_address
-            .as_ref()
-            .unwrap()
-            .to_string(),
+        to_address: treasury_address.clone(),
         amount: vec![Coin {
             denom: config.protocol_chain_config.ibc_token_denom,
             amount: amount.to_string(),
@@ -1043,14 +1043,7 @@ pub fn fee_withdraw(
 
     Ok(Response::new()
         .add_attribute("action", "fee_withdraw")
-        .add_attribute(
-            "receiver",
-            config
-                .protocol_fee_config
-                .treasury_address
-                .unwrap()
-                .to_string(),
-        )
+        .add_attribute("receiver", treasury_address)
         .add_attribute("amount", amount)
         .add_message(send_msg))
 }

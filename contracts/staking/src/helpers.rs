@@ -204,7 +204,7 @@ pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
 pub fn validate_denom(denom: impl Into<String>) -> StdResult<String> {
     let denom: String = denom.into();
 
-    if denom.len() < 3 {
+    if denom.len() <= 3 {
         return Err(StdError::generic_err("denom len is less than 3"));
     }
     if !denom.chars().all(|c| c.is_ascii_alphabetic()) {
