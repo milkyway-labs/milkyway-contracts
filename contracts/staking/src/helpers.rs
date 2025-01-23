@@ -5,6 +5,41 @@ use std::collections::HashSet;
 
 use crate::state::STATE;
 
+/// Validate the HRP (human readable part).of a bech32 encoded address
+/// as for [BIP-173](https://en.bitcoin.it/wiki/BIP_0173).
+pub fn validate_address_prefix(hrp: &str) -> StdResult<String> {
+    if hrp.is_empty() || hrp.len() > 83 {
+        return Err(StdError::generic_err("invalid address prefix length"));
+    }
+
+    let mut has_lower: bool = false;
+    let mut has_upper: bool = false;
+    for b in hrp.bytes() {
+        // Valid subset of ASCII
+        if !(33..=126).contains(&b) {
+            return Err(StdError::generic_err(
+                "address prefix contains invalid chars",
+            ));
+        }
+
+        if b.is_ascii_lowercase() {
+            has_lower = true;
+        } else if b.is_ascii_uppercase() {
+            has_upper = true;
+        };
+    }
+
+    if has_lower && has_upper {
+        return Err(StdError::generic_err("address prefix chars are mixed case"));
+    }
+
+    if has_upper {
+        Ok(hrp.to_lowercase())
+    } else {
+        Ok(hrp.to_string())
+    }
+}
+
 pub fn validate_address(address: &str, prefix: &str) -> StdResult<Addr> {
     if let Ok((decoded_prefix, _, _)) = bech32::decode(address) {
         if decoded_prefix == prefix {

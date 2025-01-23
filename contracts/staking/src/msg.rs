@@ -1,6 +1,9 @@
 use crate::{
     error::ContractError,
-    helpers::{validate_address, validate_addresses, validate_denom, validate_ibc_denom},
+    helpers::{
+        validate_address, validate_address_prefix, validate_addresses, validate_denom,
+        validate_ibc_denom,
+    },
     state::{
         ibc::IBCTransfer, IbcWaitingForReply, NativeChainConfig, ProtocolChainConfig,
         ProtocolFeeConfig, UnstakeRequest,
@@ -66,19 +69,17 @@ pub struct UnsafeNativeChainConfig {
 
 impl UnsafeNativeChainConfig {
     pub fn validate(&self) -> StdResult<NativeChainConfig> {
-        let validators = validate_addresses(&self.validators, &self.validator_address_prefix)?;
-        let staker_address = validate_address(&self.staker_address, &self.account_address_prefix)?;
-        let reward_collector_address =
-            validate_address(&self.reward_collector_address, &self.account_address_prefix)?;
-
         Ok(NativeChainConfig {
-            account_address_prefix: self.account_address_prefix.clone(),
-            validator_address_prefix: self.validator_address_prefix.clone(),
+            account_address_prefix: validate_address_prefix(&self.account_address_prefix)?,
+            validator_address_prefix: validate_address_prefix(&self.validator_address_prefix)?,
             token_denom: validate_denom(&self.token_denom)?,
-            validators,
+            validators: validate_addresses(&self.validators, &self.validator_address_prefix)?,
             unbonding_period: self.unbonding_period,
-            staker_address,
-            reward_collector_address,
+            staker_address: validate_address(&self.staker_address, &self.account_address_prefix)?,
+            reward_collector_address: validate_address(
+                &self.reward_collector_address,
+                &self.account_address_prefix,
+            )?,
         })
     }
 }
@@ -116,7 +117,7 @@ impl UnsafeProtocolChainConfig {
         }
 
         Ok(ProtocolChainConfig {
-            account_address_prefix: self.account_address_prefix.clone(),
+            account_address_prefix: validate_address_prefix(&self.account_address_prefix)?,
             ibc_token_denom: validate_ibc_denom(&self.ibc_token_denom)?,
             ibc_channel_id: self.ibc_channel_id.clone(),
             minimum_liquid_stake_amount: self.minimum_liquid_stake_amount,
