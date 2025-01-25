@@ -1,7 +1,7 @@
 use crate::{
     contract::{CONTRACT_NAME, CONTRACT_VERSION},
     error::ContractResult,
-    helpers::validate_denom,
+    helpers::{validate_address, validate_address_prefix, validate_denom},
     migrations::states::v0_4_20,
     state::{Config, NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig, CONFIG},
 };
@@ -21,10 +21,45 @@ pub fn migrate(
     // Ensure that we are migrating from the correct version.
     assert_contract_version(deps.storage, CONTRACT_NAME, FROM_VERSION)?;
 
+    // Ensure the address prefixes are valid
+    let native_account_address_prefix = validate_address_prefix(&native_account_address_prefix)?;
+    let native_validator_address_prefix =
+        validate_address_prefix(&native_validator_address_prefix)?;
+    let protocol_account_address_prefix =
+        validate_address_prefix(&protocol_account_address_prefix)?;
+
     // Ensure that the token denom is valid
     validate_denom(&native_token_denom)?;
 
     let old_config = v0_4_20::CONFIG.load(deps.storage)?;
+
+    // Ensure the currently configured native chain addresses have the provided prefixes
+    validate_address(
+        old_config.multisig_address_config.staker_address.as_str(),
+        &native_account_address_prefix,
+    )?;
+    validate_address(
+        old_config
+            .multisig_address_config
+            .reward_collector_address
+            .as_str(),
+        &native_account_address_prefix,
+    )?;
+    for address in old_config.validators.iter() {
+        validate_address(address.as_str(), &native_validator_address_prefix)?;
+    }
+
+    // Ensure the currently configured protocol chain addresses have the provided prefixes
+    if let Some(address) = &old_config.oracle_address {
+        validate_address(address.as_str(), &protocol_account_address_prefix)?;
+    }
+    if old_config.send_fees_to_treasury {
+        validate_address(
+            old_config.treasury_address.as_str(),
+            &protocol_account_address_prefix,
+        )?;
+    }
+
     // Convert the old config format to the new one.
     let new_config = Config {
         native_chain_config: NativeChainConfig {
