@@ -219,7 +219,7 @@ fn update_protocol_chain_config_with_invalid_ibc_channel_id_fails() {
         native_chain_config: None,
         protocol_chain_config: Some(UnsafeProtocolChainConfig {
             account_address_prefix: "osmo".to_string(),
-            ibc_token_denom: "utia".to_string(),
+            ibc_token_denom: NATIVE_TOKEN.to_string(),
             ibc_channel_id: "".to_string(),
             oracle_address: Some(OSMO4.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
@@ -246,7 +246,7 @@ fn update_protocol_chain_config_with_invalid_oracle_address_fails() {
         native_chain_config: None,
         protocol_chain_config: Some(UnsafeProtocolChainConfig {
             account_address_prefix: "osmo".to_string(),
-            ibc_token_denom: "utia".to_string(),
+            ibc_token_denom: NATIVE_TOKEN.to_string(),
             ibc_channel_id: CHANNEL_ID.to_string(),
             oracle_address: Some(CELESTIA1.to_string()),
             minimum_liquid_stake_amount: Uint128::from(100u128),
