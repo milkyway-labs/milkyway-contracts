@@ -18,7 +18,6 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
-# use this feature to compile the contract to support the initia miniwasm x/tokenfactory module.
 miniwasm = ["initia-proto"]
 
 [dependencies]
