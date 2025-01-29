@@ -18,6 +18,8 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
+# use this feature to compile the contract to support the initia miniwasm x/tokenfactory module.
+miniwasm = ["initia-proto"]
 
 [dependencies]
 bech32.workspace = true
@@ -38,6 +40,7 @@ serde_json = "1.0"
 sha2 = "0.10.8"
 thiserror.workspace = true
 semver.workspace = true
+initia-proto = { path = "../../packages/initia-proto", optional = true }
 
 [dev-dependencies]
 cw-multi-test = "0.17.0"
