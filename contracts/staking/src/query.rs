@@ -16,36 +16,13 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
 
     let res = ConfigResponse {
-        native_token_denom: config.native_token_denom,
-        liquid_stake_token_denom: config.liquid_stake_token_denom,
-        treasury_address: config.treasury_address.to_string(),
-        monitors: config
-            .monitors
-            .unwrap()
-            .into_iter()
-            .map(|v| v.to_string())
-            .collect(),
-        validators: config
-            .validators
-            .into_iter()
-            .map(|v| v.to_string())
-            .collect(),
-        batch_period: config.batch_period,
-        unbonding_period: config.unbonding_period,
-        minimum_liquid_stake_amount: config.minimum_liquid_stake_amount,
-        staker_address: config.multisig_address_config.staker_address.to_string(),
-        reward_collector_address: config
-            .multisig_address_config
-            .reward_collector_address
-            .to_string(),
+        native_chain_config: config.native_chain_config,
+        protocol_chain_config: config.protocol_chain_config,
         protocol_fee_config: config.protocol_fee_config,
-        ibc_channel_id: config.ibc_channel_id,
+        liquid_stake_token_denom: config.liquid_stake_token_denom,
+        monitors: config.monitors,
+        batch_period: config.batch_period,
         stopped: config.stopped,
-        oracle_address: config
-            .oracle_address
-            .map(|v| v.to_string())
-            .unwrap_or_default(),
-        send_fees_to_treasury: config.send_fees_to_treasury,
     };
     Ok(res)
 }

@@ -2,7 +2,7 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
-use crate::helpers::validate_addresses;
+use crate::helpers::{validate_addresses, validate_denom};
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::migrations;
 use crate::query::{
@@ -11,8 +11,7 @@ use crate::query::{
     query_state, query_unstake_requests,
 };
 use crate::state::{
-    Config, MultisigAddressConfig, ProtocolFeeConfig, State, ADMIN, BATCHES, CONFIG,
-    IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
+    Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -24,7 +23,7 @@ use crate::{
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Uint128,
 };
 use cosmwasm_std::{CosmosMsg, Timestamp};
@@ -38,10 +37,6 @@ use semver::Version;
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
-
-pub const CELESTIA_ACCOUNT_PREFIX: &str = "celestia";
-pub const OSMOSIS_ACCOUNT_PREFIX: &str = "osmo";
-pub const CELESTIA_VALIDATOR_PREFIX: &str = "celestiavaloper";
 
 ///////////////////
 /// INSTANTIATE ///
@@ -59,63 +54,28 @@ pub fn instantiate(
     // TODO: determine if info.sender is the admin or if we want to pass in with msg
     ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
 
-    // validations
-    let validators = validate_addresses(&msg.validators, CELESTIA_VALIDATOR_PREFIX)?;
-    assert!(
-        msg.liquid_stake_token_denom.len() > 3,
-        "liquid_stake_token_denom is required"
-    );
-    assert!(
-        msg.liquid_stake_token_denom
-            .chars()
-            .all(|c| c.is_ascii_alphabetic()),
-        "liquid_stake_token_denom must be alphabetic"
-    );
-
     // Init Config
+    let native_chain_config = msg.native_chain_config.validate()?;
+    let protocol_chain_config = msg.protocol_chain_config.validate()?;
+    let protocol_fee_config = msg.protocol_fee_config.validate(&protocol_chain_config)?;
+
     let config = Config {
-        native_token_denom: "".to_string(),
+        native_chain_config,
+        protocol_chain_config,
+        protocol_fee_config,
         liquid_stake_token_denom: format!(
             "factory/{0}/{1}",
-            env.contract.address, msg.liquid_stake_token_denom
+            env.contract.address,
+            validate_denom(&msg.liquid_stake_token_denom)?
         ),
-        treasury_address: Addr::unchecked(""),
-        monitors: Some(vec![]),
-        validators,
-        batch_period: 0,
-        unbonding_period: 0,
-        protocol_fee_config: ProtocolFeeConfig {
-            dao_treasury_fee: Uint128::zero(),
-        },
-        multisig_address_config: MultisigAddressConfig {
-            staker_address: Addr::unchecked(""),
-            reward_collector_address: Addr::unchecked(""),
-        },
-        minimum_liquid_stake_amount: Uint128::zero(),
-        ibc_channel_id: "".to_string(),
+        monitors: validate_addresses(
+            &msg.monitors,
+            &msg.protocol_chain_config.account_address_prefix,
+        )?,
+        batch_period: msg.batch_period,
         stopped: true, // we start stopped
-        oracle_address: None,
-        send_fees_to_treasury: msg.send_fees_to_treasury,
     };
-
     CONFIG.save(deps.storage, &config)?;
-
-    update_config(
-        deps.branch(),
-        env.clone(),
-        info.clone(),
-        Some(msg.batch_period),
-        Some(msg.unbonding_period),
-        Some(msg.minimum_liquid_stake_amount),
-        Some(msg.multisig_address_config),
-        Some(msg.protocol_fee_config),
-        Some(msg.native_token_denom),
-        Some(msg.ibc_channel_id.clone()),
-        Some(msg.monitors),
-        Some(msg.treasury_address),
-        msg.oracle_address,
-        Some(msg.send_fees_to_treasury),
-    )?;
 
     // Init State
     let state = State {
@@ -173,7 +133,7 @@ pub fn execute(
             mint_to,
             expected_mint_amount,
         } => {
-            let payment = must_pay(&info, &config.native_token_denom)?;
+            let payment = must_pay(&info, &config.protocol_chain_config.ibc_token_denom)?;
             execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
         }
         ExecuteMsg::LiquidUnstake {} => {
@@ -196,32 +156,20 @@ pub fn execute(
             execute_revoke_ownership_transfer(deps, env, info)
         }
         ExecuteMsg::UpdateConfig {
-            batch_period,
-            unbonding_period,
-            minimum_liquid_stake_amount,
-            multisig_address_config,
+            native_chain_config,
+            protocol_chain_config,
             protocol_fee_config,
-            native_token_denom,
-            channel_id,
             monitors,
-            treasury_address,
-            oracle_address,
-            send_fees_to_treasury,
+            batch_period,
         } => update_config(
             deps,
             env,
             info,
-            batch_period,
-            unbonding_period,
-            minimum_liquid_stake_amount,
-            multisig_address_config,
+            native_chain_config,
+            protocol_chain_config,
             protocol_fee_config,
-            native_token_denom,
-            channel_id,
             monitors,
-            treasury_address,
-            oracle_address,
-            send_fees_to_treasury,
+            batch_period,
         ),
         ExecuteMsg::ReceiveRewards {} => receive_rewards(deps, env, info),
         ExecuteMsg::ReceiveUnstakedTokens { batch_id } => {
@@ -311,7 +259,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
         .parse()
         .map_err(|_| StdError::generic_err("Invalid contract version"))?;
 
-    // current version not launchpad v2
+    // Prevent downgrade
     if version > new_version {
         return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
     }
@@ -324,6 +272,19 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
         MigrateMsg::V0_4_18ToV0_4_20 {
             send_fees_to_treasury,
         } => migrations::v0_4_20::migrate(deps.branch(), env, send_fees_to_treasury)?,
+        MigrateMsg::V0_4_20ToV1_0_0 {
+            native_account_address_prefix,
+            native_validator_address_prefix,
+            native_token_denom,
+            protocol_account_address_prefix,
+        } => migrations::v1_0_0::migrate(
+            deps.branch(),
+            env,
+            native_account_address_prefix,
+            native_validator_address_prefix,
+            native_token_denom,
+            protocol_account_address_prefix,
+        )?,
     };
 
     // set new contract version

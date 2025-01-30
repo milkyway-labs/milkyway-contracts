@@ -1,296 +1,260 @@
-#[cfg(test)]
-mod tests {
-    use crate::msg::InstantiateMsg;
-    use crate::state::{Config, MultisigAddressConfig, ProtocolFeeConfig, BATCHES, CONFIG};
-    use crate::tests::test_helper::{
-        init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO2, OSMO3,
-    };
+use crate::state::{NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig, BATCHES, CONFIG};
+use crate::tests::test_helper::{
+    mock_init_msg, CELESTIA1, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN,
+    OSMO1, OSMO2, OSMO3, OSMO4,
+};
 
-    use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{Addr, Order, Uint128};
-    use milky_way::staking::BatchStatus;
+use cosmwasm_std::testing::{mock_dependencies, mock_info};
+use cosmwasm_std::{Addr, Order, Uint128};
+use milky_way::staking::BatchStatus;
 
-    #[test]
-    fn proper_instantiation() {
-        let deps = init();
+#[test]
+fn invalid_native_chain_account_address_prefix_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let pending_batch = BATCHES
-            .range(&deps.storage, None, None, Order::Descending)
-            .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
-            .unwrap()
-            .unwrap()
-            .1;
+    msg.native_chain_config.account_address_prefix = "".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        assert!(pending_batch.id == 1);
-    }
+#[test]
+fn invalid_native_chain_validator_address_prefix_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-    #[test]
-    fn config_validation() {
-        let mut deps = init();
+    msg.native_chain_config.validator_address_prefix = "".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        fn get_msg() -> InstantiateMsg {
-            InstantiateMsg {
-                native_token_denom: NATIVE_TOKEN.to_string(),
-                liquid_stake_token_denom: "stTIA".to_string(),
-                treasury_address: OSMO1.to_string(),
-                monitors: vec![OSMO2.to_string(), OSMO3.to_string()],
-                validators: vec![CELESTIA1.to_string(), CELESTIA2.to_string()],
-                batch_period: 86400,
-                unbonding_period: 1209600,
-                protocol_fee_config: ProtocolFeeConfig {
-                    dao_treasury_fee: Uint128::from(10u128),
-                },
-                multisig_address_config: MultisigAddressConfig {
-                    staker_address: Addr::unchecked(CELESTIA1),
-                    reward_collector_address: Addr::unchecked(CELESTIA2),
-                },
-                minimum_liquid_stake_amount: Uint128::from(100u128),
-                ibc_channel_id: CHANNEL_ID.to_string(),
-                oracle_address: None,
-                send_fees_to_treasury: false,
-            }
-        }
+#[test]
+fn invalid_native_token_denom_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    msg.native_chain_config.token_denom = "".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let mut msg = get_msg();
-        msg.native_token_denom = "".to_string();
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+#[test]
+fn invalid_native_chain_validators_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let mut msg = get_msg();
-        msg.ibc_channel_id = "".to_string();
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+    msg.native_chain_config.validators[1] = OSMO1.to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let mut msg = get_msg();
-        msg.treasury_address = "".to_string();
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+#[test]
+fn invalid_staker_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let mut msg = get_msg();
-        msg.monitors[1] = "".to_string();
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+    msg.native_chain_config.staker_address = OSMO1.to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let mut msg = get_msg();
-        msg.monitors[1] = CELESTIA1.to_string();
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+#[test]
+fn invalid_rewards_collector_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let mut msg = get_msg();
-        msg.validators[1] = OSMO1.to_string();
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+    msg.native_chain_config.reward_collector_address = OSMO1.to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let mut msg = get_msg();
-        msg.multisig_address_config.staker_address = Addr::unchecked(OSMO1.to_string());
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
+#[test]
+fn invalid_protocol_chain_account_address_prefix_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let mut msg = get_msg();
-        msg.multisig_address_config.reward_collector_address = Addr::unchecked(OSMO1.to_string());
-        let res = crate::contract::instantiate(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            msg,
-        );
-        assert!(res.is_err());
-    }
+    msg.protocol_chain_config.account_address_prefix = "".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-    #[test]
-    fn update_config() {
-        let mut deps = init();
+#[test]
+fn invalid_protocol_ibc_token_denom_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    msg.protocol_chain_config.ibc_token_denom = "utia".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
-            batch_period: Some(86400),
-            unbonding_period: Some(1209600),
-            protocol_fee_config: Some(ProtocolFeeConfig {
-                dao_treasury_fee: Uint128::from(10u128),
-            }),
-            multisig_address_config: Some(MultisigAddressConfig {
-                staker_address: Addr::unchecked(CELESTIA1),
-                reward_collector_address: Addr::unchecked(CELESTIA2),
-            }),
-            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            native_token_denom: Some(
-                "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA".to_string(),
-            ),
-            channel_id: Some("channel-0".to_string()),
-            monitors: Some(vec![OSMO3.to_string()]),
-            treasury_address: Some(OSMO3.to_string()),
-            oracle_address: None,
-            send_fees_to_treasury: None,
-        };
+#[test]
+fn invalid_lst_token_denom_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let res = crate::contract::execute(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            config_update_msg,
-        );
-        assert!(res.is_ok());
-        let config: Config = CONFIG.load(&deps.storage).unwrap();
-        assert!(config.clone().monitors.unwrap().len() == 1);
-        assert!(
-            config
-                .clone()
-                .monitors
-                .unwrap()
-                .first()
-                .unwrap()
-                .to_string()
-                == *OSMO3
-        );
-        assert!(config.treasury_address == OSMO3);
+    msg.liquid_stake_token_denom = "".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
-            batch_period: Some(86400),
-            unbonding_period: Some(1209600),
-            protocol_fee_config: Some(ProtocolFeeConfig {
-                dao_treasury_fee: Uint128::from(10u128),
-            }),
-            multisig_address_config: Some(MultisigAddressConfig {
-                staker_address: Addr::unchecked(CELESTIA1),
-                reward_collector_address: Addr::unchecked(CELESTIA2),
-            }),
-            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            native_token_denom: Some("".to_string()),
-            channel_id: Some("channel-0".to_string()),
-            monitors: None,
-            treasury_address: None,
-            oracle_address: None,
-            send_fees_to_treasury: None,
-        };
-        let res = crate::contract::execute(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            config_update_msg,
-        );
-        assert!(res.is_err());
+#[test]
+fn invalid_protocol_ibc_channel_id_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
-            batch_period: Some(86400),
-            unbonding_period: Some(1209600),
-            protocol_fee_config: Some(ProtocolFeeConfig {
-                dao_treasury_fee: Uint128::from(10u128),
-            }),
-            multisig_address_config: Some(MultisigAddressConfig {
-                staker_address: Addr::unchecked(CELESTIA1),
-                reward_collector_address: Addr::unchecked(CELESTIA2),
-            }),
-            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            native_token_denom: Some("ibc/abc".to_string()),
-            channel_id: Some("".to_string()),
-            monitors: None,
-            treasury_address: None,
-            oracle_address: None,
-            send_fees_to_treasury: None,
-        };
-        let res = crate::contract::execute(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            config_update_msg,
-        );
-        assert!(res.is_err());
+    msg.protocol_chain_config.ibc_channel_id = "".to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
-            batch_period: Some(86400),
-            unbonding_period: Some(1209600),
-            protocol_fee_config: Some(ProtocolFeeConfig {
-                dao_treasury_fee: Uint128::from(10u128),
-            }),
-            multisig_address_config: Some(MultisigAddressConfig {
-                staker_address: Addr::unchecked(CELESTIA1),
-                reward_collector_address: Addr::unchecked(CELESTIA2),
-            }),
-            minimum_liquid_stake_amount: Some(Uint128::from(100u128)),
-            native_token_denom: Some("".to_string()),
-            channel_id: Some("".to_string()),
-            monitors: None,
-            treasury_address: None,
-            oracle_address: None,
-            send_fees_to_treasury: None,
-        };
-        let res = crate::contract::execute(
-            deps.as_mut(),
-            cosmwasm_std::testing::mock_env(),
-            info.clone(),
-            config_update_msg,
-        );
-        assert!(res.is_err());
-    }
+#[test]
+fn invalid_protocol_treasury_address_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-    #[test]
-    fn update_send_fees_to_treasury() {
-        let mut deps = init();
+    msg.protocol_fee_config.treasury_address = Some(CELESTIA1.to_string());
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
 
-        let config = CONFIG.load(&deps.storage).unwrap();
-        let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
-            batch_period: None,
-            unbonding_period: None,
-            protocol_fee_config: None,
-            multisig_address_config: None,
-            minimum_liquid_stake_amount: None,
-            native_token_denom: None,
-            channel_id: None,
-            monitors: None,
-            treasury_address: None,
-            oracle_address: None,
-            send_fees_to_treasury: Some(!config.send_fees_to_treasury),
-        };
-        crate::contract::execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info(OSMO3, &[]),
-            config_update_msg,
-        )
-        .unwrap();
+#[test]
+fn invalid_monitors_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
 
-        let new_confg = CONFIG.load(&deps.storage).unwrap();
-        assert_eq!(
-            new_confg.send_fees_to_treasury,
-            !config.send_fees_to_treasury
-        );
-    }
+    msg.monitors[1] = CELESTIA1.to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
+fn init_properly() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let msg = mock_init_msg();
+
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg.clone(),
+    );
+    assert!(res.is_ok());
+
+    let pending_batch = BATCHES
+        .range(&deps.storage, None, None, Order::Descending)
+        .find(|r| r.is_ok() && r.as_ref().unwrap().1.status == BatchStatus::Pending)
+        .unwrap()
+        .unwrap()
+        .1;
+    assert!(pending_batch.id == 1);
+
+    let config = CONFIG.load(&deps.storage).unwrap();
+    assert_eq!(
+        NativeChainConfig {
+            token_denom: "utia".to_string(),
+            account_address_prefix: "celestia".to_string(),
+            validator_address_prefix: "celestiavaloper".to_string(),
+            validators: vec![Addr::unchecked(CELESTIAVAL1), Addr::unchecked(CELESTIAVAL2)],
+            unbonding_period: 1209600,
+            staker_address: Addr::unchecked(CELESTIA1),
+            reward_collector_address: Addr::unchecked(CELESTIA2),
+        },
+        config.native_chain_config
+    );
+    assert_eq!(
+        ProtocolChainConfig {
+            account_address_prefix: "osmo".to_string(),
+            ibc_token_denom: NATIVE_TOKEN.to_string(),
+            ibc_channel_id: CHANNEL_ID.to_string(),
+            oracle_address: Some(Addr::unchecked(OSMO4)),
+            minimum_liquid_stake_amount: Uint128::from(100u128),
+        },
+        config.protocol_chain_config
+    );
+    assert_eq!(
+        ProtocolFeeConfig {
+            dao_treasury_fee: Uint128::from(10000u128),
+            treasury_address: Some(Addr::unchecked(OSMO1)),
+        },
+        config.protocol_fee_config
+    );
+    assert_eq!(
+        vec![Addr::unchecked(OSMO2), Addr::unchecked(OSMO3)],
+        config.monitors
+    );
+    assert_eq!(86400, config.batch_period);
 }

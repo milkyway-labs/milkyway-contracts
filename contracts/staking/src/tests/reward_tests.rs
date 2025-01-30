@@ -26,12 +26,9 @@ fn receive_rewards() {
     let contract = env.contract.address.clone().to_string();
 
     let sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
-        "osmo",
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.reward_collector_address.as_str(),
+        config.protocol_chain_config.account_address_prefix.as_str(),
     )
     .unwrap();
 
@@ -50,7 +47,7 @@ fn receive_rewards() {
         &contract,
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
         }],
     );
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
@@ -58,20 +55,18 @@ fn receive_rewards() {
     assert!(res.is_err()); // wrong sender
 
     // Test without send fees to treasury
-    config.send_fees_to_treasury = false;
+    config.protocol_fee_config.treasury_address = None;
     CONFIG.save(&mut deps.storage, &config).unwrap();
 
     let info = mock_info(
         &sender,
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
         }],
     );
-    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
 
-    assert!(res.is_ok());
-    let res = res.unwrap();
     assert_eq!(res.messages.len(), 2); // transfer message and redemption/purchase rate update
     assert_eq!(res.messages[1].reply_on, ReplyOn::Always);
     assert_eq!(
@@ -104,26 +99,19 @@ fn receive_rewards_and_send_fees_to_treasury() {
     let env = mock_env();
 
     let mut state = STATE.load(&deps.storage).unwrap();
-    let mut config = CONFIG.load(&deps.storage).unwrap();
+    let config = CONFIG.load(&deps.storage).unwrap();
 
     state.total_liquid_stake_token = Uint128::from(100_000u128);
     state.total_native_token = Uint128::from(100_000u128);
     state.total_reward_amount = Uint128::from(0u128);
     STATE.save(&mut deps.storage, &state).unwrap();
 
-    // Test with send fees to treasury
-    config.send_fees_to_treasury = true;
-    CONFIG.save(&mut deps.storage, &config).unwrap();
-
     let msg = ExecuteMsg::ReceiveRewards {};
 
     let sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config
-            .multisig_address_config
-            .reward_collector_address
-            .as_ref(),
-        "osmo",
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.reward_collector_address.as_str(),
+        config.protocol_chain_config.account_address_prefix.as_str(),
     )
     .unwrap();
 
@@ -131,7 +119,7 @@ fn receive_rewards_and_send_fees_to_treasury() {
         &sender,
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
         }],
     );
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
@@ -157,7 +145,11 @@ fn receive_rewards_and_send_fees_to_treasury() {
     assert_eq!(
         res.messages[2].msg,
         CosmosMsg::from(cosmwasm_std::BankMsg::Send {
-            to_address: config.treasury_address.to_string(),
+            to_address: config
+                .protocol_fee_config
+                .treasury_address
+                .unwrap()
+                .to_string(),
             amount: vec![cosmwasm_std::Coin::new(10u128, NATIVE_TOKEN)],
         })
     );

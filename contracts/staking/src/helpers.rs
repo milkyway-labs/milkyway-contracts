@@ -5,6 +5,41 @@ use std::collections::HashSet;
 
 use crate::state::STATE;
 
+/// Validate the HRP (human readable part).of a bech32 encoded address
+/// as for [BIP-173](https://en.bitcoin.it/wiki/BIP_0173).
+pub fn validate_address_prefix(hrp: &str) -> StdResult<String> {
+    if hrp.is_empty() || hrp.len() > 83 {
+        return Err(StdError::generic_err("invalid address prefix length"));
+    }
+
+    let mut has_lower: bool = false;
+    let mut has_upper: bool = false;
+    for b in hrp.bytes() {
+        // Valid subset of ASCII
+        if !(33..=126).contains(&b) {
+            return Err(StdError::generic_err(
+                "address prefix contains invalid chars",
+            ));
+        }
+
+        if b.is_ascii_lowercase() {
+            has_lower = true;
+        } else if b.is_ascii_uppercase() {
+            has_upper = true;
+        };
+    }
+
+    if has_lower && has_upper {
+        return Err(StdError::generic_err("address prefix chars are mixed case"));
+    }
+
+    if has_upper {
+        Ok(hrp.to_lowercase())
+    } else {
+        Ok(hrp.to_string())
+    }
+}
+
 pub fn validate_address(address: &str, prefix: &str) -> StdResult<Addr> {
     if let Ok((decoded_prefix, _, _)) = bech32::decode(address) {
         if decoded_prefix == prefix {
@@ -162,6 +197,31 @@ pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
             Decimal::from_ratio(total_native_token, total_liquid_stake_token),
             Decimal::from_ratio(total_liquid_stake_token, total_native_token),
         )
+    }
+}
+
+/// Checks if the provided denom is valid or not.
+pub fn validate_denom(denom: impl Into<String>) -> StdResult<String> {
+    let denom: String = denom.into();
+
+    if denom.len() <= 3 {
+        return Err(StdError::generic_err("denom len is less than 3"));
+    }
+    if !denom.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Err(StdError::generic_err("denom must be alphabetic"));
+    }
+
+    Ok(denom)
+}
+
+/// Checks the provided denom is a valid ibc denom or not.
+pub fn validate_ibc_denom(ibc_denom: impl Into<String>) -> StdResult<String> {
+    let ibc_denom: String = ibc_denom.into();
+
+    if ibc_denom.starts_with("ibc/") && ibc_denom.strip_prefix("ibc/").unwrap().len() == 64 {
+        Ok(ibc_denom)
+    } else {
+        Err(StdError::generic_err("ibc denom is invalid"))
     }
 }
 

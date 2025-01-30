@@ -1,6 +1,6 @@
 [package]
 name = "staking"
-version       = { workspace = true }
+version       = "1.0.0"
 rust-version  = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

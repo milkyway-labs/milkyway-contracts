@@ -6,23 +6,91 @@ use milky_way::staking::Batch;
 
 #[cw_serde]
 pub struct Config {
-    pub native_token_denom: String,
-    pub liquid_stake_token_denom: String,
-    pub treasury_address: Addr,
-    pub monitors: Option<Vec<Addr>>,
-    pub validators: Vec<Addr>,
-    pub batch_period: u64,
-    pub unbonding_period: u64,
+    /// Config related to the chain for which we are creating
+    /// the LST token.
+    /// For example Celestia is the native chain of milkTIA LST token.
+    pub native_chain_config: NativeChainConfig,
+
+    /// Config related to the chain where the smart contract is deployed.
+    pub protocol_chain_config: ProtocolChainConfig,
+
+    /// Config related to the fees collected by the contract to
+    /// operate the liquid staking protocol.
     pub protocol_fee_config: ProtocolFeeConfig,
-    pub multisig_address_config: MultisigAddressConfig,
-    pub minimum_liquid_stake_amount: Uint128,
-    pub ibc_channel_id: String,
+
+    /// Denomination of the liquid staking token that have been
+    /// minted through the tokenfactory module.
+    pub liquid_stake_token_denom: String,
+
+    /// Accounts that can execute the [crate::msg::ExecuteMsg::CircuitBreaker].
+    pub monitors: Vec<Addr>,
+
+    /// Time in seconds between each batch.
+    pub batch_period: u64,
+
+    /// If true, the contract is stopped and no actions are allowed.
     pub stopped: bool,
-    pub oracle_address: Option<Addr>,
-    // Tells if the contract will automatically send the collected fees
-    // to the treasury.
-    pub send_fees_to_treasury: bool,
 }
+
+/// Config related to the chain for which we are creating
+/// the LST token.
+/// For example Celestia is the native chain of milkTIA LST token.
+#[cw_serde]
+pub struct NativeChainConfig {
+    /// Bech32 prefix for accounts (e.g. "celestia", "initia", etc)
+    pub account_address_prefix: String,
+
+    /// Bech32 prefix for validator accounts (e.g. "celestiavaloper", "initavaloper", etc)
+    pub validator_address_prefix: String,
+
+    /// Denomination of underlying token (e.g. "utia", "uinit", etc)
+    pub token_denom: String,
+
+    /// Set of validators who will receive the delegations.
+    pub validators: Vec<Addr>,
+
+    /// The staking module's unbonding period in seconds.
+    pub unbonding_period: u64,
+
+    /// Address of the account that is performing the delegation in the native
+    /// chain.
+    pub staker_address: Addr,
+
+    /// Address where the staking rewards are withdrawn.
+    pub reward_collector_address: Addr,
+}
+
+/// Config related to the chain where the smart contract is deployed.
+#[cw_serde]
+pub struct ProtocolChainConfig {
+    /// Bech32 prefix for accounts (e.g. "osmosis", "milkyway", etc)
+    pub account_address_prefix: String,
+
+    /// IBC channel id from the Protocol chain to the base chain (e.g. Osmosis -> Celestia)
+    pub ibc_channel_id: String,
+
+    /// IBC denom of the token for which we are creating the LST once is
+    /// received in the chain where this contract is deployed.
+    pub ibc_token_denom: String,
+
+    /// Minimum amount of token that can be liquid staked.
+    pub minimum_liquid_stake_amount: Uint128,
+
+    /// The redemption / purchase rate oracle address
+    pub oracle_address: Option<Addr>,
+}
+
+/// Config related to the fees collected by the contract to
+/// operate the liquid staking protocol.
+#[cw_serde]
+pub struct ProtocolFeeConfig {
+    pub dao_treasury_fee: Uint128, // not using a fraction, fee percentage=x/100000
+
+    /// Address where the collected fees are sent.
+    /// If this value is None, the fees will be kept in the contract.
+    pub treasury_address: Option<Addr>,
+}
+
 // TODO: PENDING - DOCS DEFINE THESE AS MAPS?
 // Discuss: Do we want to add or remove any state?
 #[cw_serde]
@@ -35,18 +103,6 @@ pub struct State {
     pub rate: Uint128,
     pub total_fees: Uint128,
     pub ibc_id_counter: u64,
-}
-
-#[cw_serde]
-#[derive(Default)]
-pub struct ProtocolFeeConfig {
-    pub dao_treasury_fee: Uint128, // not using a fraction, fee percentage=x/100000
-}
-
-#[cw_serde]
-pub struct MultisigAddressConfig {
-    pub staker_address: Addr,
-    pub reward_collector_address: Addr,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

@@ -201,9 +201,9 @@ fn receive_unstaked_tokens() {
     let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
 
     let sender = derive_intermediate_sender(
-        &config.ibc_channel_id,
-        config.multisig_address_config.staker_address.as_ref(),
-        "osmo",
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.staker_address.as_str(),
+        config.protocol_chain_config.account_address_prefix.as_str(),
     )
     .unwrap();
 
@@ -211,32 +211,28 @@ fn receive_unstaked_tokens() {
         &sender,
         &[cosmwasm_std::Coin {
             amount: Uint128::from(100u128),
-            denom: config.native_token_denom.clone(),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
         }],
     );
 
     let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
     batch.update_status(BatchStatus::Pending, Some(env.block.time.seconds() - 1));
-    let res = BATCHES.save(&mut deps.storage, 1, &batch);
-    assert!(res.is_ok());
+    BATCHES.save(&mut deps.storage, 1, &batch).unwrap();
 
     let res: Result<cosmwasm_std::Response, crate::error::ContractError> =
         execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
     assert!(res.is_err()); // batch not submitted
 
     batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() + 1));
-    let res = BATCHES.save(&mut deps.storage, 1, &batch);
-    assert!(res.is_ok());
+    BATCHES.save(&mut deps.storage, 1, &batch).unwrap();
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
     assert!(res.is_err()); // batch not ready
 
     batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() - 1));
-    let res = BATCHES.save(&mut deps.storage, 1, &batch);
-    assert!(res.is_ok());
+    BATCHES.save(&mut deps.storage, 1, &batch).unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-    assert!(res.is_ok());
+    execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 }
 
 #[test]
@@ -406,25 +402,23 @@ fn claimable_batches() {
     assert!(res.is_ok());
 
     let msg = ExecuteMsg::ReceiveUnstakedTokens { batch_id: 1 };
+    let config = CONFIG.load(&deps.storage).unwrap();
+
+    let sender = derive_intermediate_sender(
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.staker_address.as_str(),
+        config.protocol_chain_config.account_address_prefix.as_str(),
+    )
+    .unwrap();
+
     let info = mock_info(
-        &derive_intermediate_sender(
-            &CONFIG.load(&deps.storage).unwrap().ibc_channel_id,
-            CONFIG
-                .load(&deps.storage)
-                .unwrap()
-                .multisig_address_config
-                .staker_address
-                .as_ref(),
-            "osmo",
-        )
-        .unwrap(),
+        &sender,
         &[cosmwasm_std::Coin {
             amount: Uint128::from(1000u128),
-            denom: CONFIG.load(&deps.storage).unwrap().native_token_denom,
+            denom: config.protocol_chain_config.ibc_token_denom,
         }],
     );
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-    assert!(res.is_ok());
+    execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let unstake_requests_res = query(
         deps.as_ref(),
