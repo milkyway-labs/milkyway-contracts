@@ -17,4 +17,4 @@ SCRIPT_NAME="$(basename "$0")"
 # Ensure that we have the proper a application installed
 ensure_installed "$SCRIPT_NAME"
 # Run the application passing the arguments to it
-"$BINS_DIR/$SCRIPT_NAME" "$@"
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$BINS_DIR "$BINS_DIR/$SCRIPT_NAME" "$@"
