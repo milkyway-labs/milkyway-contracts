@@ -207,7 +207,7 @@ pub fn execute_liquid_stake(
             amount: mint_amount,
         },
         mint_to_address,
-    );
+    )?;
 
     // Transfer native token to multisig address
     let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
@@ -362,7 +362,7 @@ pub fn execute_submit_batch(
             amount: batch.batch_total_liquid_stake,
         },
         env.contract.address.to_string(),
-    );
+    )?;
 
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,

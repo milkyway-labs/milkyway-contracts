@@ -95,7 +95,7 @@ pub fn instantiate(
     let cosmos_tokenfactory_msg = tokenfactory::create_denom(
         env.contract.address.to_string(),
         msg.liquid_stake_token_denom,
-    );
+    )?;
 
     let pending_batch = Batch::new(
         1,
