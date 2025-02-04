@@ -5,6 +5,7 @@ set -e
 DEFAULT_OSMOSISD_VERSION="25.0.0"
 DEFAULT_CELESTIA_VERSION="1.11.0"
 DEFAULT_HERMES_VERSION="1.9.0"
+DEFAULT_MINIWASM_VERSION="0.6.4"
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 BINS_DIR="$SCRIPT_DIR/bins"
@@ -62,6 +63,29 @@ function download_hermes() {
   unzip -j "$BINS_DIR/hermes.zip" "hermes" -d "$BINS_DIR"
   chmod +x "$BINS_DIR/hermes"
   rm -f "$BINS_DIR/hermes.zip"
+}
+
+function download_miniwasm() {
+  local download_version=$DEFAULT_MINIWASM_VERSION
+  if [[ -n "$MINIWASM_VERSION" ]]; then
+    download_version="$MINIWASM_VERSION"
+  fi
+
+  local download_url="https://github.com/initia-labs/miniwasm/releases/download/v${download_version}/miniwasm_v${download_version}_Linux_x86_64.tar.gz"
+  echo "Downloading miniwasm v${download_version} $download_url"
+  wget -q -O "$BINS_DIR/miniwasm.tar.gz" "$download_url" || {
+      echo "Failed to download miniwasm."
+      return 1
+  }
+
+
+  tar --extract --file "$BINS_DIR/miniwasm.tar.gz" "miniwasm_v${download_version}/minitiad"
+  tar --extract --file "$BINS_DIR/miniwasm.tar.gz" "miniwasm_v${download_version}/libwasmvm.x86_64.so"
+  rm -f "$BINS_DIR/miniwasm.tar.gz"
+  mv "miniwasm_v${download_version}/minitiad" "$BINS_DIR/miniwasm"
+  mv "miniwasm_v${download_version}/libwasmvm.x86_64.so" "$BINS_DIR"
+  rm -r "miniwasm_v${download_version}"
+  chmod +x "$BINS_DIR/miniwasm"
 }
 
 function ensure_installed() {

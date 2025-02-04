@@ -11,6 +11,7 @@ use crate::state::{
     INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
+use crate::tokenfactory;
 use crate::types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
 use cosmwasm_std::{
     ensure, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
@@ -23,7 +24,6 @@ use osmosis_std::types::cosmos::base::v1beta1::Coin;
 use osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContract;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgMint};
 use prost::Message;
 
 pub fn transfer_stake_msg(
@@ -200,14 +200,14 @@ pub fn execute_liquid_stake(
     //       Needs testing and validation - also need to check mint_to_address
     //
     // Mint liquid staking token
-    let mint_msg = MsgMint {
-        sender: env.contract.address.to_string(),
-        amount: Some(Coin {
+    let mint_msg = tokenfactory::mint(
+        env.contract.address.to_string(),
+        cosmwasm_std::Coin {
             denom: config.liquid_stake_token_denom.clone(),
-            amount: mint_amount.to_string(),
-        }),
+            amount: mint_amount,
+        },
         mint_to_address,
-    };
+    )?;
 
     // Transfer native token to multisig address
     let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
@@ -355,14 +355,14 @@ pub fn execute_submit_batch(
 
     // Issue tokenfactory burn message
     // Waiting until batch submission to burn tokens
-    let tokenfactory_burn_msg = MsgBurn {
-        sender: env.contract.address.to_string(),
-        amount: Some(Coin {
+    let tokenfactory_burn_msg = tokenfactory::burn(
+        env.contract.address.to_string(),
+        cosmwasm_std::Coin {
             denom: config.liquid_stake_token_denom.clone(),
-            amount: batch.batch_total_liquid_stake.to_string(),
-        }),
-        burn_from_address: env.contract.address.to_string(),
-    };
+            amount: batch.batch_total_liquid_stake,
+        },
+        env.contract.address.to_string(),
+    )?;
 
     let unbond_amount = compute_unbond_amount(
         state.total_native_token,

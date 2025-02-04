@@ -21,16 +21,16 @@ use crate::{
         execute_transfer_ownership, execute_withdraw,
     },
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
+    tokenfactory,
 };
+use cosmwasm_std::Timestamp;
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Uint128,
 };
-use cosmwasm_std::{CosmosMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgCreateDenom;
 use semver::Version;
 
 // Version information for migration
@@ -92,12 +92,10 @@ pub fn instantiate(
     STATE.save(deps.storage, &state)?;
 
     // Create liquid stake token denom
-    let tokenfactory_msg = MsgCreateDenom {
-        sender: env.contract.address.to_string(),
-        subdenom: msg.liquid_stake_token_denom,
-    };
-
-    let cosmos_tokenfactory_msg: CosmosMsg = tokenfactory_msg.into();
+    let cosmos_tokenfactory_msg = tokenfactory::create_denom(
+        env.contract.address.to_string(),
+        msg.liquid_stake_token_denom,
+    )?;
 
     let pending_batch = Batch::new(
         1,
@@ -297,7 +295,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
 /// SUDO  ///
 /////////////
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
@@ -316,7 +314,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 /// REPLY ///
 /////////////
 
-#[cfg_attr(not(feature = "imported"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
     let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
     match ibc_waiting_result {

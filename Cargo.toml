@@ -15,12 +15,12 @@ keywords = ["cosmwasm", "milkyway", "cosmos"]
 
 [workspace.dependencies]
 bech32 = "0.9.1"
-cosmwasm-schema = "1.5.2"
-cosmwasm-std = "1.5.2"
-cw2 = "1.0.1"
+cosmwasm-schema = "1.5.9"
+cosmwasm-std = "1.5.9"
+cw2 = "1.1.2"
 cw-controllers = "1.1.2"
-cw-storage-plus = "1.1.0"
-cw-utils = "1.0.1"
+cw-storage-plus = "1.2.0"
+cw-utils = "1.0.3"
 osmosis-std = "0.25.0"
 schemars = "0.8.12"
 semver = "1.0.20"
