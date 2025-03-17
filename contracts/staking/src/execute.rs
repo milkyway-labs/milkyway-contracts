@@ -923,19 +923,20 @@ pub fn resume_contract(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config: Config = CONFIG.load(deps.storage)?;
-
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
-    let mut state: State = STATE.load(deps.storage)?;
-
-    state.total_native_token = total_native_token;
-    state.total_liquid_stake_token = total_liquid_stake_token;
-    state.total_reward_amount = total_reward_amount;
+    STATE.update(
+        deps.storage,
+        |mut state| -> Result<State, cosmwasm_std::StdError> {
+            state.total_native_token = total_native_token;
+            state.total_liquid_stake_token = total_liquid_stake_token;
+            state.total_reward_amount = total_reward_amount;
+            Ok(state)
+        },
+    )?;
 
     let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
-
-    STATE.save(deps.storage, &state)?;
 
     Ok(Response::new()
         .add_attribute("action", "resume_contract")
