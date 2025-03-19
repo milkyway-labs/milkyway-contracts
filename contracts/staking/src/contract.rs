@@ -285,6 +285,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
             native_token_denom,
             protocol_account_address_prefix,
         )?,
+        MigrateMsg::V1_0_0ToV1_1_0 {} => migrations::v1_1_0::migrate(deps.branch(), env)?,
     };
 
     // set new contract version

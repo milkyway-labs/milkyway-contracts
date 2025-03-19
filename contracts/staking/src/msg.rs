@@ -182,6 +182,7 @@ pub enum MigrateMsg {
         native_token_denom: String,
         protocol_account_address_prefix: String,
     },
+    V1_0_0ToV1_1_0 {},
 }
 
 #[cw_serde]
