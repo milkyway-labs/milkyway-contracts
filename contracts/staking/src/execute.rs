@@ -14,22 +14,23 @@ use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests
 use crate::tokenfactory;
 use crate::types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
 use cosmwasm_std::{
-    ensure, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
+    ensure, Coin, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
     SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
-use osmosis_std::types::cosmos::base::v1beta1::Coin;
+use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContract;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use prost::Message;
 
-pub fn transfer_stake_msg(
+pub fn ibc_transfer_msg(
     deps: &Deps,
     env: &Env,
-    amount: Uint128,
+    receiver: impl Into<String>,
+    token: Coin,
 ) -> Result<MsgTransfer, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -37,21 +38,15 @@ pub fn transfer_stake_msg(
         return Err(ContractError::IbcChannelNotFound {});
     }
 
-    let ibc_coin = Coin {
-        denom: config.protocol_chain_config.ibc_token_denom,
-        amount: amount.to_string(),
-    };
-
     let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
         env.block.time.nanos() + IBC_TIMEOUT.nanos(),
     ));
 
-    let to_address = config.native_chain_config.staker_address.to_string();
     let ibc_msg = MsgTransfer {
         source_channel: config.protocol_chain_config.ibc_channel_id,
         source_port: "transfer".to_string(),
-        token: Some(ibc_coin),
-        receiver: to_address.clone(),
+        token: Some(OsmosisCoin::from(token)),
+        receiver: receiver.into(),
         sender: env.contract.address.to_string(),
         timeout_height: None,
         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
@@ -61,13 +56,15 @@ pub fn transfer_stake_msg(
     Ok(ibc_msg)
 }
 
-fn transfer_stake_sub_msg(
+fn ibc_transfer_sub_msg(
     deps: &mut DepsMut,
     env: &Env,
-    amount: Uint128,
+    receiver: impl Into<String>,
+    amount: Coin,
     sub_msg_id: Option<u64>,
 ) -> Result<SubMsg, ContractError> {
-    let ibc_msg = transfer_stake_msg(&deps.as_ref(), env, amount)?;
+    let receiver = receiver.into();
+    let ibc_msg = ibc_transfer_msg(&deps.as_ref(), env, &receiver, amount.clone())?;
     let sub_msg_id = sub_msg_id.unwrap_or({
         match env.transaction {
             Some(ref tx) => tx.index as u64 + env.block.time.nanos(),
@@ -75,9 +72,7 @@ fn transfer_stake_sub_msg(
         }
     });
 
-    let ibc_waiting_for_reply = IbcWaitingForReply {
-        amount: amount.into(),
-    };
+    let ibc_waiting_for_reply = IbcWaitingForReply { amount, receiver };
 
     save_ibc_waiting_for_reply(deps, sub_msg_id, ibc_waiting_for_reply)?;
 
@@ -91,7 +86,7 @@ fn transfer_stake_sub_msg(
 
 fn update_oracle_msgs(
     deps: Deps,
-    env: Env,
+    env: &Env,
     config: &Config,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let (redemption_rate, purchase_rate) = get_rates(&deps);
@@ -144,20 +139,31 @@ pub fn execute_liquid_stake(
 
     check_stopped(&config)?;
 
-    // a native user address is 43 chars long
-    if mint_to.is_none() && info.sender.as_str().len() != 43 {
+    // a native user address minus its prefix is 39 chars long
+    if mint_to.is_none()
+        && info.sender.as_str().len() - config.protocol_chain_config.account_address_prefix.len()
+            != 39
+    {
+        // If we receive a mint to from a non-native address, return an error
+        // to force the specification of a min to address
         return Err(ContractError::MissingMintAddress {});
     }
 
-    // if sent via IBC or the sender is a contract the user needs to provide an osmosis address to mint to
-    let mint_to_address = if mint_to.is_some() && info.sender.as_str().len() != 43 {
-        let mint_to_addr = mint_to.unwrap();
-        validate_address(&mint_to_addr, "osmo")?;
+    let mint_to_address = mint_to.unwrap_or_else(|| info.sender.to_string());
+    let mint_to_is_native = validate_address(
+        &mint_to_address,
+        &config.native_chain_config.account_address_prefix,
+    )
+    .is_ok();
+    let mint_to_is_protocol = validate_address(
+        &mint_to_address,
+        &config.protocol_chain_config.account_address_prefix,
+    )
+    .is_ok();
 
-        mint_to_addr
-    } else {
-        info.sender.to_string()
-    };
+    if !mint_to_is_protocol && !mint_to_is_native {
+        return Err(ContractError::InvalidAddress {});
+    }
 
     let mut state: State = STATE.load(deps.storage)?;
     ensure!(
@@ -206,26 +212,59 @@ pub fn execute_liquid_stake(
             denom: config.liquid_stake_token_denom.clone(),
             amount: mint_amount,
         },
-        mint_to_address,
+        env.contract.address.to_string(),
     )?;
 
     // Transfer native token to multisig address
-    let sub_msg = transfer_stake_sub_msg(&mut deps, &env, amount, None)?;
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
+    let stake_sub_message = ibc_transfer_sub_msg(
+        &mut deps,
+        &env,
+        &config.native_chain_config.staker_address,
+        Coin::new(amount.u128(), &config.protocol_chain_config.ibc_token_denom),
+        None,
+    )?;
+    // Get the stake sub message id so if we need to ibc transfer the minted
+    // liquid staked tokens we use this id plus one.
+    let stake_sub_message_id = stake_sub_message.id;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
 
     state.total_native_token += amount;
     state.total_liquid_stake_token += mint_amount;
 
     STATE.save(deps.storage, &state)?;
 
-    Ok(Response::new()
+    let response = Response::new()
         .add_message(mint_msg)
         .add_messages(update_oracle_msgs)
-        .add_submessage(sub_msg)
+        .add_submessage(stake_sub_message)
         .add_attribute("action", "liquid_stake")
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("in_amount", amount)
-        .add_attribute("mint_amount", mint_amount))
+        .add_attribute("mint_amount", mint_amount);
+
+    let response = if mint_to_is_protocol {
+        // Send the minted tokens to the user on the protocol network trough a MsgSend
+        response.add_message(osmosis_std::types::cosmos::bank::v1beta1::MsgSend {
+            from_address: env.contract.address.to_string(),
+            to_address: mint_to_address,
+            amount: vec![OsmosisCoin {
+                denom: config.liquid_stake_token_denom.clone(),
+                amount: mint_amount.to_string(),
+            }],
+        })
+    } else {
+        // IBC transfer the minted liquid staked representation
+        // back to the native chain account
+        response.add_submessage(ibc_transfer_sub_msg(
+            &mut deps,
+            &env,
+            mint_to_address,
+            Coin::new(amount.u128(), &config.liquid_stake_token_denom),
+            Some(stake_sub_message_id + 1),
+        )?)
+    };
+
+    Ok(response)
 }
 
 pub fn execute_liquid_unstake(
@@ -393,7 +432,7 @@ pub fn execute_submit_batch(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
 
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
@@ -446,14 +485,14 @@ pub fn execute_withdraw(
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
         to_address: info.sender.to_string(),
-        amount: vec![Coin {
+        amount: vec![OsmosisCoin {
             denom: config.protocol_chain_config.ibc_token_denom.clone(),
             amount: amount.to_string(),
         }],
     };
     messages.push(send_msg.into());
 
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "execute_withdraw")
@@ -629,6 +668,7 @@ pub fn recover(
     env: Env,
     info: MessageInfo,
     selected_packets: Option<Vec<u64>>,
+    receiver: Option<String>,
     page: bool,
 ) -> Result<Response, ContractError> {
     let page_size = 10;
@@ -638,25 +678,40 @@ pub fn recover(
         ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     }
 
+    let config = CONFIG.load(deps.storage)?;
+    let receiver = receiver
+        // Validate the address
+        .map(|s| validate_address(&s, &config.native_chain_config.account_address_prefix))
+        .transpose()?
+        // Fallback to staker address in case the sender was None
+        .unwrap_or(config.native_chain_config.staker_address);
+
     // timed out and failed packets
     let packets: Vec<IBCTransfer> = if selected_packets.is_some() {
         let selected_packets = selected_packets.unwrap();
         let mut packets: Vec<IBCTransfer> = vec![];
         for packet_id in selected_packets {
             let packet = INFLIGHT_PACKETS.load(deps.storage, packet_id)?;
+            // Ensure the selected packet are all for the same user
+            if packet.receiver != receiver.as_str() {
+                return Err(ContractError::InvalidReceiver {});
+            }
             packets.push(packet);
         }
         packets
     } else {
+        // Clone the receiver so that can be captured by the filter function.
+        let receiver = receiver.clone();
         let packets: Vec<IBCTransfer> = paginate_map(
             deps.as_ref(),
             &INFLIGHT_PACKETS,
             None,
             if page { Some(page_size) } else { None },
             Order::Ascending,
-            Some(Box::new(|r: &IBCTransfer| {
-                r.status == PacketLifecycleStatus::AckFailure
-                    || r.status == PacketLifecycleStatus::TimedOut
+            Some(Box::new(move |r: &IBCTransfer| {
+                r.receiver == receiver
+                    && (r.status == PacketLifecycleStatus::AckFailure
+                        || r.status == PacketLifecycleStatus::TimedOut)
             })),
         )?;
         packets
@@ -664,6 +719,18 @@ pub fn recover(
 
     if packets.is_empty() {
         return Err(ContractError::NoInflightPackets {});
+    }
+
+    // Ensure that we are recovering packets with the same denoms
+    // since we are going to sum all the amounts
+    // in order to perform a single transfer
+    if packets.len() > 1 {
+        let expected_denom = &packets[0].amount.denom;
+        for packet in &packets[1..] {
+            if &packet.amount.denom != expected_denom {
+                return Err(ContractError::InconsistentDenom {});
+            }
+        }
     }
 
     let max_submessage_id = INFLIGHT_PACKETS
@@ -674,22 +741,22 @@ pub fn recover(
         .unwrap()
         .0;
 
-    let total_amount = packets
-        .iter()
-        .map(|r| {
-            INFLIGHT_PACKETS.remove(deps.storage, r.sequence);
-            r.amount
-        })
-        .reduce(|a, b| a + b)
-        .unwrap();
+    // Compute the total amount and remove the packets from the
+    // INFLIGHT_PACKETS state.
+    let mut total_amount = Coin::new(0, &packets[0].amount.denom);
+    for packet in packets.iter() {
+        INFLIGHT_PACKETS.remove(deps.storage, packet.sequence);
+        total_amount.amount += packet.amount.amount;
+    }
 
     // this shouldn't collide. any committed submessage package should have enough upper room in the indexes
     // they are based on block times in nano seconds
     // we are fusing all pending transfers into one
-    let sub_msg = transfer_stake_sub_msg(
+    let sub_msg = ibc_transfer_sub_msg(
         &mut deps,
         &env,
-        Uint128::from(total_amount),
+        receiver.as_str(),
+        total_amount,
         Some(max_submessage_id + 1),
     )?;
 
@@ -801,8 +868,17 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     STATE.save(deps.storage, &state)?;
 
     // transfer the funds to Celestia to be staked
-    let ibc_transfer_msg = transfer_stake_sub_msg(&mut deps, &env, amount_after_fees, None)?;
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
+    let ibc_transfer_msg = ibc_transfer_sub_msg(
+        &mut deps,
+        &env,
+        &config.native_chain_config.staker_address,
+        Coin::new(
+            amount_after_fees.u128(),
+            &config.protocol_chain_config.ibc_token_denom,
+        ),
+        None,
+    )?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
 
     let mut response = Response::new()
         .add_attribute("action", "receive_rewards")
@@ -936,7 +1012,7 @@ pub fn resume_contract(
         },
     )?;
 
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "resume_contract")
@@ -962,12 +1038,14 @@ pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResu
             msg: format!("could not decode response: {b}"),
         })?;
 
-    let IbcWaitingForReply { amount } = IBC_WAITING_FOR_REPLY.load(deps.storage, msg.id)?;
+    let IbcWaitingForReply { amount, receiver } =
+        IBC_WAITING_FOR_REPLY.load(deps.storage, msg.id)?;
     IBC_WAITING_FOR_REPLY.remove(deps.storage, msg.id);
 
     let recovery = IBCTransfer {
         sequence: transfer_response.sequence,
         amount,
+        receiver,
         status: PacketLifecycleStatus::Sent,
     };
 
@@ -1036,7 +1114,7 @@ pub fn fee_withdraw(
     let send_msg = MsgSend {
         from_address: env.contract.address.to_string(),
         to_address: treasury_address.clone(),
-        amount: vec![Coin {
+        amount: vec![OsmosisCoin {
             denom: config.protocol_chain_config.ibc_token_denom,
             amount: amount.to_string(),
         }],

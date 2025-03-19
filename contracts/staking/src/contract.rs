@@ -189,11 +189,13 @@ pub fn execute(
         ExecuteMsg::RecoverPendingIbcTransfers {
             paginated,
             selected_packets,
+            receiver,
         } => recover(
             deps,
             env,
             info,
             selected_packets,
+            receiver,
             paginated.unwrap_or(false),
         ),
         ExecuteMsg::FeeWithdraw { amount } => fee_withdraw(deps, env, info, amount),
