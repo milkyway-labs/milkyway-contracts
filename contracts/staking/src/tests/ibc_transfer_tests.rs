@@ -22,6 +22,7 @@ fn success_ibc_queue() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -172,6 +173,7 @@ fn fail_ibc_queue() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -254,6 +256,7 @@ fn timeout_ibc_queue() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());

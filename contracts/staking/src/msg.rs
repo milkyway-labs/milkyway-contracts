@@ -29,6 +29,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {
         mint_to: Option<String>,
+        transfer_to_native_chain: Option<bool>,
         expected_mint_amount: Option<Uint128>,
     },
     LiquidUnstake {},

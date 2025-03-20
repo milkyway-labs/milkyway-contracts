@@ -129,10 +129,19 @@ pub fn execute(
     match msg {
         ExecuteMsg::LiquidStake {
             mint_to,
+            transfer_to_native_chain,
             expected_mint_amount,
         } => {
             let payment = must_pay(&info, &config.protocol_chain_config.ibc_token_denom)?;
-            execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
+            execute_liquid_stake(
+                deps,
+                env,
+                info,
+                payment,
+                mint_to,
+                transfer_to_native_chain,
+                expected_mint_amount,
+            )
         }
         ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;

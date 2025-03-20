@@ -23,6 +23,7 @@ fn proper_liquid_stake() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
@@ -205,6 +206,7 @@ fn proper_liquid_stake_with_ibc_transfer() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: Some(CELESTIA2.to_string()),
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
@@ -404,6 +406,7 @@ fn liquid_stake_less_than_minimum() {
     let info = mock_info(OSMO3, &coins(10, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
 
@@ -433,6 +436,7 @@ fn proper_ibc_liquid_stake() {
     let info = mock_info(&intermediate_sender, &coins(1000, NATIVE_TOKEN));
     let msg: ExecuteMsg = ExecuteMsg::LiquidStake {
         mint_to: Some(OSMO3.to_string()),
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
 
@@ -477,6 +481,7 @@ fn mint_amount_divergence() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: Some(Uint128::from(2_000_000u128)),
     };
     let res: Result<cosmwasm_std::Response, ContractError> =
@@ -485,6 +490,7 @@ fn mint_amount_divergence() {
 
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: Some(Uint128::from(1_000_000u128)),
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -507,6 +513,7 @@ fn zero_liquid_stake_but_native_tokens() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info, msg.clone());
