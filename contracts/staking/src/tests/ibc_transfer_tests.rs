@@ -2,13 +2,13 @@ use crate::contract::{execute, reply, sudo, IBC_TIMEOUT};
 use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
 use crate::query::query_ibc_queue;
 use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
-use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3};
+use crate::tests::test_helper::{init, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, STAKER_ADDRESS};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
-    attr, coins, Addr, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse, SubMsgResult,
-    Timestamp,
+    attr, coins, Addr, Coin, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse,
+    SubMsgResult, Timestamp,
 };
-use osmosis_std::types::cosmos::base::v1beta1::Coin;
+use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use std::vec::Vec;
@@ -20,6 +20,7 @@ fn success_ibc_queue() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -28,7 +29,7 @@ fn success_ibc_queue() {
         env.block.time.nanos() + IBC_TIMEOUT.nanos(),
     ));
 
-    let ibc_coin = Coin {
+    let ibc_coin = OsmosisCoin {
         denom: NATIVE_TOKEN.to_string(),
         amount: "1000".to_string(),
     };
@@ -53,7 +54,7 @@ fn success_ibc_queue() {
                         source_channel: CHANNEL_ID.to_string(),
                         source_port: "transfer".to_string(),
                         sender: env.contract.address.to_string(),
-                        receiver: Addr::unchecked(CELESTIA1).to_string(),
+                        receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
                         token: Some(ibc_coin),
                         timeout_height: None,
                         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
@@ -76,7 +77,10 @@ fn success_ibc_queue() {
     println!("test {:?}", ibc_waiting_for_reply);
     assert_eq!(
         ibc_waiting_for_reply,
-        Some(IbcWaitingForReply { amount: 1000 })
+        Some(IbcWaitingForReply {
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
+        })
     );
 
     let inflight_packet = INFLIGHT_PACKETS.may_load(&deps.storage, sequence).unwrap();
@@ -110,7 +114,8 @@ fn success_ibc_queue() {
         inflight_packet,
         Some(ibc::IBCTransfer {
             sequence,
-            amount: 1000,
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::Sent
         })
     );
@@ -122,6 +127,7 @@ fn success_ibc_queue() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
@@ -131,7 +137,8 @@ fn success_ibc_queue() {
         inflight_packet,
         Some(ibc::IBCTransfer {
             sequence,
-            amount: 1000,
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::Sent
         })
     );
@@ -164,6 +171,7 @@ fn fail_ibc_queue() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -215,7 +223,8 @@ fn fail_ibc_queue() {
         inflight_packet,
         Some(ibc::IBCTransfer {
             sequence,
-            amount: 1000,
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::AckFailure
         })
     );
@@ -227,6 +236,7 @@ fn fail_ibc_queue() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
@@ -244,6 +254,7 @@ fn timeout_ibc_queue() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -293,7 +304,8 @@ fn timeout_ibc_queue() {
         inflight_packet,
         Some(ibc::IBCTransfer {
             sequence,
-            amount: 1000,
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::TimedOut
         })
     );
@@ -305,6 +317,7 @@ fn timeout_ibc_queue() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
@@ -326,7 +339,8 @@ fn recover_non_paginated() {
             i,
             &ibc::IBCTransfer {
                 sequence: i,
-                amount: 1000,
+                amount: Coin::new(1000, NATIVE_TOKEN),
+                receiver: STAKER_ADDRESS.to_string(),
                 status: ibc::PacketLifecycleStatus::AckFailure,
             },
         );
@@ -337,6 +351,7 @@ fn recover_non_paginated() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_ok());
@@ -355,17 +370,19 @@ fn recover_paginated() {
             i,
             &ibc::IBCTransfer {
                 sequence: i,
-                amount: 1000,
+                amount: Coin::new(1000, NATIVE_TOKEN),
+                receiver: STAKER_ADDRESS.to_string(),
                 status: ibc::PacketLifecycleStatus::AckFailure,
             },
         );
         assert!(res.is_ok());
     }
 
-    // send recover message
+    // Send recover message
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: Some(true),
         selected_packets: None,
+        receiver: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_ok());
@@ -383,7 +400,8 @@ fn recover_forced() {
             i,
             &ibc::IBCTransfer {
                 sequence: i,
-                amount: 1000,
+                amount: Coin::new(1000, NATIVE_TOKEN),
+                receiver: STAKER_ADDRESS.to_string(),
                 status: ibc::PacketLifecycleStatus::Sent,
             },
         );
@@ -394,6 +412,7 @@ fn recover_forced() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: Some(true),
         selected_packets: Some(vec![1, 2, 3]),
+        receiver: None,
     };
     let info = mock_info(OSMO1, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
@@ -417,7 +436,8 @@ fn recover_multiple() {
         1,
         &ibc::IBCTransfer {
             sequence: 1,
-            amount: 1000,
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::TimedOut,
         },
     );
@@ -427,7 +447,8 @@ fn recover_multiple() {
         2,
         &ibc::IBCTransfer {
             sequence: 2,
-            amount: 2000,
+            amount: Coin::new(2000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::AckFailure,
         },
     );
@@ -437,6 +458,7 @@ fn recover_multiple() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_ok());
@@ -448,8 +470,8 @@ fn recover_multiple() {
             source_channel: CHANNEL_ID.to_string(),
             source_port: "transfer".to_string(),
             sender: env.contract.address.to_string(),
-            receiver: Addr::unchecked(CELESTIA1).to_string(),
-            token: Some(Coin {
+            receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
+            token: Some(OsmosisCoin {
                 denom: NATIVE_TOKEN.to_string(),
                 amount: "3000".to_string(),
             }),
@@ -474,7 +496,8 @@ fn recover_recursive() {
         1,
         &ibc::IBCTransfer {
             sequence: 1,
-            amount: 1000,
+            amount: Coin::new(1000, NATIVE_TOKEN),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::TimedOut,
         },
     );
@@ -484,6 +507,7 @@ fn recover_recursive() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_ok());
@@ -522,6 +546,7 @@ fn recover_recursive() {
     let msg = ExecuteMsg::RecoverPendingIbcTransfers {
         paginated: None,
         selected_packets: None,
+        receiver: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_ok());

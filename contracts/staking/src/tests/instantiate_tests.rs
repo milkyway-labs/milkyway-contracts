@@ -1,7 +1,7 @@
 use crate::state::{NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig, BATCHES, CONFIG};
 use crate::tests::test_helper::{
     mock_init_msg, CELESTIA1, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN,
-    OSMO1, OSMO2, OSMO3, OSMO4,
+    OSMO1, OSMO2, OSMO3, OSMO4, STAKER_ADDRESS,
 };
 
 use cosmwasm_std::testing::{mock_dependencies, mock_info};
@@ -230,7 +230,7 @@ fn init_properly() {
             validator_address_prefix: "celestiavaloper".to_string(),
             validators: vec![Addr::unchecked(CELESTIAVAL1), Addr::unchecked(CELESTIAVAL2)],
             unbonding_period: 1209600,
-            staker_address: Addr::unchecked(CELESTIA1),
+            staker_address: Addr::unchecked(STAKER_ADDRESS),
             reward_collector_address: Addr::unchecked(CELESTIA2),
         },
         config.native_chain_config

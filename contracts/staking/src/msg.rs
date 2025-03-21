@@ -29,6 +29,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {
         mint_to: Option<String>,
+        transfer_to_native_chain: Option<bool>,
         expected_mint_amount: Option<Uint128>,
     },
     LiquidUnstake {},
@@ -67,6 +68,7 @@ pub enum ExecuteMsg {
     RecoverPendingIbcTransfers {
         paginated: Option<bool>,
         selected_packets: Option<Vec<u64>>,
+        receiver: Option<String>,
     },
     FeeWithdraw {
         amount: Uint128,
@@ -181,6 +183,7 @@ pub enum MigrateMsg {
         native_token_denom: String,
         protocol_account_address_prefix: String,
     },
+    V1_0_0ToV1_1_0 {},
 }
 
 #[cw_serde]

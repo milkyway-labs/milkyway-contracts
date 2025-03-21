@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, DepsMut, StdError, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, DepsMut, StdError, Timestamp, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, UniqueIndex};
 use milky_way::staking::Batch;
@@ -170,7 +170,8 @@ pub fn remove_unstake_request(
 
 #[cw_serde]
 pub struct IbcWaitingForReply {
-    pub amount: u128,
+    pub amount: Coin,
+    pub receiver: String,
 }
 
 pub mod ibc {
@@ -189,7 +190,8 @@ pub mod ibc {
     #[cw_serde]
     pub struct IBCTransfer {
         pub sequence: u64,
-        pub amount: u128,
+        pub amount: Coin,
+        pub receiver: String,
         pub status: PacketLifecycleStatus,
     }
 }

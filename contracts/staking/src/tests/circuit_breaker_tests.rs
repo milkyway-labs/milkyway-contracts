@@ -45,6 +45,7 @@ fn circuit_breaker() {
     let info = mock_info(OSMO3, &coins(1000, "osmoTIA"));
     let msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -141,6 +142,7 @@ fn circuit_breaker() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {
         expected_mint_amount: None,
+        transfer_to_native_chain: None,
         mint_to: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);

@@ -5,8 +5,8 @@ use crate::msg::{
 use crate::query::query_pending_batch;
 use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::{
-    init, CELESTIA1, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO2, OSMO3,
-    OSMO4,
+    init, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, LIQUID_STAKE_TOKEN_DENOM,
+    NATIVE_TOKEN, OSMO2, OSMO3, OSMO4, STAKER_ADDRESS,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, from_json, Addr, Decimal, Uint128};
@@ -33,7 +33,7 @@ fn get_config() {
         vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
     );
     assert_eq!(result.native_chain_config.unbonding_period, 1209600);
-    assert_eq!(result.native_chain_config.staker_address, CELESTIA1);
+    assert_eq!(result.native_chain_config.staker_address, STAKER_ADDRESS);
     assert_eq!(
         result.native_chain_config.reward_collector_address,
         CELESTIA2
@@ -55,7 +55,7 @@ fn get_config() {
     // other Config struct fields
     assert_eq!(
         result.liquid_stake_token_denom,
-        "factory/cosmos2contract/stTIA".to_string()
+        format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM)
     );
     assert_eq!(result.monitors, vec![OSMO2.to_string(), OSMO3.to_string()]);
     assert_eq!(result.batch_period, 86400);
@@ -85,6 +85,7 @@ fn get_state() {
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let stake_msg = ExecuteMsg::LiquidStake {
         mint_to: None,
+        transfer_to_native_chain: None,
         expected_mint_amount: None,
     };
     let res = execute(deps.as_mut(), mock_env(), info, stake_msg);
@@ -134,13 +135,25 @@ fn get_batch() {
     assert!(result.is_err()); //not found
 
     // unStake 1
-    let info = mock_info("bob", &coins(500, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "bob",
+        &coins(
+            500,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg.clone());
     assert!(res.is_ok());
 
     // unStake 2
-    let info = mock_info("alice", &coins(1500, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "alice",
+        &coins(
+            1500,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let res = execute(deps.as_mut(), mock_env(), info, unstake_msg);
     assert!(res.is_ok());
 
@@ -192,7 +205,13 @@ fn get_batches() {
     }
 
     // unStake 1
-    let info = mock_info("bob", &coins(500, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "bob",
+        &coins(
+            500,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let unstake_msg = ExecuteMsg::LiquidUnstake {};
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg.clone());
     assert!(res.is_ok());
@@ -207,7 +226,13 @@ fn get_batches() {
     assert!(res.is_ok());
 
     // unStake 2 - for the next batch
-    let info = mock_info("alice", &coins(1500, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "alice",
+        &coins(
+            1500,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let res = execute(deps.as_mut(), env.clone(), info, unstake_msg);
     assert!(res.is_ok());
 
@@ -279,7 +304,13 @@ fn get_pending_batch() {
     state.total_native_token = Uint128::from(300_000u128);
     STATE.save(&mut deps.storage, &state).unwrap();
 
-    let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "bob",
+        &coins(
+            1000,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let msg = ExecuteMsg::LiquidUnstake {};
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 

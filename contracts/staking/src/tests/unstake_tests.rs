@@ -8,6 +8,7 @@ use crate::state::unstake_requests;
 use crate::state::UnstakeRequest;
 use crate::state::{Config, BATCHES, CONFIG, STATE};
 use crate::tests::test_helper::init;
+use crate::tests::test_helper::LIQUID_STAKE_TOKEN_DENOM;
 use cosmwasm_std::from_json;
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{coins, Addr, CosmosMsg, ReplyOn, SubMsg, Uint128};
@@ -25,7 +26,13 @@ fn proper_liquid_unstake() {
     state.total_liquid_stake_token = Uint128::from(100_000u128);
     STATE.save(&mut deps.storage, &state).unwrap();
 
-    let info = mock_info("bob", &coins(1000, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "bob",
+        &coins(
+            1000,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let msg = ExecuteMsg::LiquidUnstake {};
     let mut res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     let resp = res.unwrap();
@@ -68,12 +75,24 @@ fn double_liquid_unstake() {
     let msg = ExecuteMsg::LiquidUnstake {};
 
     // Bob unstakes 500
-    let info = mock_info("bob", &coins(500, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "bob",
+        &coins(
+            500,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     let mut res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert!(res.is_ok());
 
     // Bob unstakes 1_000
-    let info = mock_info("bob", &coins(1_000, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "bob",
+        &coins(
+            1_000,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     res = execute(deps.as_mut(), mock_env(), info, msg.clone());
     assert!(res.is_ok());
 
@@ -90,7 +109,13 @@ fn double_liquid_unstake() {
     );
 
     // Alice unstakes 5_000
-    let info = mock_info("alice", &coins(5_000, "factory/cosmos2contract/stTIA"));
+    let info = mock_info(
+        "alice",
+        &coins(
+            5_000,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
+    );
     res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
     assert!(res.is_ok());
 
@@ -152,7 +177,7 @@ fn double_liquid_unstake() {
             msg: <MsgBurn as Into<CosmosMsg>>::into(MsgBurn {
                 sender: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
                 amount: Some(Coin {
-                    denom: "factory/cosmos2contract/stTIA".to_string(),
+                    denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
                     amount: "6500".to_string(),
                 }),
                 burn_from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
@@ -247,7 +272,10 @@ fn invalid_amount_liquid_unstake() {
 
     let info = mock_info(
         "bob",
-        &coins(1_000_000_000, "factory/cosmos2contract/stTIA"),
+        &coins(
+            1_000_000_000,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
     );
     let msg = ExecuteMsg::LiquidUnstake {};
 
@@ -305,7 +333,10 @@ fn total_liquid_stake_token_with_zero() {
 
     let info = mock_info(
         "bob",
-        &coins(1_000_000_000, "factory/cosmos2contract/stTIA"),
+        &coins(
+            1_000_000_000,
+            format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+        ),
     );
     let msg = ExecuteMsg::LiquidUnstake {};
 
