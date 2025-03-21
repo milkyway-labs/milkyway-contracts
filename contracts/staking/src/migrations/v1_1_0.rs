@@ -18,10 +18,10 @@ pub fn migrate(deps: DepsMut, _env: Env) -> ContractResult<Response> {
     let config = CONFIG.load(deps.storage)?;
 
     // Migrate the inflight packets
-    let infligh_packets = v1_0_0::INFLIGHT_PACKETS
+    let inflight_packets = v1_0_0::INFLIGHT_PACKETS
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
         .collect::<Result<Vec<(u64, v1_0_0::IBCTransfer)>, _>>()?;
-    for packet in infligh_packets {
+    for packet in inflight_packets {
         let (key, packet) = packet;
         INFLIGHT_PACKETS.save(
             deps.storage,
@@ -51,7 +51,7 @@ pub fn migrate(deps: DepsMut, _env: Env) -> ContractResult<Response> {
                 ),
                 receiver: config.native_chain_config.staker_address.to_string(),
             },
-        )?
+        )?;
     }
 
     Ok(Response::new()

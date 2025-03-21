@@ -139,9 +139,9 @@ pub enum ContractError {
     #[error("{0}")]
     Version(#[from] VersionError),
 
-    #[error("Can't recover packets with differnt receivers")]
+    #[error("Can't recover packets with different receivers")]
     InvalidReceiver {},
 
-    #[error("Can't recover packets with differnt denoms")]
+    #[error("Can't recover packets with different denoms")]
     InconsistentDenom {},
 }

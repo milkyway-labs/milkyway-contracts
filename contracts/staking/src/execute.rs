@@ -146,7 +146,7 @@ pub fn execute_liquid_stake(
             != 39
     {
         // If we receive a mint to from a non-native address, return an error
-        // to force the specification of a min to address
+        // to force the specification of a mint to address
         return Err(ContractError::MissingMintAddress {});
     }
 
