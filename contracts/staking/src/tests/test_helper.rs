@@ -21,7 +21,7 @@ pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rt
 pub static CHANNEL_ID: &str = "channel-123";
 pub static NATIVE_TOKEN: &str =
     "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA";
-pub static LIQUID_STAKE_TOKEN_DENOM: &str = "stTIA";
+pub static LIQUID_STAKE_TOKEN_DENOM: &str = "umilkTIA";
 
 pub fn mock_init_msg() -> InstantiateMsg {
     InstantiateMsg {

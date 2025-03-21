@@ -4,7 +4,8 @@ use crate::helpers::{derive_intermediate_sender, get_rates};
 use crate::msg::ExecuteMsg;
 use crate::state::{State, BATCHES, CONFIG, STATE};
 use crate::tests::test_helper::{
-    init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO3, STAKER_ADDRESS,
+    init, CELESTIA1, CELESTIA2, CHANNEL_ID, LIQUID_STAKE_TOKEN_DENOM, NATIVE_TOKEN, OSMO3,
+    STAKER_ADDRESS,
 };
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
@@ -61,7 +62,7 @@ fn proper_liquid_stake() {
                     msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
                         sender: MOCK_CONTRACT_ADDR.to_string(),
                         amount: Some(Coin {
-                            denom: "factory/cosmos2contract/stTIA".to_string(),
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
                             amount: "1000".to_string(),
                         }),
                         mint_to_address: MOCK_CONTRACT_ADDR.to_string(),
@@ -102,7 +103,7 @@ fn proper_liquid_stake() {
                         from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
                         to_address: OSMO3.to_string(),
                         amount: vec![Coin {
-                            denom: "factory/cosmos2contract/stTIA".to_string(),
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
                             amount: "1000".to_string(),
                         }],
                     }),
@@ -244,7 +245,7 @@ fn proper_liquid_stake_with_ibc_transfer() {
                     msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
                         sender: MOCK_CONTRACT_ADDR.to_string(),
                         amount: Some(Coin {
-                            denom: "factory/cosmos2contract/stTIA".to_string(),
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
                             amount: "1000".to_string(),
                         }),
                         mint_to_address: MOCK_CONTRACT_ADDR.to_string(),
@@ -288,7 +289,7 @@ fn proper_liquid_stake_with_ibc_transfer() {
                         receiver: CELESTIA2.to_string(),
                         token: Some(Coin {
                             amount: "1000".to_string(),
-                            denom: "factory/cosmos2contract/stTIA".to_string(),
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
                         }),
                         timeout_height: None,
                         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
