@@ -5,8 +5,8 @@ use crate::msg::{
 use crate::query::query_pending_batch;
 use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::{
-    init, CELESTIA1, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO2, OSMO3,
-    OSMO4,
+    init, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN, OSMO2, OSMO3, OSMO4,
+    STAKER_ADDRESS,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, from_json, Addr, Decimal, Uint128};
@@ -33,7 +33,7 @@ fn get_config() {
         vec![CELESTIAVAL1.to_string(), CELESTIAVAL2.to_string()]
     );
     assert_eq!(result.native_chain_config.unbonding_period, 1209600);
-    assert_eq!(result.native_chain_config.staker_address, CELESTIA1);
+    assert_eq!(result.native_chain_config.staker_address, STAKER_ADDRESS);
     assert_eq!(
         result.native_chain_config.reward_collector_address,
         CELESTIA2

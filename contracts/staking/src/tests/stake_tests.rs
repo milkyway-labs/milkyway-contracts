@@ -3,7 +3,9 @@ use crate::error::ContractError;
 use crate::helpers::{derive_intermediate_sender, get_rates};
 use crate::msg::ExecuteMsg;
 use crate::state::{State, BATCHES, CONFIG, STATE};
-use crate::tests::test_helper::{init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO3};
+use crate::tests::test_helper::{
+    init, CELESTIA1, CELESTIA2, CHANNEL_ID, NATIVE_TOKEN, OSMO3, STAKER_ADDRESS,
+};
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
     attr, coins, Addr, CosmosMsg, Decimal, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
@@ -79,7 +81,7 @@ fn proper_liquid_stake() {
                         source_channel: CHANNEL_ID.to_string(),
                         source_port: "transfer".to_string(),
                         sender: env.contract.address.to_string(),
-                        receiver: Addr::unchecked(CELESTIA1).to_string(),
+                        receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
                         token: Some(ibc_coin),
                         timeout_height: None,
                         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
@@ -262,7 +264,7 @@ fn proper_liquid_stake_with_ibc_transfer() {
                         source_channel: CHANNEL_ID.to_string(),
                         source_port: "transfer".to_string(),
                         sender: env.contract.address.to_string(),
-                        receiver: Addr::unchecked(CELESTIA1).to_string(),
+                        receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
                         token: Some(ibc_coin),
                         timeout_height: None,
                         timeout_timestamp: timeout.timestamp().unwrap().nanos(),

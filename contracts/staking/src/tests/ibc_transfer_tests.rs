@@ -2,9 +2,7 @@ use crate::contract::{execute, reply, sudo, IBC_TIMEOUT};
 use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
 use crate::query::query_ibc_queue;
 use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
-use crate::tests::test_helper::{
-    init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, STAKER_ADDRESS,
-};
+use crate::tests::test_helper::{init, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, STAKER_ADDRESS};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
     attr, coins, Addr, Coin, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse,
@@ -56,7 +54,7 @@ fn success_ibc_queue() {
                         source_channel: CHANNEL_ID.to_string(),
                         source_port: "transfer".to_string(),
                         sender: env.contract.address.to_string(),
-                        receiver: Addr::unchecked(CELESTIA1).to_string(),
+                        receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
                         token: Some(ibc_coin),
                         timeout_height: None,
                         timeout_timestamp: timeout.timestamp().unwrap().nanos(),
@@ -81,7 +79,7 @@ fn success_ibc_queue() {
         ibc_waiting_for_reply,
         Some(IbcWaitingForReply {
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
         })
     );
 
@@ -117,7 +115,7 @@ fn success_ibc_queue() {
         Some(ibc::IBCTransfer {
             sequence,
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::Sent
         })
     );
@@ -140,7 +138,7 @@ fn success_ibc_queue() {
         Some(ibc::IBCTransfer {
             sequence,
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::Sent
         })
     );
@@ -226,7 +224,7 @@ fn fail_ibc_queue() {
         Some(ibc::IBCTransfer {
             sequence,
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::AckFailure
         })
     );
@@ -307,7 +305,7 @@ fn timeout_ibc_queue() {
         Some(ibc::IBCTransfer {
             sequence,
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::TimedOut
         })
     );
@@ -342,7 +340,7 @@ fn recover_non_paginated() {
             &ibc::IBCTransfer {
                 sequence: i,
                 amount: Coin::new(1000, NATIVE_TOKEN),
-                receiver: CELESTIA1.to_string(),
+                receiver: STAKER_ADDRESS.to_string(),
                 status: ibc::PacketLifecycleStatus::AckFailure,
             },
         );
@@ -373,7 +371,7 @@ fn recover_paginated() {
             &ibc::IBCTransfer {
                 sequence: i,
                 amount: Coin::new(1000, NATIVE_TOKEN),
-                receiver: CELESTIA1.to_string(),
+                receiver: STAKER_ADDRESS.to_string(),
                 status: ibc::PacketLifecycleStatus::AckFailure,
             },
         );
@@ -439,7 +437,7 @@ fn recover_multiple() {
         &ibc::IBCTransfer {
             sequence: 1,
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::TimedOut,
         },
     );
@@ -450,7 +448,7 @@ fn recover_multiple() {
         &ibc::IBCTransfer {
             sequence: 2,
             amount: Coin::new(2000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::AckFailure,
         },
     );
@@ -472,7 +470,7 @@ fn recover_multiple() {
             source_channel: CHANNEL_ID.to_string(),
             source_port: "transfer".to_string(),
             sender: env.contract.address.to_string(),
-            receiver: Addr::unchecked(CELESTIA1).to_string(),
+            receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
             token: Some(OsmosisCoin {
                 denom: NATIVE_TOKEN.to_string(),
                 amount: "3000".to_string(),
@@ -499,7 +497,7 @@ fn recover_recursive() {
         &ibc::IBCTransfer {
             sequence: 1,
             amount: Coin::new(1000, NATIVE_TOKEN),
-            receiver: CELESTIA1.to_string(),
+            receiver: STAKER_ADDRESS.to_string(),
             status: ibc::PacketLifecycleStatus::TimedOut,
         },
     );
