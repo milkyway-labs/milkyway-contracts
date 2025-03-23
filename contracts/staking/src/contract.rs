@@ -129,10 +129,19 @@ pub fn execute(
     match msg {
         ExecuteMsg::LiquidStake {
             mint_to,
+            transfer_to_native_chain,
             expected_mint_amount,
         } => {
             let payment = must_pay(&info, &config.protocol_chain_config.ibc_token_denom)?;
-            execute_liquid_stake(deps, env, info, payment, mint_to, expected_mint_amount)
+            execute_liquid_stake(
+                deps,
+                env,
+                info,
+                payment,
+                mint_to,
+                transfer_to_native_chain,
+                expected_mint_amount,
+            )
         }
         ExecuteMsg::LiquidUnstake {} => {
             let payment = must_pay(&info, &config.liquid_stake_token_denom)?;
@@ -189,11 +198,13 @@ pub fn execute(
         ExecuteMsg::RecoverPendingIbcTransfers {
             paginated,
             selected_packets,
+            receiver,
         } => recover(
             deps,
             env,
             info,
             selected_packets,
+            receiver,
             paginated.unwrap_or(false),
         ),
         ExecuteMsg::FeeWithdraw { amount } => fee_withdraw(deps, env, info, amount),
@@ -283,6 +294,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
             native_token_denom,
             protocol_account_address_prefix,
         )?,
+        MigrateMsg::V1_0_0ToV1_1_0 {} => migrations::v1_1_0::migrate(deps.branch(), env)?,
     };
 
     // set new contract version

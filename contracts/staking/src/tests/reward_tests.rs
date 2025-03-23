@@ -2,7 +2,7 @@ use crate::contract::{execute, IBC_TIMEOUT};
 use crate::helpers::derive_intermediate_sender;
 use crate::msg::ExecuteMsg;
 use crate::state::{CONFIG, STATE};
-use crate::tests::test_helper::{init, CELESTIA1, CHANNEL_ID, NATIVE_TOKEN};
+use crate::tests::test_helper::{init, CHANNEL_ID, NATIVE_TOKEN, STAKER_ADDRESS};
 
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{Addr, CosmosMsg, ReplyOn, Uint128};
@@ -75,7 +75,7 @@ fn receive_rewards() {
             source_channel: CHANNEL_ID.to_string(),
             source_port: "transfer".to_string(),
             sender: env.contract.address.to_string(),
-            receiver: Addr::unchecked(CELESTIA1).to_string(),
+            receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
             token: Some(osmosis_std::types::cosmos::base::v1beta1::Coin {
                 denom: NATIVE_TOKEN.to_string(),
                 amount: "90".to_string(),
@@ -132,7 +132,7 @@ fn receive_rewards_and_send_fees_to_treasury() {
             source_channel: CHANNEL_ID.to_string(),
             source_port: "transfer".to_string(),
             sender: env.contract.address.to_string(),
-            receiver: Addr::unchecked(CELESTIA1).to_string(),
+            receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
             token: Some(osmosis_std::types::cosmos::base::v1beta1::Coin {
                 denom: NATIVE_TOKEN.to_string(),
                 amount: "90".to_string(),
