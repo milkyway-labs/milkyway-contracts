@@ -144,4 +144,7 @@ pub enum ContractError {
 
     #[error("Can't recover packets with different denoms")]
     InconsistentDenom {},
+
+    #[error("DAO treasury fee can't be higher then 100000")]
+    InvalidDaoTreasuryFee {},
 }
