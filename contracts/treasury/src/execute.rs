@@ -125,7 +125,7 @@ pub fn execute_spend_funds(
             sender: env.contract.address.to_string(),
             timeout_height: None,
             timeout_timestamp: env.block.time.nanos() + IBC_TIMEOUT.nanos(),
-            memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
+            memo: String::new(),
         }
         .into()
     };
