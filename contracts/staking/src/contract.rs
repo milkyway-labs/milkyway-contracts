@@ -297,9 +297,6 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
         MigrateMsg::V1_0_0ToV1_1_0 {} => migrations::v1_1_0::migrate(deps.branch(), env)?,
     };
 
-    // set new contract version
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     Ok(migration_response)
 }
 

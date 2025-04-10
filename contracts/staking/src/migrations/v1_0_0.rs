@@ -1,14 +1,15 @@
 use crate::{
-    contract::{CONTRACT_NAME, CONTRACT_VERSION},
+    contract::CONTRACT_NAME,
     error::ContractResult,
     helpers::{validate_address, validate_address_prefix, validate_denom},
     migrations::states::v0_4_20,
     state::{Config, NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig, CONFIG},
 };
 use cosmwasm_std::{DepsMut, Env, Response};
-use cw2::assert_contract_version;
+use cw2::{assert_contract_version, set_contract_version};
 
 const FROM_VERSION: &str = "0.4.20";
+const TO_VERSION: &str = "1.0.0";
 
 pub fn migrate(
     deps: DepsMut,
@@ -94,8 +95,11 @@ pub fn migrate(
     // Save the new config.
     CONFIG.save(deps.storage, &new_config)?;
 
+    // set new contract version
+    set_contract_version(deps.storage, CONTRACT_NAME, TO_VERSION)?;
+
     Ok(Response::new()
         .add_attribute("action", "migrate")
         .add_attribute("from_version", FROM_VERSION)
-        .add_attribute("to_version", CONTRACT_VERSION))
+        .add_attribute("to_version", TO_VERSION))
 }

@@ -1,5 +1,5 @@
 use crate::{
-    contract::{CONTRACT_NAME, CONTRACT_VERSION},
+    contract::CONTRACT_NAME,
     error::ContractResult,
     migrations::states::v1_0_0,
     state::{
@@ -7,9 +7,10 @@ use crate::{
     },
 };
 use cosmwasm_std::{Coin, DepsMut, Env, Response};
-use cw2::assert_contract_version;
+use cw2::{assert_contract_version, set_contract_version};
 
 const FROM_VERSION: &str = "1.0.0";
+const TO_VERSION: &str = "1.1.0";
 
 pub fn migrate(deps: DepsMut, _env: Env) -> ContractResult<Response> {
     // Ensure that we are migrating from the correct version.
@@ -54,8 +55,11 @@ pub fn migrate(deps: DepsMut, _env: Env) -> ContractResult<Response> {
         )?;
     }
 
+    // set new contract version
+    set_contract_version(deps.storage, CONTRACT_NAME, TO_VERSION)?;
+
     Ok(Response::new()
         .add_attribute("action", "migrate")
         .add_attribute("from_version", FROM_VERSION)
-        .add_attribute("to_version", CONTRACT_VERSION))
+        .add_attribute("to_version", TO_VERSION))
 }
