@@ -1,7 +1,7 @@
 use crate::contract::IBC_TIMEOUT;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, derive_intermediate_sender, get_rates,
+    compute_mint_amount, compute_unbond_amount, dedup_vec, derive_intermediate_sender, get_rates,
     paginate_map, validate_address, validate_addresses,
 };
 use crate::oracle::Oracle;
@@ -699,7 +699,7 @@ pub fn recover(
 
     // timed out and failed packets
     let packets: Vec<IBCTransfer> = if selected_packets.is_some() {
-        let selected_packets = selected_packets.unwrap();
+        let selected_packets = dedup_vec(selected_packets.unwrap());
         let mut packets: Vec<IBCTransfer> = vec![];
         for packet_id in selected_packets {
             let packet = INFLIGHT_PACKETS.load(deps.storage, packet_id)?;

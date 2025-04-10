@@ -225,6 +225,20 @@ pub fn validate_ibc_denom(ibc_denom: impl Into<String>) -> StdResult<String> {
     }
 }
 
+/// Removes duplicate elements from the provided vector.
+/// Note: The order of elements in the input vector is not preserved.
+pub fn dedup_vec<T>(mut vec: Vec<T>) -> Vec<T>
+where
+    T: std::hash::Hash + std::cmp::Eq,
+{
+    if vec.is_empty() {
+        return vec;
+    }
+
+    let mut set: HashSet<_> = vec.drain(0..).collect();
+    set.drain().collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
