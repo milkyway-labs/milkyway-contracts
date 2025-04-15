@@ -138,6 +138,11 @@ fn circuit_breaker() {
     assert_eq!(state.total_native_token, Uint128::from(100000u128));
     assert_eq!(state.total_reward_amount, Uint128::from(10000u128));
 
+    // test can't resume contract
+    let info = mock_info(OSMO3, &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    assert!(res.is_err());
+
     // test enabled
     let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
     let msg = ExecuteMsg::LiquidStake {

@@ -106,6 +106,9 @@ pub enum ContractError {
     #[error("contract was intentionally halted")]
     Halted {},
 
+    #[error("contract is not stopped")]
+    NotStopped {},
+
     #[error("Config provided is wrong")]
     ConfigWrong {},
 

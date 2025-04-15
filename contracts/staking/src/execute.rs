@@ -1031,6 +1031,10 @@ pub fn resume_contract(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut config: Config = CONFIG.load(deps.storage)?;
+    if !config.stopped {
+        return Err(ContractError::NotStopped {});
+    }
+
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
