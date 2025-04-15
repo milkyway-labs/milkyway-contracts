@@ -860,6 +860,12 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
         .protocol_fee_config
         .dao_treasury_fee
         .multiply_ratio(amount, 100_000u128);
+    if fee.is_zero() {
+        return Err(ContractError::ComputedFeesAreZero {
+            received_rewards: amount,
+        });
+    }
+
     let amount_after_fees = amount.checked_sub(fee);
     if amount_after_fees.is_err() {
         return Err(ContractError::ReceiveRewardsTooSmall {

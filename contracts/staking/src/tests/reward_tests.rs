@@ -1,4 +1,5 @@
 use crate::contract::{execute, IBC_TIMEOUT};
+use crate::error::ContractError;
 use crate::helpers::derive_intermediate_sender;
 use crate::msg::ExecuteMsg;
 use crate::state::{CONFIG, STATE};
@@ -159,4 +160,40 @@ fn receive_rewards_and_send_fees_to_treasury() {
     assert_eq!(state.total_reward_amount, Uint128::from(100u128));
     assert_eq!(state.total_native_token, Uint128::from(100_090u128));
     assert_eq!(state.total_fees, Uint128::from(0u128));
+}
+
+#[test]
+fn receive_rewards_with_zero_fees_fails() {
+    let mut deps = init();
+    let env = mock_env();
+
+    let mut state = STATE.load(&deps.storage).unwrap();
+    let config = CONFIG.load(&deps.storage).unwrap();
+
+    state.total_liquid_stake_token = Uint128::from(100_000u128);
+    state.total_native_token = Uint128::from(100_000u128);
+    state.total_reward_amount = Uint128::from(0u128);
+    STATE.save(&mut deps.storage, &state).unwrap();
+
+    let msg = ExecuteMsg::ReceiveRewards {};
+
+    let sender = derive_intermediate_sender(
+        &config.protocol_chain_config.ibc_channel_id,
+        config.native_chain_config.reward_collector_address.as_str(),
+        config.protocol_chain_config.account_address_prefix.as_str(),
+    )
+    .unwrap();
+
+    let info = mock_info(
+        &sender,
+        &[cosmwasm_std::Coin {
+            amount: Uint128::from(3u128),
+            denom: config.protocol_chain_config.ibc_token_denom.clone(),
+        }],
+    );
+    let err = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
+    assert!(match err {
+        ContractError::ComputedFeesAreZero { .. } => true,
+        _ => false,
+    });
 }

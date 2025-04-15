@@ -45,7 +45,7 @@ pub fn mock_init_msg() -> InstantiateMsg {
         monitors: vec![OSMO2.to_string(), OSMO3.to_string()],
         batch_period: 86400,
         protocol_fee_config: UnsafeProtocolFeeConfig {
-            dao_treasury_fee: Uint128::from(10000u128),
+            dao_treasury_fee: Uint128::from(10_000u128),
             treasury_address: Some(OSMO1.to_string()),
         },
     }
