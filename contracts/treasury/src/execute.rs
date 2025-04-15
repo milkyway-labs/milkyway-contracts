@@ -241,7 +241,7 @@ pub fn execute_swap_exact_amount_out(
     };
 
     Ok(Response::new()
-        .add_attribute("action", "swap_exact_amount_in")
+        .add_attribute("action", "swap_exact_amount_out")
         .add_attribute("sender", info.sender)
         .add_attribute("routes", to_json_string(&swap_routes)?)
         .add_attribute("token_out", token_out.to_string())

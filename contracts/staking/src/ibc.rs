@@ -75,8 +75,8 @@ pub fn receive_timeout(
     if source_channel != config.protocol_chain_config.ibc_channel_id {
         // If the ack is not for this contract, return a success
         return Ok(Response::new()
-            .add_attribute("action", "receive_ack")
-            .add_attribute("error", "received ack for different channel"));
+            .add_attribute("action", "receive_timeout")
+            .add_attribute("error", "received timeout for different channel"));
     }
 
     let response = Response::new().add_attribute("action", "receive_timeout");

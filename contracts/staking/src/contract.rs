@@ -53,8 +53,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO: determine if info.sender is the admin or if we want to pass in with msg
-    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    let admin = info.sender.clone();
+    ADMIN.set(deps.branch(), Some(admin.clone()))?;
 
     // Init Config
     let native_chain_config = msg.native_chain_config.validate()?;
@@ -121,7 +121,7 @@ pub fn instantiate(
     // TODO: Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("owner", info.sender)
+        .add_attribute("owner", admin)
         .add_message(cosmos_tokenfactory_msg))
 }
 
