@@ -89,30 +89,28 @@ fn update_oracle_msgs(
     config: &Config,
     state: &State,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
-    let (redemption_rate, purchase_rate) = get_rates(state);
     let mut messages: Vec<CosmosMsg> = Vec::new();
-    // Post rates to Milkyway Oracle contract
-    let post_rates_msg = Oracle::PostRates {
-        purchase_rate: purchase_rate.to_string(),
-        redemption_rate: redemption_rate.to_string(),
-        denom: config.liquid_stake_token_denom.clone(),
-    };
 
-    let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
-    messages.push(
-        MsgExecuteContract {
-            sender: env.contract.address.to_string(),
-            contract: config
-                .protocol_chain_config
-                .oracle_address
-                .clone()
-                .unwrap()
-                .to_string(),
-            msg: post_rate_msg_json.as_bytes().to_vec(),
-            funds: vec![],
-        }
-        .into(),
-    );
+    if let Some(oracle_address) = &config.protocol_chain_config.oracle_address {
+        let (redemption_rate, purchase_rate) = get_rates(state);
+        // Post rates to Milkyway Oracle contract
+        let post_rates_msg = Oracle::PostRates {
+            purchase_rate: purchase_rate.to_string(),
+            redemption_rate: redemption_rate.to_string(),
+            denom: config.liquid_stake_token_denom.clone(),
+        };
+
+        let post_rate_msg_json = serde_json::to_string(&post_rates_msg).unwrap();
+        messages.push(
+            MsgExecuteContract {
+                sender: env.contract.address.to_string(),
+                contract: oracle_address.to_string(),
+                msg: post_rate_msg_json.as_bytes().to_vec(),
+                funds: vec![],
+            }
+            .into(),
+        );
+    }
 
     Ok(messages)
 }
