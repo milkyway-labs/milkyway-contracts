@@ -2,7 +2,7 @@ use crate::contract::execute;
 use crate::helpers::derive_intermediate_sender;
 use crate::msg::ExecuteMsg;
 use crate::state::{new_unstake_request, State, BATCHES, CONFIG, STATE};
-use crate::tests::test_helper::{init, NATIVE_TOKEN, OSMO2, OSMO3};
+use crate::tests::test_helper::{init, ADMIN, NATIVE_TOKEN, OSMO2, OSMO3};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, Coin, Uint128};
 use milky_way::staking::Batch;
@@ -127,7 +127,7 @@ fn circuit_breaker() {
     assert!(res.is_err());
 
     // correct sender
-    let info = mock_info(OSMO3, &[]);
+    let info = mock_info(ADMIN, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_ok());

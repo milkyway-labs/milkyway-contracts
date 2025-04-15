@@ -241,6 +241,7 @@ fn receive_unstaked_tokens() {
     );
 
     let mut batch: Batch = BATCHES.load(&deps.storage, 1).unwrap();
+    batch.expected_native_unstaked = Some(Uint128::new(100));
     batch.update_status(BatchStatus::Pending, Some(env.block.time.seconds() - 1));
     BATCHES.save(&mut deps.storage, 1, &batch).unwrap();
 
@@ -392,7 +393,8 @@ fn claimable_batches() {
     state.total_native_token = Uint128::from(300_000u128);
     STATE.save(&mut deps.storage, &state).unwrap();
 
-    let batch_1 = Batch::new(1, Uint128::from(1000u128), 1000);
+    let mut batch_1 = Batch::new(1, Uint128::from(1000u128), 1000);
+    batch_1.expected_native_unstaked = Some(Uint128::new(1000));
     new_unstake_request(
         &mut deps.as_mut(),
         "bob".to_string(),
@@ -400,7 +402,8 @@ fn claimable_batches() {
         Uint128::from(1000u128),
     )
     .unwrap();
-    let batch_2 = Batch::new(2, Uint128::from(1000u128), 1000);
+    let mut batch_2 = Batch::new(2, Uint128::from(1000u128), 1000);
+    batch_2.expected_native_unstaked = Some(Uint128::new(1000));
     new_unstake_request(
         &mut deps.as_mut(),
         "bob".to_string(),

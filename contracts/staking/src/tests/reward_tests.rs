@@ -23,9 +23,6 @@ fn receive_rewards() {
     STATE.save(&mut deps.storage, &state).unwrap();
 
     let msg = ExecuteMsg::ReceiveRewards {};
-
-    let contract = env.contract.address.clone().to_string();
-
     let sender = derive_intermediate_sender(
         &config.protocol_chain_config.ibc_channel_id,
         config.native_chain_config.reward_collector_address.as_str(),
@@ -43,17 +40,6 @@ fn receive_rewards() {
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
     assert!(res.is_err()); // wrong denom
-
-    let info = mock_info(
-        &contract,
-        &[cosmwasm_std::Coin {
-            amount: Uint128::from(100u128),
-            denom: config.protocol_chain_config.ibc_token_denom.clone(),
-        }],
-    );
-    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
-
-    assert!(res.is_err()); // wrong sender
 
     // Test without send fees to treasury
     config.protocol_fee_config.treasury_address = None;

@@ -14,7 +14,10 @@ use crate::state::{
 };
 use crate::state::{new_unstake_request, remove_unstake_request, unstake_requests, UnstakeRequest};
 use crate::tokenfactory;
-use crate::types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig};
+use crate::types::{
+    BatchExpectedAmount, UnsafeNativeChainConfig, UnsafeProtocolChainConfig,
+    UnsafeProtocolFeeConfig,
+};
 use cosmwasm_std::{
     ensure, Coin, CosmosMsg, Deps, DepsMut, Env, IbcTimeout, MessageInfo, Order, ReplyOn, Response,
     SubMsg, SubMsgResponse, SubMsgResult, Timestamp, Uint128,
@@ -122,7 +125,7 @@ fn update_oracle_msgs(
 
 pub fn check_stopped(config: &Config) -> Result<(), ContractError> {
     if config.stopped {
-        return Err(ContractError::Halted {});
+        return Err(ContractError::Stopped {});
     }
     Ok(())
 }
@@ -847,22 +850,6 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
         return Err(ContractError::NoLiquidStake {});
     }
 
-    let expected_sender = derive_intermediate_sender(
-        &config.protocol_chain_config.ibc_channel_id,
-        config.native_chain_config.reward_collector_address.as_str(),
-        &config.protocol_chain_config.account_address_prefix,
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-
     let coin = info
         .funds
         .iter()
@@ -943,22 +930,6 @@ pub fn receive_unstaked_tokens(
 
     check_stopped(&config)?;
 
-    let expected_sender = derive_intermediate_sender(
-        &config.protocol_chain_config.ibc_channel_id,
-        config.native_chain_config.staker_address.as_str(),
-        &config.protocol_chain_config.account_address_prefix,
-    );
-    if expected_sender.is_err() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-    if info.sender != expected_sender.unwrap() {
-        return Err(ContractError::Unauthorized {
-            sender: info.sender.to_string(),
-        });
-    }
-
     let coin = info
         .funds
         .iter()
@@ -989,6 +960,17 @@ pub fn receive_unstaked_tokens(
         return Err(ContractError::BatchNotReady {
             actual: env.block.time.seconds(),
             expected: next_batch_action_time,
+        });
+    }
+
+    let expected_native_amount = batch
+        .expected_native_unstaked
+        .ok_or(ContractError::BatchWithoutExpectedNativeAmount { batch_id })?;
+    if expected_native_amount != amount {
+        return Err(ContractError::ReceivedWrongBatchAmount {
+            batch_id,
+            expected: expected_native_amount,
+            received: amount,
         });
     }
 
@@ -1056,6 +1038,42 @@ pub fn resume_contract(
         .add_attribute("total_liquid_stake_token", total_liquid_stake_token)
         .add_attribute("total_reward_amount", total_reward_amount)
         .add_messages(update_oracle_msgs))
+}
+
+pub fn slash_batches(
+    deps: DepsMut,
+    info: MessageInfo,
+    expected_amounts: Vec<BatchExpectedAmount>,
+) -> ContractResult<Response> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    // Ensure the contract is stopped before slashing the batches
+    if !CONFIG.load(deps.storage)?.stopped {
+        return Err(ContractError::NotStopped {});
+    }
+
+    for batch_expected_amount in expected_amounts.iter() {
+        let mut batch = BATCHES.load(deps.storage, batch_expected_amount.batch_id)?;
+        if batch.status != BatchStatus::Pending && batch.status != BatchStatus::Submitted {
+            return Err(ContractError::UnexpecedBatchStatus {
+                actual: batch.status,
+            });
+        }
+
+        if batch.expected_native_unstaked.is_none() {
+            return Err(ContractError::BatchWithoutExpectedNativeAmount {
+                batch_id: batch_expected_amount.batch_id,
+            });
+        };
+
+        batch.expected_native_unstaked = Some(batch_expected_amount.amount);
+
+        BATCHES.save(deps.storage, batch_expected_amount.batch_id, &batch)?;
+    }
+
+    Ok(Response::new()
+        .add_attribute("action", "slash_batches")
+        .add_attribute("updated_batches", serde_json::to_string(&expected_amounts)?))
 }
 
 pub fn handle_ibc_reply(deps: DepsMut, msg: cosmwasm_std::Reply) -> ContractResult<Response> {

@@ -3,7 +3,10 @@ use crate::{
         ibc::IBCTransfer, IbcWaitingForReply, NativeChainConfig, ProtocolChainConfig,
         ProtocolFeeConfig, UnstakeRequest,
     },
-    types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig},
+    types::{
+        BatchExpectedAmount, UnsafeNativeChainConfig, UnsafeProtocolChainConfig,
+        UnsafeProtocolFeeConfig,
+    },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
@@ -64,6 +67,9 @@ pub enum ExecuteMsg {
         total_native_token: Uint128,
         total_liquid_stake_token: Uint128,
         total_reward_amount: Uint128,
+    },
+    SlashBatches {
+        new_amounts: Vec<BatchExpectedAmount>,
     },
     RecoverPendingIbcTransfers {
         paginated: Option<bool>,

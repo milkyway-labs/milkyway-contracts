@@ -8,6 +8,7 @@ use cosmwasm_std::testing::{
 };
 use cosmwasm_std::{coins, OwnedDeps, Uint128};
 
+pub static ADMIN: &str = "admin";
 pub static OSMO1: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
 pub static OSMO2: &str = "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms";
 pub static OSMO3: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
@@ -54,7 +55,7 @@ pub fn mock_init_msg() -> InstantiateMsg {
 pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
     let msg = mock_init_msg();
-    let info = mock_info(OSMO3, &coins(1000, "uosmo"));
+    let info = mock_info(ADMIN, &coins(1000, "uosmo"));
 
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
     if res.is_err() {

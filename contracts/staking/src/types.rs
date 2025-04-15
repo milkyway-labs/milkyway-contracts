@@ -141,3 +141,9 @@ impl UnsafeProtocolChainConfig {
         })
     }
 }
+
+#[cw_serde]
+pub struct BatchExpectedAmount {
+    pub batch_id: u64,
+    pub amount: Uint128,
+}

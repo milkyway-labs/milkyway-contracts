@@ -3,7 +3,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
 use crate::query::query_ibc_queue;
 use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
-use crate::tests::test_helper::{init, CHANNEL_ID, NATIVE_TOKEN, OSMO3, STAKER_ADDRESS};
+use crate::tests::test_helper::{init, ADMIN, CHANNEL_ID, NATIVE_TOKEN, OSMO3, STAKER_ADDRESS};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
     attr, coins, Addr, Coin, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse,
@@ -447,7 +447,7 @@ fn recover_forced() {
         receiver: None,
     };
 
-    let info = mock_info(OSMO3, &[]);
+    let info = mock_info(ADMIN, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
     assert!(res.is_ok());
     let res = res.unwrap();

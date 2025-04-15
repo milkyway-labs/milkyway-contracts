@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("{0}")]
+    SerdeJson(#[from] serde_json::Error),
+
     #[error("Unauthorized: {sender}")]
     Unauthorized { sender: String },
     // Add any other custom errors you like here.
@@ -67,6 +70,18 @@ pub enum ContractError {
     #[error("Batch is either already closed or is in an error state")]
     BatchNotClaimable { batch_id: u64, status: BatchStatus },
 
+    #[error("Batch {batch_id} don't have the expected native amount")]
+    BatchWithoutExpectedNativeAmount { batch_id: u64 },
+
+    #[error(
+        "Received wrong batch amount, batch_id {batch_id} expected {expected}, got {received}"
+    )]
+    ReceivedWrongBatchAmount {
+        batch_id: u64,
+        expected: Uint128,
+        received: Uint128,
+    },
+
     #[error("The tokens in this batch have already been claimed")]
     TokensAlreadyClaimed { batch_id: u64 },
 
@@ -92,10 +107,7 @@ pub enum ContractError {
     InvalidPacketStatus { id: u64 },
 
     #[error("unexpected batch status")]
-    UnexpecedBatchStatus {
-        actual: BatchStatus,
-        expected: BatchStatus,
-    },
+    UnexpecedBatchStatus { actual: BatchStatus },
 
     #[error("Minimum liquid stake amount not met")]
     InvalidUnstakeAmount {
@@ -103,8 +115,8 @@ pub enum ContractError {
         amount_to_unstake: Uint128,
     },
 
-    #[error("contract was intentionally halted")]
-    Halted {},
+    #[error("contract was intentionally stopped")]
+    Stopped {},
 
     #[error("contract is not stopped")]
     NotStopped {},

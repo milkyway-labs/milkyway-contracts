@@ -3,7 +3,8 @@ use cosmwasm_std::{Addr, Uint128};
 use crate::{
     state::CONFIG,
     tests::test_helper::{
-        init, CELESTIA1, CELESTIA2, CELESTIAVAL1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, OSMO4,
+        init, ADMIN, CELESTIA1, CELESTIA2, CELESTIAVAL1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3,
+        OSMO4,
     },
     types::{
         UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig,
@@ -130,7 +131,7 @@ fn update_native_chain_config_with_invalid_unbonding_period_fails() {
 #[test]
 fn update_native_chain_config_properly() {
     let mut deps = init();
-    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
 
     let new_config = UnsafeNativeChainConfig {
         account_address_prefix: "celestia".to_string(),
@@ -300,7 +301,7 @@ fn update_protocol_chain_config_with_invalid_oracle_address_fails() {
 #[test]
 fn update_protocol_chain_config_properly() {
     let mut deps = init();
-    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
 
     let new_config = UnsafeProtocolChainConfig {
         account_address_prefix: "celestia".to_string(),
@@ -356,7 +357,7 @@ fn update_protocol_chain_config_properly() {
 #[test]
 fn update_protocol_fee_config_with_invalid_treasury_address_fails() {
     let mut deps = init();
-    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
     let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
         native_chain_config: None,
         protocol_chain_config: None,
@@ -404,7 +405,7 @@ fn update_protocol_fee_config_with_invalid_dao_treasury_fee_fails() {
 #[test]
 fn update_protocol_fee_config_properly() {
     let mut deps = init();
-    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
 
     let new_config = UnsafeProtocolFeeConfig {
         dao_treasury_fee: Uint128::from(100000u128),
@@ -493,7 +494,7 @@ fn update_monitors_with_invalid_address_fails() {
 #[test]
 fn update_monitors_properly() {
     let mut deps = init();
-    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
     let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
         native_chain_config: None,
         protocol_chain_config: None,
