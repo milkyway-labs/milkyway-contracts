@@ -675,18 +675,12 @@ pub fn execute_accept_ownership(
 pub fn recover(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     selected_packets: Option<Vec<u64>>,
     receiver: Option<String>,
     page: bool,
 ) -> Result<Response, ContractError> {
     let page_size = 10;
-
-    // forced recovery is dangerous and should only be done by the admin
-    if selected_packets.is_some() {
-        ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-    }
-
     let config = CONFIG.load(deps.storage)?;
     let receiver = receiver
         // Validate the address
@@ -704,6 +698,11 @@ pub fn recover(
             // Ensure the selected packet are all for the same user
             if packet.receiver != receiver.as_str() {
                 return Err(ContractError::InvalidReceiver {});
+            }
+            if packet.status != PacketLifecycleStatus::AckFailure
+                && packet.status != PacketLifecycleStatus::TimedOut
+            {
+                return Err(ContractError::InvalidPacketStatus { id: packet_id });
             }
             packets.push(packet);
         }

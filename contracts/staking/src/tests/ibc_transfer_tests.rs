@@ -1,8 +1,9 @@
 use crate::contract::{execute, reply, sudo, IBC_TIMEOUT};
+use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, IBCLifecycleComplete, SudoMsg};
 use crate::query::query_ibc_queue;
 use crate::state::{ibc, IbcWaitingForReply, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS};
-use crate::tests::test_helper::{init, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, STAKER_ADDRESS};
+use crate::tests::test_helper::{init, CHANNEL_ID, NATIVE_TOKEN, OSMO3, STAKER_ADDRESS};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{
     attr, coins, Addr, Coin, CosmosMsg, IbcTimeout, Reply, ReplyOn, SubMsg, SubMsgResponse,
@@ -437,7 +438,7 @@ fn recover_forced() {
                 sequence: i,
                 amount: Coin::new(1000, NATIVE_TOKEN),
                 receiver: STAKER_ADDRESS.to_string(),
-                status: ibc::PacketLifecycleStatus::Sent,
+                status: ibc::PacketLifecycleStatus::TimedOut,
             },
         );
         assert!(res.is_ok());
@@ -449,15 +450,44 @@ fn recover_forced() {
         selected_packets: Some(vec![1, 2, 3]),
         receiver: None,
     };
-    let info = mock_info(OSMO1, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
-    assert!(res.is_err()); // not an admin
 
     let info = mock_info(OSMO3, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
     assert!(res.is_ok());
     let res = res.unwrap();
     assert_eq!(res.attributes[1], attr("packets", "3"));
+}
+
+#[test]
+fn recover_sent_packet_fails() {
+    let mut deps = init();
+
+    INFLIGHT_PACKETS
+        .save(
+            &mut deps.storage,
+            1,
+            &ibc::IBCTransfer {
+                sequence: 1,
+                amount: Coin::new(1000, NATIVE_TOKEN),
+                receiver: STAKER_ADDRESS.to_string(),
+                status: ibc::PacketLifecycleStatus::Sent,
+            },
+        )
+        .unwrap();
+
+    // send recover message
+    let msg = ExecuteMsg::RecoverPendingIbcTransfers {
+        paginated: Some(true),
+        selected_packets: Some(vec![1]),
+        receiver: None,
+    };
+
+    let info = mock_info(OSMO3, &[]);
+    let err = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap_err();
+    assert!(match err {
+        ContractError::InvalidPacketStatus { .. } => true,
+        _ => false,
+    });
 }
 
 #[test]

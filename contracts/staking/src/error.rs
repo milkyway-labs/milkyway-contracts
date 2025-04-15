@@ -88,8 +88,8 @@ pub enum ContractError {
     #[error("No inflight packages to recover")]
     NoInflightPackets {},
 
-    #[error("Error recovering failed ibc transactions")]
-    RecoverError {},
+    #[error("Can't recover packet {id} because is not failed or timed out")]
+    InvalidPacketStatus { id: u64 },
 
     #[error("unexpected batch status")]
     UnexpecedBatchStatus {
