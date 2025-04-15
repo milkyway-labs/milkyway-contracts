@@ -147,4 +147,7 @@ pub enum ContractError {
 
     #[error("The contract is migrating to a newer version")]
     Migrating {},
+
+    #[error("DAO treasury fee can't be higher then 100000")]
+    InvalidDaoTreasuryFee {},
 }

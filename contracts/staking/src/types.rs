@@ -10,6 +10,8 @@ use crate::{
     state::{NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig},
 };
 
+const MAX_TREASURY_FEE: Uint128 = Uint128::new(100_000);
+
 /// Config related to the fees collected by the contract to
 /// operate the liquid staking protocol.
 #[cw_serde]
@@ -22,7 +24,14 @@ pub struct UnsafeProtocolFeeConfig {
 }
 
 impl UnsafeProtocolFeeConfig {
-    pub fn validate(&self, config: &ProtocolChainConfig) -> StdResult<ProtocolFeeConfig> {
+    pub fn validate(
+        &self,
+        config: &ProtocolChainConfig,
+    ) -> Result<ProtocolFeeConfig, ContractError> {
+        if self.dao_treasury_fee > MAX_TREASURY_FEE {
+            return Err(ContractError::InvalidDaoTreasuryFee {});
+        }
+
         Ok(ProtocolFeeConfig {
             dao_treasury_fee: self.dao_treasury_fee,
             treasury_address: self

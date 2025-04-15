@@ -346,6 +346,30 @@ fn update_protocol_fee_config_with_invalid_treasury_address_fails() {
 }
 
 #[test]
+fn update_protocol_fee_config_with_invalid_dao_treasury_fee_fails() {
+    let mut deps = init();
+    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+        native_chain_config: None,
+        protocol_chain_config: None,
+        protocol_fee_config: Some(UnsafeProtocolFeeConfig {
+            dao_treasury_fee: Uint128::new(100_001),
+            treasury_address: Some(OSMO3.to_string()),
+        }),
+        batch_period: None,
+        monitors: None,
+    };
+
+    let res = crate::contract::execute(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        config_update_msg,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
 fn update_protocol_fee_config_properly() {
     let mut deps = init();
     let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
