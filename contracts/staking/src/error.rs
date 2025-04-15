@@ -153,4 +153,10 @@ pub enum ContractError {
 
     #[error("DAO treasury fee can't be higher then 100000")]
     InvalidDaoTreasuryFee {},
+    #[error("The field '{field_name}' has a value of {value}, which exceeds the maximum allowed value of {max}.")]
+    ValueTooBig {
+        field_name: String,
+        value: Uint128,
+        max: Uint128,
+    },
 }

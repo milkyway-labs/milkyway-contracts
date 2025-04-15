@@ -60,6 +60,15 @@ pub fn instantiate(
     let protocol_chain_config = msg.protocol_chain_config.validate()?;
     let protocol_fee_config = msg.protocol_fee_config.validate(&protocol_chain_config)?;
 
+    // Ensure the batch period is lower then unbonding period.
+    if msg.batch_period > native_chain_config.unbonding_period {
+        return Err(ContractError::ValueTooBig {
+            field_name: "batch_period".to_string(),
+            value: Uint128::from(msg.batch_period),
+            max: Uint128::from(native_chain_config.unbonding_period),
+        });
+    }
+
     let config = Config {
         native_chain_config,
         protocol_chain_config,

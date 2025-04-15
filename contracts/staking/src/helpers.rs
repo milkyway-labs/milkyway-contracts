@@ -3,7 +3,7 @@ use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
-use crate::state::{State, STATE};
+use crate::state::State;
 
 /// Validate the HRP (human readable part).of a bech32 encoded address
 /// as for [BIP-173](https://en.bitcoin.it/wiki/BIP_0173).

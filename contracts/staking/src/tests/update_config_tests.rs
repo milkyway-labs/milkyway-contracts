@@ -5,7 +5,10 @@ use crate::{
     tests::test_helper::{
         init, CELESTIA1, CELESTIA2, CELESTIAVAL1, CHANNEL_ID, NATIVE_TOKEN, OSMO1, OSMO3, OSMO4,
     },
-    types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig},
+    types::{
+        UnsafeNativeChainConfig, UnsafeProtocolChainConfig, UnsafeProtocolFeeConfig,
+        MAX_UNBONDING_PERIOD,
+    },
 };
 
 #[test]
@@ -78,6 +81,35 @@ fn update_native_chain_config_with_invalid_validator_fails() {
             reward_collector_address: CELESTIA1.to_string(),
             token_denom: "utia".to_string(),
             unbonding_period: 1209600,
+            validators: vec!["osmovaloper1clpqr4nrk4khgkxj78fcwwh6dl3uw4ep88n0y4".to_string()],
+        }),
+        protocol_chain_config: None,
+        protocol_fee_config: None,
+        batch_period: None,
+        monitors: None,
+    };
+
+    let res = crate::contract::execute(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        config_update_msg,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
+fn update_native_chain_config_with_invalid_unbonding_period_fails() {
+    let mut deps = init();
+    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+        native_chain_config: Some(UnsafeNativeChainConfig {
+            account_address_prefix: "celestia".to_string(),
+            validator_address_prefix: "celestiavaloper".to_string(),
+            staker_address: CELESTIA1.to_string(),
+            reward_collector_address: CELESTIA1.to_string(),
+            token_denom: "utia".to_string(),
+            unbonding_period: MAX_UNBONDING_PERIOD + 1,
             validators: vec!["osmovaloper1clpqr4nrk4khgkxj78fcwwh6dl3uw4ep88n0y4".to_string()],
         }),
         protocol_chain_config: None,
@@ -407,6 +439,34 @@ fn update_protocol_fee_config_properly() {
             .unwrap()
             .to_string()
     );
+}
+
+#[test]
+fn update_batch_period_with_value_bigger_then_unbonding_period_fails() {
+    let mut deps = init();
+    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let unbonding_period = CONFIG
+        .load(&deps.storage)
+        .unwrap()
+        .native_chain_config
+        .unbonding_period;
+
+    let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+        native_chain_config: None,
+        protocol_chain_config: None,
+        protocol_fee_config: None,
+        batch_period: Some(unbonding_period + 1),
+        monitors: None,
+    };
+
+    let result = crate::contract::execute(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        config_update_msg,
+    );
+
+    assert!(result.is_err());
 }
 
 #[test]

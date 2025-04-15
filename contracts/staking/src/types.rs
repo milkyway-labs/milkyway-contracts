@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{StdResult, Uint128};
 
 use crate::{
-    error::ContractError,
+    error::{ContractError, ContractResult},
     helpers::{
         validate_address, validate_address_prefix, validate_addresses, validate_denom,
         validate_ibc_denom,
@@ -11,6 +11,9 @@ use crate::{
 };
 
 const MAX_TREASURY_FEE: Uint128 = Uint128::new(100_000);
+/// The maximum allowed unbonding period is 42 days,
+/// which is twice the typical staking period of a Cosmos SDK-based chain.
+pub const MAX_UNBONDING_PERIOD: u64 = 3_628_800;
 
 /// Config related to the fees collected by the contract to
 /// operate the liquid staking protocol.
@@ -72,7 +75,15 @@ pub struct UnsafeNativeChainConfig {
 }
 
 impl UnsafeNativeChainConfig {
-    pub fn validate(&self) -> StdResult<NativeChainConfig> {
+    pub fn validate(&self) -> ContractResult<NativeChainConfig> {
+        if self.unbonding_period > MAX_UNBONDING_PERIOD {
+            return Err(ContractError::ValueTooBig {
+                field_name: "unbonding_period".to_string(),
+                value: Uint128::from(self.unbonding_period),
+                max: Uint128::from(MAX_UNBONDING_PERIOD),
+            });
+        }
+
         Ok(NativeChainConfig {
             account_address_prefix: validate_address_prefix(&self.account_address_prefix)?,
             validator_address_prefix: validate_address_prefix(&self.validator_address_prefix)?,

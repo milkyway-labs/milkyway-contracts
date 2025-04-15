@@ -810,6 +810,14 @@ pub fn update_config(
     }
 
     if let Some(batch_period) = batch_period {
+        // Ensure the batch period is lower then unbonding period.
+        if batch_period > config.native_chain_config.unbonding_period {
+            return Err(ContractError::ValueTooBig {
+                field_name: "batch_period".to_string(),
+                value: Uint128::from(config.native_chain_config.unbonding_period),
+                max: Uint128::from(batch_period),
+            });
+        }
         config.batch_period = batch_period;
     }
 

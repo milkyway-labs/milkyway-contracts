@@ -3,6 +3,7 @@ use crate::tests::test_helper::{
     mock_init_msg, CELESTIA1, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, NATIVE_TOKEN,
     OSMO1, OSMO2, OSMO3, OSMO4, STAKER_ADDRESS,
 };
+use crate::types::MAX_UNBONDING_PERIOD;
 
 use cosmwasm_std::testing::{mock_dependencies, mock_info};
 use cosmwasm_std::{Addr, Order, Uint128};
@@ -191,6 +192,38 @@ fn invalid_monitors_fails() {
     let mut msg = mock_init_msg();
 
     msg.monitors[1] = CELESTIA1.to_string();
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
+fn invalid_unbonding_period_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
+
+    msg.native_chain_config.unbonding_period = MAX_UNBONDING_PERIOD + 1;
+    let res = crate::contract::instantiate(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        msg,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
+fn invalid_batch_period_fails() {
+    let mut deps = mock_dependencies();
+    let info = mock_info(OSMO3, &[]);
+    let mut msg = mock_init_msg();
+
+    msg.batch_period = msg.native_chain_config.unbonding_period + 1;
     let res = crate::contract::instantiate(
         deps.as_mut(),
         cosmwasm_std::testing::mock_env(),
