@@ -58,7 +58,9 @@ pub fn instantiate(
 
     // Init Config
     let native_chain_config = msg.native_chain_config.validate()?;
-    let protocol_chain_config = msg.protocol_chain_config.validate()?;
+    let protocol_chain_config = msg
+        .protocol_chain_config
+        .validate(&native_chain_config.token_denom)?;
     let protocol_fee_config = msg.protocol_fee_config.validate(&protocol_chain_config)?;
 
     // Ensure the batch period is lower then unbonding period.

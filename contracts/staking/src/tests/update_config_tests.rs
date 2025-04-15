@@ -129,6 +129,35 @@ fn update_native_chain_config_with_invalid_unbonding_period_fails() {
 }
 
 #[test]
+fn update_native_chain_config_token_denom_without_updating_ibc_denom_fails() {
+    let mut deps = init();
+    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+    let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+        native_chain_config: Some(UnsafeNativeChainConfig {
+            account_address_prefix: "celestia".to_string(),
+            validator_address_prefix: "celestiavaloper".to_string(),
+            staker_address: OSMO1.to_string(),
+            reward_collector_address: CELESTIA2.to_string(),
+            token_denom: "tia".to_string(),
+            unbonding_period: 1209600,
+            validators: vec![],
+        }),
+        protocol_chain_config: None,
+        protocol_fee_config: None,
+        batch_period: None,
+        monitors: None,
+    };
+
+    let res = crate::contract::execute(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        config_update_msg,
+    );
+    assert!(res.is_err());
+}
+
+#[test]
 fn update_native_chain_config_properly() {
     let mut deps = init();
     let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
@@ -299,15 +328,45 @@ fn update_protocol_chain_config_with_invalid_oracle_address_fails() {
 }
 
 #[test]
+fn update_protocol_chain_with_invalid_ibc_token_fails() {
+    let mut deps = init();
+    let info = cosmwasm_std::testing::mock_info(OSMO3, &[]);
+
+    let new_config = UnsafeProtocolChainConfig {
+        account_address_prefix: "celestia".to_string(),
+        ibc_token_denom: "ibc/c3e53d20bc7a4cc993b17c7971f8ecd06a433c10b6a96f4c4c3714f0624c56da"
+            .to_string(),
+        ibc_channel_id: "channel-1".to_string(),
+        oracle_address: Some(CELESTIA1.to_string()),
+        minimum_liquid_stake_amount: Uint128::from(1000u128),
+    };
+    let config_update_msg = crate::msg::ExecuteMsg::UpdateConfig {
+        native_chain_config: None,
+        protocol_chain_config: Some(new_config.clone()),
+        protocol_fee_config: None,
+        batch_period: None,
+        monitors: None,
+    };
+
+    let result = crate::contract::execute(
+        deps.as_mut(),
+        cosmwasm_std::testing::mock_env(),
+        info.clone(),
+        config_update_msg.clone(),
+    );
+    assert!(result.is_err());
+}
+
+#[test]
 fn update_protocol_chain_config_properly() {
     let mut deps = init();
     let info = cosmwasm_std::testing::mock_info(ADMIN, &[]);
 
     let new_config = UnsafeProtocolChainConfig {
         account_address_prefix: "celestia".to_string(),
-        ibc_token_denom: "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56AA"
+        ibc_token_denom: "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA"
             .to_string(),
-        ibc_channel_id: "channel-234".to_string(),
+        ibc_channel_id: "channel-0".to_string(),
         oracle_address: Some(CELESTIA1.to_string()),
         minimum_liquid_stake_amount: Uint128::from(1000u128),
     };

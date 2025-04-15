@@ -4,7 +4,7 @@ use crate::contract::IBC_TIMEOUT;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, dedup_vec, derive_intermediate_sender, get_rates,
-    paginate_map,
+    paginate_map, validate_ibc_denom,
 };
 use crate::oracle::Oracle;
 use crate::state::{
@@ -804,12 +804,25 @@ pub fn update_config(
 
     let mut config: Config = CONFIG.load(deps.storage)?;
 
-    if let Some(native_chain_config) = native_chain_config {
+    if let Some(native_chain_config) = &native_chain_config {
         config.native_chain_config = native_chain_config.validate()?;
     }
 
     if let Some(protocol_chain_config) = protocol_chain_config {
-        config.protocol_chain_config = protocol_chain_config.validate()?;
+        config.protocol_chain_config =
+            protocol_chain_config.validate(&config.native_chain_config.token_denom)?;
+    }
+
+    // The native chain config contains the native token denom,
+    // which influences protocol_chain_config.ibc_token_denom.
+    // Ensure that if the native token denom has changed,
+    // the configured IBC denom remains valid after updating protocol_chain_config.
+    if native_chain_config.is_some() {
+        validate_ibc_denom(
+            &config.protocol_chain_config.ibc_token_denom,
+            &config.protocol_chain_config.ibc_channel_id,
+            &config.native_chain_config.token_denom,
+        )?;
     }
 
     if let Some(protocol_fee_config) = protocol_fee_config {

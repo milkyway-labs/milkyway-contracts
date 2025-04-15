@@ -19,9 +19,9 @@ pub static CELESTIA2: &str = "celestia1ztrhpdznu2xlwakd4yp3hg9lwyr3d46ayd30u2";
 pub static CELESTIAVAL1: &str = "celestiavaloper1463wx5xkus5hyugyecvlhv9qpxklz62kyhwcts";
 pub static CELESTIAVAL2: &str = "celestiavaloper1amxp3ah9anq4pmpnsknls7sql3kras9hs8pu0g";
 pub static CELESTIAVAL3: &str = "celestiavaloper1t345w0vxnyyrf4eh43lpd3jl7z378rtsdn9tz3";
-pub static CHANNEL_ID: &str = "channel-123";
+pub static CHANNEL_ID: &str = "channel-6994";
 pub static NATIVE_TOKEN: &str =
-    "ibc/C3E53D20BC7A4CC993B17C7971F8ECD06A433C10B6A96F4C4C3714F0624C56DA";
+    "ibc/D79E7D83AB399BFFF93433E54FAA480C191248FC556924A2A8351AE2638B3877";
 pub static LIQUID_STAKE_TOKEN_DENOM: &str = "umilkTIA";
 
 pub fn mock_init_msg() -> InstantiateMsg {

@@ -116,7 +116,7 @@ pub struct UnsafeProtocolChainConfig {
 }
 
 impl UnsafeProtocolChainConfig {
-    pub fn validate(&self) -> Result<ProtocolChainConfig, ContractError> {
+    pub fn validate(&self, native_denom: &str) -> Result<ProtocolChainConfig, ContractError> {
         let channel_id_correct = self.ibc_channel_id.starts_with("channel-")
             && self
                 .ibc_channel_id
@@ -130,7 +130,11 @@ impl UnsafeProtocolChainConfig {
 
         Ok(ProtocolChainConfig {
             account_address_prefix: validate_address_prefix(&self.account_address_prefix)?,
-            ibc_token_denom: validate_ibc_denom(&self.ibc_token_denom)?,
+            ibc_token_denom: validate_ibc_denom(
+                &self.ibc_token_denom,
+                &self.ibc_channel_id,
+                native_denom,
+            )?,
             ibc_channel_id: self.ibc_channel_id.clone(),
             minimum_liquid_stake_amount: self.minimum_liquid_stake_amount,
             oracle_address: self

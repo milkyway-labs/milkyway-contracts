@@ -148,11 +148,25 @@ pub fn validate_denom(denom: impl Into<String>) -> StdResult<String> {
 }
 
 /// Checks the provided denom is a valid ibc denom or not.
-pub fn validate_ibc_denom(ibc_denom: impl Into<String>) -> StdResult<String> {
+pub fn validate_ibc_denom(
+    ibc_denom: impl Into<String>,
+    channel_id: &str,
+    token_denom: &str,
+) -> StdResult<String> {
     let ibc_denom: String = ibc_denom.into();
 
-    if ibc_denom.starts_with("ibc/") && ibc_denom.strip_prefix("ibc/").unwrap().len() == 64 {
-        Ok(ibc_denom)
+    if let Some(hash) = ibc_denom.strip_prefix("ibc/") {
+        let mut hasher = Sha256::default();
+        hasher.update("transfer/".as_bytes());
+        hasher.update(channel_id.as_bytes());
+        hasher.update("/".as_bytes());
+        hasher.update(token_denom.as_bytes());
+        let expected_hash = hex::encode_upper(hasher.finalize());
+        if expected_hash != hash {
+            Err(StdError::generic_err("ibc denom is invalid"))
+        } else {
+            Ok(ibc_denom)
+        }
     } else {
         Err(StdError::generic_err("ibc denom is invalid"))
     }
@@ -169,4 +183,39 @@ where
     vec.sort();
     vec.dedup();
     vec
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_ibc_denom;
+
+    #[test]
+    fn test_validate_invalid_ibc_denom_fails() {
+        validate_ibc_denom(
+            "ibc/D79E7D83AB399BFFF93433E54FAA480C191248FC556924A2A8351AE2638B3866",
+            "channel-6994",
+            "utia",
+        )
+        .unwrap_err();
+    }
+
+    #[test]
+    fn test_validate_lowercase_ibc_denom_fails() {
+        validate_ibc_denom(
+            "ibc/d79e7d83ab399bfff93433e54faa480c191248fc556924a2a8351ae2638b3877",
+            "channel-6994",
+            "utia",
+        )
+        .unwrap_err();
+    }
+
+    #[test]
+    fn test_validate_ibc_denom_correctly() {
+        validate_ibc_denom(
+            "ibc/D79E7D83AB399BFFF93433E54FAA480C191248FC556924A2A8351AE2638B3877",
+            "channel-6994",
+            "utia",
+        )
+        .unwrap();
+    }
 }
