@@ -11,7 +11,8 @@ use crate::query::{
     query_state, query_unstake_requests,
 };
 use crate::state::{
-    Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, PENDING_BATCH_ID, STATE,
+    assert_not_migrating, Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY,
+    PENDING_BATCH_ID, STATE,
 };
 use crate::{
     error::ContractError,
@@ -125,6 +126,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    assert_not_migrating(deps.as_ref())?;
+
     let config = CONFIG.load(deps.storage)?;
     match msg {
         ExecuteMsg::LiquidStake {
@@ -294,11 +297,10 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
             native_token_denom,
             protocol_account_address_prefix,
         )?,
-        MigrateMsg::V1_0_0ToV1_1_0 {} => migrations::v1_1_0::migrate(deps.branch(), env)?,
+        MigrateMsg::V1_0_0ToV1_1_0 { limit } => {
+            migrations::v1_1_0::migrate(deps.branch(), env, limit)?
+        }
     };
-
-    // set new contract version
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(migration_response)
 }
@@ -309,6 +311,8 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    assert_not_migrating(deps.as_ref())?;
+
     match msg {
         SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
             channel,
@@ -328,6 +332,8 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+    assert_not_migrating(deps.as_ref())?;
+
     let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
     match ibc_waiting_result {
         Ok(_ibc_waiting_for_reply) => handle_ibc_reply(deps, reply),

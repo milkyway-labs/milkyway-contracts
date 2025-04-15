@@ -144,4 +144,7 @@ pub enum ContractError {
 
     #[error("Can't recover packets with different denoms")]
     InconsistentDenom {},
+
+    #[error("The contract is migrating to a newer version")]
+    Migrating {},
 }

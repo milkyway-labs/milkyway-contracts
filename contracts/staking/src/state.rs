@@ -1,8 +1,10 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin, DepsMut, StdError, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, Deps, DepsMut, StdError, Timestamp, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, UniqueIndex};
 use milky_way::staking::Batch;
+
+use crate::error::{ContractError, ContractResult};
 
 #[cw_serde]
 pub struct Config {
@@ -199,3 +201,14 @@ pub mod ibc {
 /// In-Flight packets by (source_channel_id, sequence)
 pub const INFLIGHT_PACKETS: Map<u64, ibc::IBCTransfer> = Map::new("inflight");
 pub const IBC_WAITING_FOR_REPLY: Map<u64, IbcWaitingForReply> = Map::new("ibc_waiting_for_reply");
+
+pub const MIGRATING: Item<bool> = Item::new("migrating");
+
+/// Checks if the contract is being migrated.
+pub fn assert_not_migrating(deps: Deps) -> ContractResult<()> {
+    if MIGRATING.may_load(deps.storage)?.unwrap_or(false) {
+        Err(ContractError::Migrating {})
+    } else {
+        Ok(())
+    }
+}

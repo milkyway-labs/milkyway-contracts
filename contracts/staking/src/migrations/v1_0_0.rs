@@ -6,9 +6,10 @@ use crate::{
     state::{Config, NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig, CONFIG},
 };
 use cosmwasm_std::{DepsMut, Env, Response};
-use cw2::assert_contract_version;
+use cw2::{assert_contract_version, set_contract_version};
 
 const FROM_VERSION: &str = "0.4.20";
+const TO_VERSION: &str = "1.0.0";
 
 pub fn migrate(
     deps: DepsMut,
@@ -93,6 +94,8 @@ pub fn migrate(
     };
     // Save the new config.
     CONFIG.save(deps.storage, &new_config)?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, TO_VERSION)?;
 
     Ok(Response::new()
         .add_attribute("action", "migrate")
