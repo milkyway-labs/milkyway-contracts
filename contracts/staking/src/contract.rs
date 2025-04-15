@@ -2,7 +2,7 @@ use crate::execute::{
     circuit_breaker, execute_submit_batch, fee_withdraw, handle_ibc_reply, receive_rewards,
     receive_unstaked_tokens, recover, resume_contract, update_config,
 };
-use crate::helpers::{validate_addresses, validate_denom};
+use crate::helpers::validate_denom;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::migrations;
 use crate::query::{
@@ -32,6 +32,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
+use milky_way::utils::validate_addresses;
 use semver::Version;
 
 // Version information for migration

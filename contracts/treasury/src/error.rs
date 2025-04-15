@@ -1,4 +1,5 @@
 use cosmwasm_std::{StdError, Timestamp};
+use cw2::VersionError;
 use cw_controllers::AdminError;
 use thiserror::Error;
 
@@ -8,6 +9,9 @@ pub type ContractResult<T> = core::result::Result<T, ContractError>;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Version(#[from] VersionError),
 
     #[error("Unauthorized: {sender}")]
     Unauthorized { sender: String },

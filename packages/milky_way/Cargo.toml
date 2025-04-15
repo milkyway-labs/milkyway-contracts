@@ -16,3 +16,4 @@ keywords.workspace = true
 cosmwasm-std = { workspace = true }
 schemars.workspace = true
 serde.workspace = true
+bech32.workspace = true

@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use crate::contract::instantiate;
 use crate::msg::InstantiateMsg;
 use crate::state::SwapRoute;
+use crate::types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig};
 
 use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockStorage};
 use cosmwasm_std::{coins, OwnedDeps};
@@ -11,6 +12,7 @@ use super::osmosis_querier::OsmosisQuerierMock;
 
 pub static ADMIN: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
 pub static TRADER: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
+pub static NEW_TRADER: &str = "osmo17x4zm0m0mxc428ykll3agmehfrxpr5hqpmsatd";
 pub static TIA_USDC_POOL: u64 = 1;
 pub static TIA_OSMO_POOL: u64 = 2;
 pub static OSMO_USDC_POOL: u64 = 3;
@@ -54,6 +56,12 @@ pub fn init() -> OwnedDeps<MockStorage, MockApi, OsmosisQuerierMock> {
                 },
             ],
         ],
+        native_chain_config: UnsafeNativeChainConfig {
+            account_address_prefix: "celestia".to_string(),
+        },
+        protocol_chain_config: UnsafeProtocolChainConfig {
+            account_address_prefix: "osmo".to_string(),
+        },
     };
     let info = mock_info(ADMIN, &coins(1000, "uosmo"));
 

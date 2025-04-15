@@ -1,4 +1,5 @@
 mod instantiate_tests;
+mod migrations;
 mod osmosis_querier;
 mod ownership_tests;
 mod send_tests;

@@ -1,12 +1,13 @@
 use crate::{
     contract::{CONTRACT_NAME, CONTRACT_VERSION},
     error::ContractResult,
-    helpers::{validate_address, validate_address_prefix, validate_denom},
+    helpers::validate_denom,
     migrations::states::v0_4_20,
     state::{Config, NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig, CONFIG},
 };
 use cosmwasm_std::{DepsMut, Env, Response};
 use cw2::{assert_contract_version, set_contract_version};
+use milky_way::utils::{validate_address, validate_address_prefix};
 
 const FROM_VERSION: &str = "0.4.20";
 const TO_VERSION: &str = "1.0.0";

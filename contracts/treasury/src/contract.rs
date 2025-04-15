@@ -13,11 +13,12 @@ use crate::execute::{
     execute_update_config,
 };
 use crate::helpers::validate_swap_routes;
+use crate::migrations;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::query_config;
 use crate::state::{Config, State, ADMIN, CONFIG, STATE};
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -54,6 +55,8 @@ pub fn instantiate(
             .transpose()?
             .unwrap_or(info.sender.clone()),
         allowed_swap_routes: msg.allowed_swap_routes,
+        protocol_chain_config: msg.protocol_chain_config.validate()?,
+        native_chain_config: msg.native_chain_config.validate()?,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -100,7 +103,16 @@ pub fn execute(
         ExecuteMsg::UpdateConfig {
             trader,
             allowed_swap_routes,
-        } => execute_update_config(deps, info, trader, allowed_swap_routes),
+            protocol_chain_config,
+            native_chain_config,
+        } => execute_update_config(
+            deps,
+            info,
+            trader,
+            allowed_swap_routes,
+            native_chain_config,
+            protocol_chain_config,
+        ),
     }
 }
 
@@ -113,7 +125,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> ContractResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Response> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> ContractResult<Response> {
     let current_version = cw2::get_contract_version(deps.storage)?;
     if CONTRACT_NAME != current_version.contract.as_str() {
         return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
@@ -127,18 +139,21 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Res
         .parse()
         .map_err(|_| StdError::generic_err("Invalid contract version"))?;
 
+    // Prevent downgrade
     if version > new_version {
         return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
     }
+    // if same version return
     if version == new_version {
         return Err(StdError::generic_err("Cannot migrate to the same version.").into());
     }
 
-    // Update the contract name and version
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let migration_response = match msg {
+        MigrateMsg::V0_4_20ToV1_0_0 {
+            native_chain_config,
+            protocol_chain_config,
+        } => migrations::v1_0_0::migrate(deps, env, native_chain_config, protocol_chain_config)?,
+    };
 
-    Ok(Response::new()
-        .add_attribute("action", "migrate")
-        .add_attribute("from_version", current_version.version)
-        .add_attribute("to_version", CONTRACT_VERSION))
+    Ok(migration_response)
 }

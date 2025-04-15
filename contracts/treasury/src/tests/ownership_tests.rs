@@ -1,4 +1,3 @@
-
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
 use crate::tests::test_helper::{init, ADMIN};

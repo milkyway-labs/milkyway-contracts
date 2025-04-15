@@ -4,7 +4,7 @@ use crate::contract::IBC_TIMEOUT;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
     compute_mint_amount, compute_unbond_amount, dedup_vec, derive_intermediate_sender, get_rates,
-    paginate_map, validate_address, validate_addresses,
+    paginate_map,
 };
 use crate::oracle::Oracle;
 use crate::state::{
@@ -21,12 +21,15 @@ use cosmwasm_std::{
 };
 use cw_utils::PaymentError;
 use milky_way::staking::{Batch, BatchStatus};
+use milky_way::utils::{validate_address, validate_addresses};
 use osmosis_std::types::cosmos::bank::v1beta1::MsgSend;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::cosmwasm::wasm::v1::MsgExecuteContract;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransfer;
 use osmosis_std::types::ibc::applications::transfer::v1::MsgTransferResponse;
 use prost::Message;
+
+const FEE_RATE_DENOMINATOR: u64 = 100_000;
 
 pub fn ibc_transfer_msg(
     deps: &Deps,
@@ -872,13 +875,12 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
     let fee = config
         .protocol_fee_config
         .dao_treasury_fee
-        .multiply_ratio(amount, 100_000u128);
+        .multiply_ratio(amount, FEE_RATE_DENOMINATOR);
     if fee.is_zero() {
         return Err(ContractError::ComputedFeesAreZero {
             received_rewards: amount,
         });
     }
-
     let amount_after_fees = amount.checked_sub(fee);
     if amount_after_fees.is_err() {
         return Err(ContractError::ReceiveRewardsTooSmall {

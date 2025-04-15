@@ -11,6 +11,7 @@ use crate::{
         osmosis_querier::INVALID_POOL_DENOM,
         test_helper::{mock_deps, ADMIN, TRADER},
     },
+    types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig},
 };
 
 #[test]
@@ -25,6 +26,12 @@ fn instantiate_with_invalid_swap_route_fails() {
             token_in_denom: INVALID_POOL_DENOM.to_string(),
             token_out_denom: INVALID_POOL_DENOM.to_string(),
         }]],
+        native_chain_config: UnsafeNativeChainConfig {
+            account_address_prefix: "celestia".to_string(),
+        },
+        protocol_chain_config: UnsafeProtocolChainConfig {
+            account_address_prefix: "osmo".to_string(),
+        },
     };
     let info = mock_info(ADMIN, &coins(1000, "uosmo"));
 

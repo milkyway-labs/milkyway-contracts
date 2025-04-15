@@ -1,13 +1,18 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Coin};
 
-use crate::state::SwapRoute;
+use crate::{
+    state::SwapRoute,
+    types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig},
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: Option<String>,
     pub trader: Option<String>,
     pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
+    pub native_chain_config: UnsafeNativeChainConfig,
+    pub protocol_chain_config: UnsafeProtocolChainConfig,
 }
 
 #[cw_serde]
@@ -52,6 +57,8 @@ pub enum ExecuteMsg {
         /// Optional new allowed swap routes.
         /// If `None`, the allowed swap routes will not change.
         allowed_swap_routes: Option<Vec<Vec<SwapRoute>>>,
+        native_chain_config: Option<UnsafeNativeChainConfig>,
+        protocol_chain_config: Option<UnsafeProtocolChainConfig>,
     },
 }
 
@@ -70,4 +77,9 @@ pub struct ConfigResponse {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub enum MigrateMsg {
+    V0_4_20ToV1_0_0 {
+        native_chain_config: UnsafeNativeChainConfig,
+        protocol_chain_config: UnsafeProtocolChainConfig,
+    },
+}

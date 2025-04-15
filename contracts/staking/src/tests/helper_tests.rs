@@ -1,35 +1,5 @@
-use crate::helpers::{compute_mint_amount, compute_unbond_amount, validate_addresses};
+use crate::helpers::{compute_mint_amount, compute_unbond_amount};
 use cosmwasm_std::Uint128;
-
-#[test]
-fn validate_addresses_success() {
-    let addresses = vec![
-        "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-        "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
-    ];
-    let result = validate_addresses(&addresses, "osmo").unwrap();
-    assert_eq!(2, result.len());
-}
-
-#[test]
-fn validate_addresses_duplicate() {
-    let addresses = vec![
-        "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-        "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-    ];
-    let result = validate_addresses(&addresses, "osmo");
-    assert!(result.is_err());
-}
-
-#[test]
-fn validate_addresses_invalid_prefix() {
-    let addresses = vec![
-        "a".to_string(),
-        "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-    ];
-    let result = validate_addresses(&addresses, "celestia");
-    assert!(result.is_err());
-}
 
 // Basic test - based on figures from excalidraw
 #[test]

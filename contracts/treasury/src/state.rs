@@ -32,6 +32,28 @@ pub struct Config {
     pub trader: Addr,
     /// List of allowed swap routes that can be taken when performing a SwapExactAmountIn.
     pub allowed_swap_routes: Vec<Vec<SwapRoute>>,
+    /// Config related to the chain for which we are creating
+    /// the LST token.
+    /// For example Celestia is the native chain of milkTIA LST token.
+    pub native_chain_config: NativeChainConfig,
+    /// Config related to the chain where the smart contract is deployed.
+    pub protocol_chain_config: ProtocolChainConfig,
+}
+
+/// Config related to the chain for which we are creating
+/// the LST token.
+/// For example Celestia is the native chain of milkTIA LST token.
+#[cw_serde]
+pub struct NativeChainConfig {
+    /// Bech32 prefix for accounts (e.g. "celestia", "initia", etc)
+    pub account_address_prefix: String,
+}
+
+/// Config related to the chain where the smart contract is deployed.
+#[cw_serde]
+pub struct ProtocolChainConfig {
+    /// Bech32 prefix for accounts (e.g. "osmo", "milk", etc)
+    pub account_address_prefix: String,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

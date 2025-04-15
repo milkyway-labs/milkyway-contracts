@@ -9,9 +9,11 @@ use crate::{
     error::{ContractError, ContractResult},
     helpers::{validate_address, validate_swap_routes},
     state::{State, SwapRoute, ADMIN, CONFIG, STATE},
+    types::{UnsafeNativeChainConfig, UnsafeProtocolChainConfig},
 };
 
-pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
+pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000);
+pub const IBC_TRANSFER_PORT: &str = "transfer";
 
 // Transfer ownership to another account; callable by the owner
 // This will require the new owner to accept to take effect.
@@ -104,19 +106,27 @@ pub fn execute_spend_funds(
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
+    let config = CONFIG.load(deps.storage)?;
+
     let msg_send: CosmosMsg = if channel_id.is_none() {
-        validate_address(&receiver, "osmo")?;
+        validate_address(
+            &receiver,
+            &config.protocol_chain_config.account_address_prefix,
+        )?;
         cosmwasm_std::BankMsg::Send {
             to_address: receiver.clone(),
             amount: vec![amount.clone()],
         }
         .into()
     } else {
-        validate_address(&receiver, "celestia")?;
+        validate_address(
+            &receiver,
+            &config.native_chain_config.account_address_prefix,
+        )?;
         // not using the ibc queue here. if this fails, we just reexecute
         MsgTransfer {
             source_channel: channel_id.clone().unwrap().clone(),
-            source_port: "transfer".to_string(),
+            source_port: IBC_TRANSFER_PORT.to_string(),
             token: Some(Coin {
                 denom: amount.clone().denom,
                 amount: amount.clone().amount.to_string(),
@@ -244,6 +254,8 @@ pub fn execute_update_config(
     info: MessageInfo,
     trader: Option<String>,
     routes: Option<Vec<Vec<SwapRoute>>>,
+    native_chain_config: Option<UnsafeNativeChainConfig>,
+    protocol_chain_config: Option<UnsafeProtocolChainConfig>,
 ) -> ContractResult<Response> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -252,8 +264,17 @@ pub fn execute_update_config(
         .add_attribute("sender", info.sender);
 
     let mut config = CONFIG.load(deps.storage)?;
+    if let Some(native_chain_config) = native_chain_config {
+        config.native_chain_config = native_chain_config.validate()?;
+    }
+    if let Some(protocol_chain_config) = protocol_chain_config {
+        config.protocol_chain_config = protocol_chain_config.validate()?;
+    }
     if let Some(trader) = trader {
-        config.trader = deps.api.addr_validate(&trader)?;
+        config.trader = validate_address(
+            &trader,
+            &config.protocol_chain_config.account_address_prefix,
+        )?;
         response = response.add_attribute("trader", trader);
     }
     if let Some(routes) = routes {

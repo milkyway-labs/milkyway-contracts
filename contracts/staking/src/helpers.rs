@@ -1,75 +1,8 @@
-use cosmwasm_std::{Addr, Decimal, Deps, Order, StdError, StdResult, Uint128};
+use cosmwasm_std::{Decimal, Deps, Order, StdError, StdResult, Uint128};
 use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
 
 use crate::state::State;
-
-/// Validate the HRP (human readable part).of a bech32 encoded address
-/// as for [BIP-173](https://en.bitcoin.it/wiki/BIP_0173).
-pub fn validate_address_prefix(hrp: &str) -> StdResult<String> {
-    if hrp.is_empty() || hrp.len() > 83 {
-        return Err(StdError::generic_err("invalid address prefix length"));
-    }
-
-    let mut has_lower: bool = false;
-    let mut has_upper: bool = false;
-    for b in hrp.bytes() {
-        // Valid subset of ASCII
-        if !(33..=126).contains(&b) {
-            return Err(StdError::generic_err(
-                "address prefix contains invalid chars",
-            ));
-        }
-
-        if b.is_ascii_lowercase() {
-            has_lower = true;
-        } else if b.is_ascii_uppercase() {
-            has_upper = true;
-        };
-    }
-
-    if has_lower && has_upper {
-        return Err(StdError::generic_err("address prefix chars are mixed case"));
-    }
-
-    if has_upper {
-        Ok(hrp.to_lowercase())
-    } else {
-        Ok(hrp.to_string())
-    }
-}
-
-pub fn validate_address(address: &str, prefix: &str) -> StdResult<Addr> {
-    if let Ok((decoded_prefix, _, _)) = bech32::decode(address) {
-        if decoded_prefix == prefix {
-            Ok(Addr::unchecked(address))
-        } else {
-            Err(StdError::generic_err("Invalid address prefix"))
-        }
-    } else {
-        Err(StdError::generic_err("Invalid address"))
-    }
-}
-
-// Validates addresses are valid and unique and returns a vector of validated addresses
-pub fn validate_addresses(addresses: &Vec<String>, prefix: &str) -> StdResult<Vec<Addr>> {
-    let mut validated = Vec::new();
-    let mut seen = HashSet::new();
-
-    for address in addresses {
-        let validated_addr = validate_address(address, prefix)?;
-
-        if seen.contains(address) {
-            return Err(StdError::generic_err("Duplicate address"));
-        }
-
-        validated.push(validated_addr);
-        seen.insert(address.clone());
-    }
-
-    Ok(validated)
-}
 
 pub fn compute_mint_amount(
     total_native_token: Uint128,
@@ -127,12 +60,13 @@ pub fn derive_intermediate_sender(
     channel_id: &str,
     original_sender: &str,
     bech32_prefix: &str,
-) -> Result<String, bech32::Error> {
-    use bech32::ToBase32;
+) -> StdResult<String> {
     let sender_str = format!("{channel_id}/{original_sender}");
     let sender_hash_32 = addess_hash(SENDER_PREFIX, sender_str.as_bytes());
-    let sender = sender_hash_32.to_base32();
-    bech32::encode(bech32_prefix, sender, bech32::Variant::Bech32)
+    let hrp =
+        bech32::Hrp::parse(bech32_prefix).map_err(|e| StdError::generic_err(e.to_string()))?;
+    bech32::encode::<bech32::Bech32>(hrp, &sender_hash_32)
+        .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
 /// Generic function for paginating a list of (K, V) pairs in a
@@ -223,8 +157,6 @@ pub fn validate_ibc_denom(ibc_denom: impl Into<String>) -> StdResult<String> {
         Err(StdError::generic_err("ibc denom is invalid"))
     }
 }
-
-/// Removes duplicate elements from the provided vector.
 /// Note: The order of elements in the input vector is not preserved.
 pub fn dedup_vec<T>(mut vec: Vec<T>) -> Vec<T>
 where
@@ -237,84 +169,4 @@ where
     vec.sort();
     vec.dedup();
     vec
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn validate_addresses_success() {
-        let addresses = vec![
-            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-            "osmo13ftwm6z4dq6ugjvus2hf2vx3045ahfn3dq7dms".to_string(),
-        ];
-
-        let result = validate_addresses(&addresses, "osmo").unwrap();
-
-        assert_eq!(2, result.len());
-    }
-
-    #[test]
-    fn validate_addresses_duplicate() {
-        let addresses = vec![
-            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-        ];
-
-        let result = validate_addresses(&addresses, "osmo");
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn validate_addresses_invalid() {
-        let addresses = vec![
-            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-        ];
-
-        let result = validate_addresses(&addresses, "osmo");
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn validate_addresses_invalid_prefix() {
-        let addresses = vec![
-            "a".to_string(),
-            "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w".to_string(),
-        ];
-
-        let result = validate_addresses(&addresses, "celestia");
-
-        assert!(result.is_err());
-    }
-
-    // Basic test - based on figures from excalidraw
-    #[test]
-    fn test_compute_mint_amount() {
-        let total_native_token = Uint128::from(2_000_000_000u128);
-        let total_liquid_stake_token = Uint128::from(1_800_000_000u128);
-        let native_to_stake = Uint128::from(100_000_000u128);
-        let mint_amount = compute_mint_amount(
-            total_native_token,
-            total_liquid_stake_token,
-            native_to_stake,
-        );
-
-        assert_eq!(mint_amount, Uint128::from(90_000_000u128));
-    }
-
-    // Basic test - based on figures from excalidraw
-    #[test]
-    fn test_compute_unbond_amount() {
-        let total_native_token = Uint128::from(2_000_000_000u128);
-        let total_liquid_stake_token = Uint128::from(1_800_000_000u128);
-        let batch_unstake = Uint128::from(90_000_000u128);
-        let unbond_amount =
-            compute_unbond_amount(total_native_token, total_liquid_stake_token, batch_unstake);
-
-        assert_eq!(unbond_amount, Uint128::from(100_000_000u128));
-    }
 }

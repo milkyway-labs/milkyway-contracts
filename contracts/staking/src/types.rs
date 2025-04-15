@@ -1,12 +1,10 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Uint128;
+use milky_way::utils::{validate_address, validate_address_prefix, validate_addresses};
 
 use crate::{
     error::{ContractError, ContractResult},
-    helpers::{
-        validate_address, validate_address_prefix, validate_addresses, validate_denom,
-        validate_ibc_denom,
-    },
+    helpers::{validate_denom, validate_ibc_denom},
     state::{NativeChainConfig, ProtocolChainConfig, ProtocolFeeConfig},
 };
 

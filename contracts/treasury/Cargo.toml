@@ -1,6 +1,6 @@
 [package]
 name = "treasury"
-version       = { workspace = true }
+version       = "1.0.0"
 rust-version  = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -46,6 +46,7 @@ schemars.workspace = true
 semver.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+milky_way = { path = "../../packages/milky_way" }
 v = "0.1.0"
 
 [dev-dependencies]
