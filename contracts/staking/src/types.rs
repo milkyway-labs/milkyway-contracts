@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{StdResult, Uint128};
+use cosmwasm_std::Uint128;
 
 use crate::{
     error::{ContractError, ContractResult},

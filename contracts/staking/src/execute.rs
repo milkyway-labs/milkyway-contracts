@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::contract::IBC_TIMEOUT;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
@@ -729,18 +731,6 @@ pub fn recover(
         return Err(ContractError::NoInflightPackets {});
     }
 
-    // Ensure that we are recovering packets with the same denoms
-    // since we are going to sum all the amounts
-    // in order to perform a single transfer
-    if packets.len() > 1 {
-        let expected_denom = &packets[0].amount.denom;
-        for packet in &packets[1..] {
-            if &packet.amount.denom != expected_denom {
-                return Err(ContractError::InconsistentDenom {});
-            }
-        }
-    }
-
     let max_submessage_id = INFLIGHT_PACKETS
         .range(deps.storage, None, None, Order::Descending)
         .take(1)
@@ -751,27 +741,51 @@ pub fn recover(
 
     // Compute the total amount and remove the packets from the
     // INFLIGHT_PACKETS state.
-    let mut total_amount = Coin::new(0, &packets[0].amount.denom);
+    let mut total_amounts = BTreeMap::<String, Uint128>::new();
+    let mut handled_packets_count = 0usize;
     for packet in packets.iter() {
-        INFLIGHT_PACKETS.remove(deps.storage, packet.sequence);
-        total_amount.amount += packet.amount.amount;
+        let coin_amount = total_amounts.get(&packet.amount.denom);
+
+        // Compute the new amount
+        let new_amount = if let Some(amount) = coin_amount {
+            // We found the value in the map, update it.
+            (*amount).checked_add(packet.amount.amount)
+        } else {
+            Ok(packet.amount.amount)
+        };
+
+        if let Ok(amount) = new_amount {
+            // If we have correctly computed the new amount
+            // remove the packet from the inflight packets
+            INFLIGHT_PACKETS.remove(deps.storage, packet.sequence);
+            // Update the amount for the denom
+            total_amounts.insert(packet.amount.denom.clone(), amount);
+            // Update the number of handled packets
+            handled_packets_count += 1;
+        }
     }
 
-    // this shouldn't collide. any committed submessage package should have enough upper room in the indexes
-    // they are based on block times in nano seconds
-    // we are fusing all pending transfers into one
-    let sub_msg = ibc_transfer_sub_msg(
-        &mut deps,
-        &env,
-        receiver.as_str(),
-        total_amount,
-        Some(max_submessage_id + 1),
-    )?;
+    let sub_msgs = total_amounts
+        .iter()
+        .enumerate()
+        .map(|(index, (key, value))| {
+            ibc_transfer_sub_msg(
+                &mut deps,
+                &env,
+                receiver.as_str(),
+                Coin {
+                    denom: key.to_string(),
+                    amount: *value,
+                },
+                Some(max_submessage_id + (index as u64) + 1),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Response::new()
         .add_attribute("action", "recover")
-        .add_attribute("packets", packets.len().to_string())
-        .add_submessage(sub_msg))
+        .add_attribute("packets", handled_packets_count.to_string())
+        .add_submessages(sub_msgs))
 }
 
 // Update the config; callable by the owner

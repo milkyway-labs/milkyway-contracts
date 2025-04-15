@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     coins,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, mock_info},
 };
 
 use crate::{
