@@ -1,11 +1,13 @@
+use std::marker::PhantomData;
+
 use crate::contract::instantiate;
 use crate::msg::InstantiateMsg;
 use crate::state::SwapRoute;
 
-use cosmwasm_std::testing::{
-    mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
-};
+use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockStorage};
 use cosmwasm_std::{coins, OwnedDeps};
+
+use super::osmosis_querier::OsmosisQuerierMock;
 
 pub static ADMIN: &str = "osmo1sfhy3emrgp26wnzuu64p06kpkxd9phel8ym0ge";
 pub static TRADER: &str = "osmo12z558dm3ew6avgjdj07mfslx80rp9sh8nt7q3w";
@@ -16,8 +18,18 @@ pub static TIA_DENOM: &str = "utia";
 pub static USDC_DENOM: &str = "uusdc";
 pub static OSMO_DENOM: &str = "uosmo";
 
-pub fn init() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
-    let mut deps = mock_dependencies();
+pub fn mock_deps() -> OwnedDeps<MockStorage, MockApi, OsmosisQuerierMock> {
+    OwnedDeps {
+        storage: MockStorage::default(),
+        api: MockApi::default(),
+        querier: OsmosisQuerierMock::default(),
+        custom_query_type: PhantomData,
+    }
+}
+
+pub fn init() -> OwnedDeps<MockStorage, MockApi, OsmosisQuerierMock> {
+    let mut deps = mock_deps();
+
     let msg = InstantiateMsg {
         admin: Some(ADMIN.to_string()),
         trader: Some(TRADER.to_string()),

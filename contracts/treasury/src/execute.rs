@@ -7,7 +7,7 @@ use osmosis_std::types::{
 
 use crate::{
     error::{ContractError, ContractResult},
-    helpers::validate_address,
+    helpers::{validate_address, validate_swap_routes},
     state::{State, SwapRoute, ADMIN, CONFIG, STATE},
 };
 
@@ -257,6 +257,7 @@ pub fn execute_update_config(
         response = response.add_attribute("trader", trader);
     }
     if let Some(routes) = routes {
+        validate_swap_routes(deps.as_ref(), &routes)?;
         response = response.add_attribute("allowed_routes", to_json_string(&routes)?);
         config.allowed_swap_routes = routes;
     }

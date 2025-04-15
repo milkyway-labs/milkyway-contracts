@@ -30,4 +30,7 @@ pub enum ContractError {
 
     #[error("Invalid token out denom {denom}")]
     InvalidTokenOutDenom { denom: String },
+
+    #[error("Invalid swap route: {index}, reason: {reason}")]
+    InvalidSwapRoute { index: usize, reason: String },
 }

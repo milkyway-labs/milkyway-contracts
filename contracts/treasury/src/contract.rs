@@ -12,6 +12,7 @@ use crate::execute::{
     execute_swap_exact_amount_in, execute_swap_exact_amount_out, execute_transfer_ownership,
     execute_update_config,
 };
+use crate::helpers::validate_swap_routes;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::query_config;
 use crate::state::{Config, State, ADMIN, CONFIG, STATE};
@@ -41,6 +42,9 @@ pub fn instantiate(
         owner_transfer_min_time: None,
     };
     STATE.save(deps.storage, &state)?;
+
+    // Validate the received swap routes
+    validate_swap_routes(deps.as_ref(), &msg.allowed_swap_routes)?;
 
     // Init Config
     let config = Config {
