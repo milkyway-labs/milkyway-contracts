@@ -189,8 +189,8 @@ pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
     let state = STATE.load(deps.storage).unwrap();
     let total_native_token = state.total_native_token;
     let total_liquid_stake_token = state.total_liquid_stake_token;
-    if total_liquid_stake_token.is_zero() {
-        (Decimal::zero(), Decimal::zero())
+    if total_liquid_stake_token.is_zero() || total_native_token.is_zero() {
+        (Decimal::one(), Decimal::one())
     } else {
         // return redemption_rate, purchase_rate
         (

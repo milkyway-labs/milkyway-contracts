@@ -74,7 +74,7 @@ fn get_state() {
         Ok(res) => {
             assert_eq!(res.total_native_token, Uint128::from(0u128));
             assert_eq!(res.total_liquid_stake_token, Uint128::from(0u128));
-            assert_eq!(res.rate, Decimal::zero());
+            assert_eq!(res.rate, Decimal::one());
             assert_eq!(res.pending_owner, "".to_string());
             assert_eq!(res.total_reward_amount, Uint128::from(0u128));
         }
