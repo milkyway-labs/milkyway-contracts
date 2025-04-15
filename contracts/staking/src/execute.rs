@@ -369,13 +369,7 @@ pub fn execute_submit_batch(
         });
     }
 
-    let unstake_requests = unstake_requests()
-        .prefix(pending_batch_id)
-        .range(deps.storage, None, None, Order::Ascending)
-        .take(1)
-        .count();
-
-    if unstake_requests == 0 {
+    if batch.unstake_requests_count.unwrap_or(0) == 0 {
         return Err(ContractError::BatchEmpty {});
     }
 
