@@ -1,5 +1,5 @@
 use crate::{
-    contract::{CONTRACT_NAME, CONTRACT_VERSION},
+    contract::CONTRACT_NAME,
     error::ContractResult,
     helpers::validate_denom,
     migrations::states::v0_4_20,
@@ -101,10 +101,11 @@ pub fn migrate(
     // Save the new config.
     CONFIG.save(deps.storage, &new_config)?;
 
+    // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, TO_VERSION)?;
 
     Ok(Response::new()
         .add_attribute("action", "migrate")
         .add_attribute("from_version", FROM_VERSION)
-        .add_attribute("to_version", CONTRACT_VERSION))
+        .add_attribute("to_version", TO_VERSION))
 }

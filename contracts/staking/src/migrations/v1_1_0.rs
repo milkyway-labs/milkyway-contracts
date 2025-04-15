@@ -1,5 +1,5 @@
 use crate::{
-    contract::{CONTRACT_NAME, CONTRACT_VERSION},
+    contract::CONTRACT_NAME,
     error::ContractResult,
     migrations::states::v1_0_0,
     state::{
@@ -47,8 +47,13 @@ const TO_VERSION: &str = "1.1.0";
 const PACKETS_MIGRATION_STATUS: Item<PacketsMigration> = Item::new("packets_migration_status");
 
 pub fn migrate(deps: DepsMut, _env: Env, limit: Option<usize>) -> ContractResult<Response> {
-    // Ensure that we are migrating from the correct version.
-    assert_contract_version(deps.storage, CONTRACT_NAME, FROM_VERSION)?;
+    // If the contract is migrating we don't perform the version check
+    // to allow the migration process to complete.
+    let is_migrating = MIGRATING.may_load(deps.storage)?.unwrap_or(false);
+    if !is_migrating {
+        assert_contract_version(deps.storage, CONTRACT_NAME, FROM_VERSION)?;
+    }
+
     let config = CONFIG.load(deps.storage)?;
 
     let mut limit = limit.unwrap_or(usize::MAX);
@@ -148,10 +153,13 @@ pub fn migrate(deps: DepsMut, _env: Env, limit: Option<usize>) -> ContractResult
         MIGRATING.save(deps.storage, &true)?;
     }
 
+    // set new contract version
+    set_contract_version(deps.storage, CONTRACT_NAME, TO_VERSION)?;
+
     Ok(Response::new()
         .add_attribute("action", "migrate")
         .add_attribute("from_version", FROM_VERSION)
-        .add_attribute("to_version", CONTRACT_VERSION)
+        .add_attribute("to_version", TO_VERSION)
         .add_attribute(
             "completed",
             packets_migration_status.all_migrated().to_string(),

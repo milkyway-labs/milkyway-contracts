@@ -11,7 +11,7 @@ use crate::query::{
     query_state, query_unstake_requests,
 };
 use crate::state::{
-    assert_not_migrating, Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY,
+    assert_not_migrating, Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, MIGRATING,
     PENDING_BATCH_ID, STATE,
 };
 use crate::{
@@ -288,7 +288,10 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
     }
     // if same version return
     if version == new_version {
-        return Err(StdError::generic_err("Cannot migrate to the same version.").into());
+        let is_migrating = MIGRATING.may_load(deps.storage)?.unwrap_or(false);
+        if !is_migrating {
+            return Err(StdError::generic_err("Cannot migrate to the same version.").into());
+        }
     }
 
     let migration_response = match msg {
