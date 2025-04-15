@@ -3,7 +3,7 @@ use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
-use crate::state::STATE;
+use crate::state::{State, STATE};
 
 /// Validate the HRP (human readable part).of a bech32 encoded address
 /// as for [BIP-173](https://en.bitcoin.it/wiki/BIP_0173).
@@ -185,8 +185,7 @@ where
     Ok(result)
 }
 
-pub fn get_rates(deps: &Deps) -> (Decimal, Decimal) {
-    let state = STATE.load(deps.storage).unwrap();
+pub fn get_rates(state: &State) -> (Decimal, Decimal) {
     let total_native_token = state.total_native_token;
     let total_liquid_stake_token = state.total_liquid_stake_token;
     if total_liquid_stake_token.is_zero() || total_native_token.is_zero() {

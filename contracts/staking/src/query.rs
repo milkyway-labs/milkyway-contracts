@@ -29,7 +29,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
-    let (_, purchase_rate) = get_rates(&deps);
+    let (_, purchase_rate) = get_rates(&state);
     let res = StateResponse {
         total_native_token: state.total_native_token,
         total_liquid_stake_token: state.total_liquid_stake_token,

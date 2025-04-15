@@ -191,7 +191,7 @@ fn proper_liquid_stake() {
     assert_eq!(state.total_native_token, Uint128::from(1_050_000_000u128));
 
     // test redemption rate, purchase rate
-    let (redemption_rate, purchase_rate) = get_rates(&deps.as_ref());
+    let (redemption_rate, purchase_rate) = get_rates(&state);
     assert_eq!(
         redemption_rate,
         Decimal::from_ratio(1_050_000_000u128, 1_050_000u128)
@@ -392,7 +392,7 @@ fn proper_liquid_stake_with_ibc_transfer() {
     assert_eq!(state.total_native_token, Uint128::from(1_050_000_000u128));
 
     // test redemption rate, purchase rate
-    let (redemption_rate, purchase_rate) = get_rates(&deps.as_ref());
+    let (redemption_rate, purchase_rate) = get_rates(&state);
     assert_eq!(
         redemption_rate,
         Decimal::from_ratio(1_050_000_000u128, 1_050_000u128)

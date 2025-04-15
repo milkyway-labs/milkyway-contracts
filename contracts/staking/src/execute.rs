@@ -85,11 +85,11 @@ fn ibc_transfer_sub_msg(
 }
 
 fn update_oracle_msgs(
-    deps: Deps,
     env: &Env,
     config: &Config,
+    state: &State,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
-    let (redemption_rate, purchase_rate) = get_rates(&deps);
+    let (redemption_rate, purchase_rate) = get_rates(state);
     let mut messages: Vec<CosmosMsg> = Vec::new();
     // Post rates to Milkyway Oracle contract
     let post_rates_msg = Oracle::PostRates {
@@ -234,15 +234,14 @@ pub fn execute_liquid_stake(
         Coin::new(amount.u128(), &config.protocol_chain_config.ibc_token_denom),
         None,
     )?;
+    state.total_native_token += amount;
+    state.total_liquid_stake_token += mint_amount;
+    STATE.save(deps.storage, &state)?;
+
     // Get the stake sub message id so if we need to ibc transfer the minted
     // liquid staked tokens we use this id plus one.
     let stake_sub_message_id = stake_sub_message.id;
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
-
-    state.total_native_token += amount;
-    state.total_liquid_stake_token += mint_amount;
-
-    STATE.save(deps.storage, &state)?;
+    let update_oracle_msgs = update_oracle_msgs(&env, &config, &state)?;
 
     let response = Response::new()
         .add_message(mint_msg)
@@ -443,7 +442,7 @@ pub fn execute_submit_batch(
 
     BATCHES.save(deps.storage, batch.id, &batch)?;
 
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(&env, &config, &state)?;
 
     Ok(Response::new()
         .add_message(tokenfactory_burn_msg)
@@ -503,7 +502,8 @@ pub fn execute_withdraw(
     };
     messages.push(send_msg.into());
 
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
+    let state = STATE.load(deps.storage)?;
+    let update_oracle_msgs = update_oracle_msgs(&env, &config, &state)?;
 
     Ok(Response::new()
         .add_attribute("action", "execute_withdraw")
@@ -889,7 +889,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
         ),
         None,
     )?;
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(&env, &config, &state)?;
 
     let mut response = Response::new()
         .add_attribute("action", "receive_rewards")
@@ -1013,7 +1013,7 @@ pub fn resume_contract(
     config.stopped = false;
     CONFIG.save(deps.storage, &config)?;
 
-    STATE.update(
+    let state = STATE.update(
         deps.storage,
         |mut state| -> Result<State, cosmwasm_std::StdError> {
             state.total_native_token = total_native_token;
@@ -1023,7 +1023,7 @@ pub fn resume_contract(
         },
     )?;
 
-    let update_oracle_msgs = update_oracle_msgs(deps.as_ref(), &env, &config)?;
+    let update_oracle_msgs = update_oracle_msgs(&env, &config, &state)?;
 
     Ok(Response::new()
         .add_attribute("action", "resume_contract")
