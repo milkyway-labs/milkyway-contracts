@@ -45,7 +45,7 @@ The instantiate message takes the following parameters:
 
 Here are listed the actions that can be performed by the contract
 
-### Sped funds
+### Spend funds
 
 This allows the treasury to withdraw their funds to another account.
 
