@@ -130,6 +130,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Res
         return Err(StdError::generic_err("Cannot migrate to the same version.").into());
     }
 
+    // Update the contract name and version
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(Response::new()
         .add_attribute("action", "migrate")
         .add_attribute("from_version", current_version.version)
