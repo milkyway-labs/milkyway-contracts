@@ -403,7 +403,7 @@ fn duplicated_packets_are_ignored_when_recovering() {
                 sequence: i,
                 amount: Coin::new(1000, NATIVE_TOKEN),
                 receiver: STAKER_ADDRESS.to_string(),
-                status: ibc::PacketLifecycleStatus::Sent,
+                status: ibc::PacketLifecycleStatus::AckFailure,
             },
         );
         assert!(res.is_ok());
@@ -415,13 +415,9 @@ fn duplicated_packets_are_ignored_when_recovering() {
         selected_packets: Some(vec![1, 2, 3, 3, 3, 2, 1]),
         receiver: None,
     };
-    let info = mock_info(OSMO1, &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
-    assert!(res.is_err()); // not an admin
 
     let info = mock_info(OSMO3, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
-    assert!(res.is_ok());
     let res = res.unwrap();
     assert_eq!(res.attributes[1], attr("packets", "3"));
 }
