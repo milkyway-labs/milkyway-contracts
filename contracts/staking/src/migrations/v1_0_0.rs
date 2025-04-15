@@ -55,6 +55,11 @@ pub fn migrate(
     if let Some(address) = &old_config.oracle_address {
         validate_address(address.as_str(), &protocol_account_address_prefix)?;
     }
+    if let Some(monitors) = &old_config.monitors {
+        for monitor in monitors.iter() {
+            validate_address(monitor.as_str(), &protocol_account_address_prefix)?;
+        }
+    }
     if old_config.send_fees_to_treasury {
         validate_address(
             old_config.treasury_address.as_str(),
