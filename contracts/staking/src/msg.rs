@@ -32,8 +32,13 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     LiquidStake {
         mint_to: Option<String>,
-        transfer_to_native_chain: Option<bool>,
         expected_mint_amount: Option<Uint128>,
+        /// If the native chain and protocol chain share the same address prefix,
+        /// the contract uses this value to determine whether the LST token
+        /// should be sent to an account on the same chain or transferred
+        /// over IBC to the native chain.
+        /// If not provided, this defaults to `false`.
+        transfer_to_native_chain: Option<bool>,
     },
     LiquidUnstake {},
     SubmitBatch {},

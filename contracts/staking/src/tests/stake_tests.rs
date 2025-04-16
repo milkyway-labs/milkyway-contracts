@@ -9,7 +9,7 @@ use crate::tests::test_helper::{
 };
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    attr, coins, Addr, CosmosMsg, Decimal, IbcTimeout, Order, Reply, ReplyOn, SubMsg,
+    attr, coins, Addr, CosmosMsg, Decimal, IbcTimeout, Order, Reply, ReplyOn, StdError, SubMsg,
     SubMsgResponse, SubMsgResult, Timestamp, Uint128,
 };
 use milky_way::staking::BatchStatus;
@@ -526,4 +526,227 @@ fn zero_liquid_stake_but_native_tokens() {
     assert_eq!(state.total_native_token, Uint128::from(1000u128));
     assert_eq!(state.total_liquid_stake_token, Uint128::from(1000u128));
     assert_eq!(state.total_fees, Uint128::from(1100u128));
+}
+
+#[test]
+fn transfer_to_native_chain_false_is_handle_correctly() {
+    let mut deps = init();
+    let env = mock_env();
+    // The flag is handled only when native and protocol chain address prefix
+    // are equal.
+    CONFIG
+        .update::<_, StdError>(&mut deps.storage, |mut c| {
+            c.native_chain_config.account_address_prefix = "osmo".to_string();
+            c.protocol_chain_config.account_address_prefix = "osmo".to_string();
+            Ok(c)
+        })
+        .unwrap();
+
+    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let msg = ExecuteMsg::LiquidStake {
+        mint_to: None,
+        transfer_to_native_chain: None,
+        expected_mint_amount: None,
+    };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+
+    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
+        env.block.time.nanos() + IBC_TIMEOUT.nanos(),
+    ));
+
+    let ibc_coin = Coin {
+        denom: NATIVE_TOKEN.to_string(),
+        amount: "1000".to_string(),
+    };
+
+    let ibc_sub_msg_id = env.block.time.nanos() + env.transaction.unwrap().index as u64;
+    match res {
+        Ok(ref result) => {
+            assert_eq!(
+                result.attributes,
+                vec![
+                    attr("action", "liquid_stake"),
+                    attr("sender", OSMO3),
+                    attr("in_amount", "1000"),
+                    attr("mint_amount", "1000"),
+                ]
+            );
+            assert_eq!(result.messages.len(), 4); // transfer, mint, redemption rate update
+
+            // First message mints the liquid staked representation to the contract
+            assert_eq!(
+                result.messages[0],
+                SubMsg {
+                    id: 0,
+                    msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
+                        sender: MOCK_CONTRACT_ADDR.to_string(),
+                        amount: Some(Coin {
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+                            amount: "1000".to_string(),
+                        }),
+                        mint_to_address: MOCK_CONTRACT_ADDR.to_string(),
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Never,
+                }
+            );
+
+            // The third message IBC transfer the staked tokens to the
+            // native chain to be staked.
+            assert_eq!(
+                result.messages[2],
+                SubMsg {
+                    id: ibc_sub_msg_id.clone(),
+                    msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
+                        source_channel: CHANNEL_ID.to_string(),
+                        source_port: "transfer".to_string(),
+                        sender: env.contract.address.to_string(),
+                        receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
+                        token: Some(ibc_coin),
+                        timeout_height: None,
+                        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+                        memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Always,
+                }
+            );
+
+            // The fourth message sends the minted liquid staking representation
+            // to the user.
+            assert_eq!(
+                result.messages[3],
+                SubMsg {
+                    id: 0,
+                    msg: <MsgSend as Into<CosmosMsg>>::into(MsgSend {
+                        from_address: Addr::unchecked(MOCK_CONTRACT_ADDR).to_string(),
+                        to_address: OSMO3.to_string(),
+                        amount: vec![Coin {
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+                            amount: "1000".to_string(),
+                        }],
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Never,
+                }
+            );
+        }
+        Err(e) => {
+            panic!("Unexpected error: {:?}", e);
+        }
+    }
+}
+
+#[test]
+fn transfer_to_native_chain_true_is_handle_correctly() {
+    let mut deps = init();
+    let env = mock_env();
+    // The flag is handled only when native and protocol chain address prefix
+    // are equal.
+    CONFIG
+        .update::<_, StdError>(&mut deps.storage, |mut c| {
+            c.native_chain_config.account_address_prefix = "osmo".to_string();
+            c.protocol_chain_config.account_address_prefix = "osmo".to_string();
+            Ok(c)
+        })
+        .unwrap();
+
+    let info = mock_info(OSMO3, &coins(1000, NATIVE_TOKEN));
+    let msg = ExecuteMsg::LiquidStake {
+        mint_to: None,
+        transfer_to_native_chain: Some(true),
+        expected_mint_amount: None,
+    };
+    let res = execute(deps.as_mut(), env.clone(), info, msg);
+
+    let timeout = IbcTimeout::with_timestamp(Timestamp::from_nanos(
+        env.block.time.nanos() + IBC_TIMEOUT.nanos(),
+    ));
+
+    let ibc_coin = Coin {
+        denom: NATIVE_TOKEN.to_string(),
+        amount: "1000".to_string(),
+    };
+
+    let ibc_sub_msg_id = env.block.time.nanos() + env.transaction.unwrap().index as u64;
+    match res {
+        Ok(ref result) => {
+            assert_eq!(
+                result.attributes,
+                vec![
+                    attr("action", "liquid_stake"),
+                    attr("sender", OSMO3),
+                    attr("in_amount", "1000"),
+                    attr("mint_amount", "1000"),
+                ]
+            );
+            assert_eq!(result.messages.len(), 4); // transfer, mint, redemption rate update
+
+            // First message mints the liquid staked representation to the contract
+            assert_eq!(
+                result.messages[0],
+                SubMsg {
+                    id: 0,
+                    msg: <MsgMint as Into<CosmosMsg>>::into(MsgMint {
+                        sender: MOCK_CONTRACT_ADDR.to_string(),
+                        amount: Some(Coin {
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+                            amount: "1000".to_string(),
+                        }),
+                        mint_to_address: MOCK_CONTRACT_ADDR.to_string(),
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Never,
+                }
+            );
+
+            // The third message IBC transfer the staked tokens to the
+            // native chain to be staked.
+            assert_eq!(
+                result.messages[2],
+                SubMsg {
+                    id: ibc_sub_msg_id,
+                    msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
+                        source_channel: CHANNEL_ID.to_string(),
+                        source_port: "transfer".to_string(),
+                        sender: env.contract.address.to_string(),
+                        receiver: Addr::unchecked(STAKER_ADDRESS).to_string(),
+                        token: Some(ibc_coin),
+                        timeout_height: None,
+                        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+                        memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Always,
+                }
+            );
+
+            // The fourth message sends the minted liquid staking representation
+            // to the user on the native chain.
+            assert_eq!(
+                result.messages[3],
+                SubMsg {
+                    id: ibc_sub_msg_id + 1,
+                    msg: <MsgTransfer as Into<CosmosMsg>>::into(MsgTransfer {
+                        source_channel: CHANNEL_ID.to_string(),
+                        source_port: "transfer".to_string(),
+                        token: Some(Coin {
+                            denom: format!("factory/cosmos2contract/{}", LIQUID_STAKE_TOKEN_DENOM),
+                            amount: "1000".to_string(),
+                        }),
+                        sender: env.contract.address.to_string(),
+                        receiver: OSMO3.to_string(),
+                        timeout_height: None,
+                        timeout_timestamp: timeout.timestamp().unwrap().nanos(),
+                        memo: format!("{{\"ibc_callback\":\"{}\"}}", env.contract.address),
+                    }),
+                    gas_limit: None,
+                    reply_on: ReplyOn::Always,
+                }
+            );
+        }
+        Err(e) => {
+            panic!("Unexpected error: {:?}", e);
+        }
+    }
 }

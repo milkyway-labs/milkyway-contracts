@@ -157,7 +157,7 @@ pub fn execute_liquid_stake(
     }
 
     let mint_to_address = mint_to.unwrap_or_else(|| info.sender.to_string());
-    let mut mint_to_is_native = validate_address(
+    let mint_to_is_native = validate_address(
         &mint_to_address,
         &config.native_chain_config.account_address_prefix,
     )
@@ -168,18 +168,16 @@ pub fn execute_liquid_stake(
     )
     .is_ok();
 
+    // Ensure the mint to is either a protocol chain account or
+    // native chain account.
     if !mint_to_is_protocol && !mint_to_is_native {
         return Err(ContractError::InvalidAddress {});
     }
 
-    // In case the native chain and the protocol chain have the same prefix
-    // we decide based on the `transfer_to_native_chain` flag.
-    if mint_to_is_native && mint_to_is_protocol {
-        if transfer_to_native_chain.unwrap_or(false) {
-            mint_to_is_protocol = false;
-        } else {
-            mint_to_is_native = false;
-        }
+    // There may be cases where the address prefixes of the native chain and the protocol chain are the same.
+    // In such cases, we determine the target chain based on the `transfer_to_native_chain` flag.
+    if mint_to_is_native && mint_to_is_protocol && transfer_to_native_chain.unwrap_or(false) {
+        mint_to_is_protocol = false;
     }
 
     let mut state: State = STATE.load(deps.storage)?;
