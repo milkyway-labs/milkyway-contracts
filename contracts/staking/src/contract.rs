@@ -6,9 +6,8 @@ use crate::helpers::validate_denom;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::migrations;
 use crate::query::{
-    query_all_unstake_requests, query_all_unstake_requests_v2, query_batch, query_batches,
-    query_batches_by_ids, query_config, query_ibc_queue, query_pending_batch, query_reply_queue,
-    query_state, query_unstake_requests,
+    query_all_unstake_requests, query_batch, query_batches, query_batches_by_ids, query_config,
+    query_ibc_queue, query_pending_batch, query_reply_queue, query_state, query_unstake_requests,
 };
 use crate::state::{
     assert_not_migrating, Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, MIGRATING,
@@ -32,13 +31,13 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
-use milky_way::utils::validate_addresses;
+use milky_way::utils::{validate_address, validate_addresses};
 use semver::Version;
 
 // Version information for migration
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000); // TODO: Placeholder value for IBC timeout
+pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000);
 
 ///////////////////
 /// INSTANTIATE ///
@@ -53,15 +52,21 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let admin = info.sender.clone();
-    ADMIN.set(deps.branch(), Some(admin.clone()))?;
-
     // Init Config
     let native_chain_config = msg.native_chain_config.validate()?;
     let protocol_chain_config = msg
         .protocol_chain_config
         .validate(&native_chain_config.token_denom)?;
     let protocol_fee_config = msg.protocol_fee_config.validate(&protocol_chain_config)?;
+
+    // Resolve the admin from the msg.admin filed or fallback to
+    // info.sender if None
+    let admin = msg
+        .admin
+        .map(|admin| validate_address(&admin, &protocol_chain_config.account_address_prefix))
+        .transpose()?
+        .unwrap_or(info.sender);
+    ADMIN.set(deps.branch(), Some(admin.clone()))?;
 
     // Ensure the batch period is lower then unbonding period.
     if msg.batch_period > native_chain_config.unbonding_period {
@@ -120,7 +125,6 @@ pub fn instantiate(
     BATCHES.save(deps.storage, 1, &pending_batch)?;
     PENDING_BATCH_ID.save(deps.storage, &1)?;
 
-    // TODO: Update attributes
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("owner", admin)
@@ -247,15 +251,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::UnstakeRequests { user } => {
             to_json_binary(&query_unstake_requests(deps, user.into_string())?)
         }
-        // DEPR
         QueryMsg::AllUnstakeRequests { start_after, limit } => {
             to_json_binary(&query_all_unstake_requests(deps, start_after, limit)?)
         }
-        QueryMsg::AllUnstakeRequestsV2 { start_after, limit } => {
-            to_json_binary(&query_all_unstake_requests_v2(deps, start_after, limit)?)
-        }
-
-        // dev only, depr
         QueryMsg::IbcQueue { start_after, limit } => {
             to_json_binary(&query_ibc_queue(deps, start_after, limit)?)
         }

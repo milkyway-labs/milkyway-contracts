@@ -182,9 +182,6 @@ fn get_batches() {
     let mut bin = query(deps.as_ref(), env.clone(), msg.clone()).unwrap();
     let mut result = from_json::<BatchesResponse>(&bin);
 
-    // TODO: need to do something like circuit break, add the test as well
-    // 1. total_liquid_stake_token < unstake amount
-    // 2. total_liquid_stake_token == 0
     let mut state = STATE.load(&deps.storage).unwrap();
     state.total_liquid_stake_token = Uint128::from(100_000_000u128);
     state.total_native_token = Uint128::from(300_000_000u128);

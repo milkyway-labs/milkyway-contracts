@@ -217,9 +217,6 @@ pub fn execute_liquid_stake(
         );
     }
 
-    // TODO: Confirm Uint128 to String conversion is ok (proto requires this)
-    //       Needs testing and validation - also need to check mint_to_address
-    //
     // Mint liquid staking token
     let mint_msg = tokenfactory::mint(
         env.contract.address.to_string(),
@@ -379,8 +376,6 @@ pub fn execute_submit_batch(
 
     let mut state = STATE.load(deps.storage)?;
 
-    // TODO: Circuit break?
-    // Need to add a test for this
     ensure!(
         state.total_liquid_stake_token >= batch.batch_total_liquid_stake,
         ContractError::InvalidUnstakeAmount {
@@ -475,18 +470,15 @@ pub fn execute_withdraw(
     }
     let received_native_unstaked = batch.received_native_unstaked.as_ref().unwrap();
 
-    let _liquid_unstake_request =
-        unstake_requests().may_load(deps.storage, (batch.id, info.sender.to_string()))?;
-    if _liquid_unstake_request.is_none() {
-        return Err(ContractError::NoRequestInBatch {});
-    }
+    let liquid_unstake_request = unstake_requests()
+        .may_load(deps.storage, (batch.id, info.sender.to_string()))?
+        .ok_or(ContractError::NoRequestInBatch {})?;
 
-    let unstake_request_amount = _liquid_unstake_request.unwrap().amount;
+    let amount = received_native_unstaked.multiply_ratio(
+        liquid_unstake_request.amount,
+        batch.batch_total_liquid_stake,
+    );
 
-    let amount = received_native_unstaked
-        .multiply_ratio(unstake_request_amount, batch.batch_total_liquid_stake);
-
-    // TODO: if all liquid unstake requests have been withdrawn, delete the batch?
     remove_unstake_request(&mut deps, info.sender.to_string(), batch.id)?;
 
     let mut messages: Vec<CosmosMsg> = vec![];

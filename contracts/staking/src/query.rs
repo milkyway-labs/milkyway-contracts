@@ -170,7 +170,6 @@ pub fn query_unstake_requests(deps: Deps, user: String) -> StdResult<Vec<Unstake
     Ok(unstaking_requests)
 }
 
-// DEPR
 pub fn query_all_unstake_requests(
     deps: Deps,
     start_after: Option<u64>,
@@ -190,33 +189,6 @@ pub fn query_all_unstake_requests(
             if r.is_ok() {
                 let request = r.unwrap().1;
                 return Some(request);
-            }
-            None
-        })
-        .collect();
-
-    Ok(unstaking_requests)
-}
-
-pub fn query_all_unstake_requests_v2(
-    deps: Deps,
-    start_after: Option<u64>,
-    limit: Option<u32>,
-) -> StdResult<Vec<(String, u64, Uint128)>> {
-    let unstaking_requests = unstake_requests()
-        .idx
-        .by_user
-        .range(
-            deps.storage,
-            start_after.map(|s| Bound::exclusive(("".to_string(), s))),
-            None,
-            cosmwasm_std::Order::Ascending,
-        )
-        .take(limit.unwrap_or(u32::MAX) as usize)
-        .filter_map(|r| {
-            if r.is_ok() {
-                let request = r.unwrap().1;
-                return Some((request.user, request.batch_id, request.amount));
             }
             None
         })

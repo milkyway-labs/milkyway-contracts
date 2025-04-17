@@ -49,6 +49,7 @@ pub fn mock_init_msg() -> InstantiateMsg {
             dao_treasury_fee: Uint128::from(10_000u128),
             treasury_address: Some(OSMO1.to_string()),
         },
+        admin: None,
     }
 }
 

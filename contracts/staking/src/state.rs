@@ -93,8 +93,6 @@ pub struct ProtocolFeeConfig {
     pub treasury_address: Option<Addr>,
 }
 
-// TODO: PENDING - DOCS DEFINE THESE AS MAPS?
-// Discuss: Do we want to add or remove any state?
 #[cw_serde]
 pub struct State {
     pub total_native_token: Uint128,
@@ -137,7 +135,6 @@ pub fn unstake_requests<'a>(
         by_user: UniqueIndex::new(|r| (r.user.clone(), r.batch_id), "unstake_requests_by_user"),
     };
 
-    // depr version
     IndexedMap::new("unstake_requests", indexes)
 }
 

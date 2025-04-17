@@ -126,34 +126,6 @@ fn double_liquid_unstake() {
         Uint128::from(6_500u128)
     );
 
-    // Check unstake requests
-    let msg = QueryMsg::AllUnstakeRequestsV2 {
-        start_after: None,
-        limit: None,
-    };
-    let res = query(deps.as_ref(), mock_env(), msg);
-    assert!(res.is_ok());
-    let unstake_requests_records: Vec<(String, u64, Uint128)> = from_json(res.unwrap()).unwrap();
-
-    assert!(unstake_requests_records.len() == 2); //for bob & alice
-
-    assert_eq!(
-        unstake_requests_records
-            .iter()
-            .find(|v| v.0 == "bob")
-            .unwrap()
-            .2,
-        Uint128::from(1500u128)
-    );
-    assert_eq!(
-        unstake_requests_records
-            .iter()
-            .find(|v| v.0 == "alice")
-            .unwrap()
-            .2,
-        Uint128::from(5000u128)
-    );
-
     // submit batch
     let mut env = mock_env();
     let config = CONFIG.load(&deps.storage).unwrap();

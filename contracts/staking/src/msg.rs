@@ -25,6 +25,7 @@ pub struct InstantiateMsg {
 
     pub batch_period: u64,
     pub monitors: Vec<String>,
+    pub admin: Option<String>,
 }
 
 #[cw_serde]
@@ -163,11 +164,6 @@ pub enum QueryMsg {
     UnstakeRequests { user: Addr },
     #[returns(Vec<UnstakeRequestResponse>)]
     AllUnstakeRequests {
-        start_after: Option<u64>,
-        limit: Option<u32>,
-    },
-    #[returns(Vec<(String, u64, Uint128)>)]
-    AllUnstakeRequestsV2 {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
