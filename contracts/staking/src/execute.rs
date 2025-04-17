@@ -340,8 +340,7 @@ pub fn execute_liquid_unstake(
         .add_attribute("amount", amount))
 }
 
-// Submit batch and transition pending batch to submitted
-// Called automatically during liquidUnstake, but also can be called by anyone
+/// Submit batch and transition pending batch to submitted.
 pub fn execute_submit_batch(
     deps: DepsMut,
     env: Env,
@@ -678,7 +677,7 @@ pub fn recover(
         // Validate the address
         .map(|s| validate_address(&s, &config.native_chain_config.account_address_prefix))
         .transpose()?
-        // Fallback to staker address in case the sender was None
+        // Fallback to staker address in case the receiver was None
         .unwrap_or(config.native_chain_config.staker_address);
 
     // timed out and failed packets
