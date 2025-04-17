@@ -146,16 +146,6 @@ pub fn execute_liquid_stake(
 
     check_stopped(&config)?;
 
-    // a native user address minus its prefix is 39 chars long
-    if mint_to.is_none()
-        && info.sender.as_str().len() - config.protocol_chain_config.account_address_prefix.len()
-            != 39
-    {
-        // If we receive a mint to from a non-native address, return an error
-        // to force the specification of a mint to address
-        return Err(ContractError::MissingMintAddress {});
-    }
-
     let mint_to_address = mint_to.unwrap_or_else(|| info.sender.to_string());
     let mint_to_is_native = validate_address(
         &mint_to_address,
