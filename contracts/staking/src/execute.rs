@@ -260,7 +260,7 @@ pub fn execute_liquid_stake(
             &mut deps,
             &env,
             mint_to_address,
-            Coin::new(amount.u128(), &config.liquid_stake_token_denom),
+            Coin::new(mint_amount.u128(), &config.liquid_stake_token_denom),
             Some(stake_sub_message_id + 1),
         )?)
     };
