@@ -311,6 +311,7 @@ pub enum MigrateMsg {
     V1_0_0ToV1_1_0 {
         limit: Option<usize>,
     },
+    V1_1_0ToV1_2_0 {},
 }
 
 #[cw_serde]

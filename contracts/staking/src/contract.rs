@@ -314,6 +314,7 @@ pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response,
         MigrateMsg::V1_0_0ToV1_1_0 { limit } => {
             migrations::v1_1_0::migrate(deps.branch(), env, limit)?
         }
+        MigrateMsg::V1_1_0ToV1_2_0 {} => migrations::v1_2_0::migrate(deps.branch(), env)?,
     };
 
     Ok(migration_response)

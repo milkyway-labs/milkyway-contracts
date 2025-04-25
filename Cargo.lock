@@ -1363,7 +1363,7 @@ dependencies = [
 
 [[package]]
 name = "staking"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "bech32 0.11.0",
  "cosmwasm-schema",
