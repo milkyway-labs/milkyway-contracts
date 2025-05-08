@@ -245,6 +245,10 @@ pub enum QueryMsg {
         /// Maximum number of IBC reply queue entries to return.
         limit: Option<u32>,
     },
+
+    /// Queries the current admin.
+    #[returns(AdminResponse)]
+    Admin {},
 }
 ```
 
@@ -471,5 +475,14 @@ pub enum QueryMsg {
       "receiver": "cosmos1j9ns0wkcj2nsym06s9eq4y9kqpx57zz72uc46e"
     }
   ]
+}
+```
+
+
+### Admin
+
+```json
+{
+  "admin": "cosmos1j9ns0wkcj2nsym06s9eq4y9kqpx57zz72uc46e"
 }
 ```
