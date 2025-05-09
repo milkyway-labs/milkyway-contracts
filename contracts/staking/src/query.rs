@@ -5,10 +5,11 @@ use crate::msg::{
 };
 use crate::state::ibc::IBCTransfer;
 use crate::state::{
-    unstake_requests, UnstakeRequest, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, INFLIGHT_PACKETS,
-    PENDING_BATCH_ID, STATE,
+    unstake_requests, UnstakeRequest, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY,
+    INFLIGHT_PACKETS, PENDING_BATCH_ID, STATE,
 };
 use cosmwasm_std::{Deps, StdResult, Timestamp, Uint128};
+use cw_controllers::AdminResponse;
 use cw_storage_plus::Bound;
 use milky_way::staking::{Batch, BatchStatus};
 
@@ -195,4 +196,8 @@ pub fn query_all_unstake_requests(
         .collect();
 
     Ok(unstaking_requests)
+}
+
+pub fn query_admin(deps: Deps) -> StdResult<AdminResponse> {
+    ADMIN.query_admin(deps)
 }

@@ -2,10 +2,10 @@ use crate::contract::{execute, query};
 use crate::msg::{
     BatchResponse, BatchesResponse, ConfigResponse, ExecuteMsg, QueryMsg, StateResponse,
 };
-use crate::query::query_pending_batch;
+use crate::query::{query_admin, query_pending_batch};
 use crate::state::{CONFIG, STATE};
 use crate::tests::test_helper::{
-    init, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, LIQUID_STAKE_TOKEN_DENOM,
+    init, ADMIN, CELESTIA2, CELESTIAVAL1, CELESTIAVAL2, CHANNEL_ID, LIQUID_STAKE_TOKEN_DENOM,
     NATIVE_TOKEN, OSMO2, OSMO3, OSMO4, STAKER_ADDRESS,
 };
 use cosmwasm_std::testing::{mock_env, mock_info};
@@ -325,4 +325,13 @@ fn get_pending_batch() {
 
     let pending_batch_id = query_pending_batch(deps.as_ref());
     assert!(pending_batch_id.unwrap().id == 2);
+}
+
+#[test]
+fn get_admin() {
+    let deps = init();
+    let env = mock_env();
+
+    let admin_response = query_admin(deps.as_ref()).unwrap();
+    assert_eq!(ADMIN, admin_response.admin.unwrap().as_str())
 }

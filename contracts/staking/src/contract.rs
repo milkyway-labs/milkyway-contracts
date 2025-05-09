@@ -6,8 +6,9 @@ use crate::helpers::validate_denom;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::migrations;
 use crate::query::{
-    query_all_unstake_requests, query_batch, query_batches, query_batches_by_ids, query_config,
-    query_ibc_queue, query_pending_batch, query_reply_queue, query_state, query_unstake_requests,
+    query_admin, query_all_unstake_requests, query_batch, query_batches, query_batches_by_ids,
+    query_config, query_ibc_queue, query_pending_batch, query_reply_queue, query_state,
+    query_unstake_requests,
 };
 use crate::state::{
     assert_not_migrating, Config, State, ADMIN, BATCHES, CONFIG, IBC_WAITING_FOR_REPLY, MIGRATING,
@@ -260,6 +261,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IbcReplyQueue { start_after, limit } => {
             to_json_binary(&query_reply_queue(deps, start_after, limit)?)
         }
+        QueryMsg::Admin {} => to_json_binary(&query_admin(deps)?),
     }
 }
 
