@@ -60,7 +60,7 @@ pub fn instantiate(
         .validate(&native_chain_config.token_denom)?;
     let protocol_fee_config = msg.protocol_fee_config.validate(&protocol_chain_config)?;
 
-    // Resolve the admin from the msg.admin filed or fallback to
+    // Resolve the admin from the msg.admin field or fallback to
     // info.sender if None
     let admin = msg
         .admin
