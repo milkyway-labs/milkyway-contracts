@@ -9,3 +9,10 @@ pub enum Oracle {
         redemption_rate: String,
     },
 }
+
+
+#[cw_serde]
+pub struct OracleInstantiateMsg {
+    pub admin_address: String,
+}
+

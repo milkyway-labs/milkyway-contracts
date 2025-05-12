@@ -35,7 +35,13 @@ pub struct InstantiateMsg {
 
     /// Set of addresses allowed to trigger a circuit break.
     pub monitors: Vec<String>,
+
+    /// Optional admin account.
     pub admin: Option<String>,
+
+    /// Optional oracle contract code id that will be instantiated if
+    /// is Some and the protocol_chain_config.oracle_address is None.
+    pub oracle_code_id: Option<u64>,
 }
 
 #[cw_serde]

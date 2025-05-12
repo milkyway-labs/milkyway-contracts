@@ -5,6 +5,7 @@ use crate::execute::{
 use crate::helpers::validate_denom;
 use crate::ibc::{receive_ack, receive_timeout};
 use crate::migrations;
+use crate::oracle::OracleInstantiateMsg;
 use crate::query::{
     query_admin, query_all_unstake_requests, query_batch, query_batches, query_batches_by_ids,
     query_config, query_ibc_queue, query_pending_batch, query_reply_queue, query_state,
@@ -24,11 +25,11 @@ use crate::{
     msg::{ExecuteMsg, IBCLifecycleComplete, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg},
     tokenfactory,
 };
-use cosmwasm_std::Timestamp;
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, StdResult, Uint128,
 };
+use cosmwasm_std::{wasm_instantiate, SubMsg, Timestamp};
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 use milky_way::staking::Batch;
@@ -39,6 +40,7 @@ use semver::Version;
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const IBC_TIMEOUT: Timestamp = Timestamp::from_nanos(1000000000000);
+pub const INSTANTIATE_ORACLE_CONTRACT_REPLY_ID: u64 = 1;
 
 ///////////////////
 /// INSTANTIATE ///
@@ -110,6 +112,24 @@ pub fn instantiate(
 
     STATE.save(deps.storage, &state)?;
 
+    // Prepare the oracle's instantiate message
+    let oracle_init_msg =
+        if config.protocol_chain_config.oracle_address.is_none() && msg.oracle_code_id.is_some() {
+            Some(SubMsg::reply_on_success(
+                wasm_instantiate(
+                    1,
+                    &OracleInstantiateMsg {
+                        admin_address: env.contract.address.to_string(),
+                    },
+                    vec![],
+                    format!("{} Oracle", &msg.liquid_stake_token_denom),
+                )?,
+                INSTANTIATE_ORACLE_CONTRACT_REPLY_ID,
+            ))
+        } else {
+            None
+        };
+
     // Create liquid stake token denom
     let cosmos_tokenfactory_msg = tokenfactory::create_denom(
         env.contract.address.to_string(),
@@ -126,10 +146,17 @@ pub fn instantiate(
     BATCHES.save(deps.storage, 1, &pending_batch)?;
     PENDING_BATCH_ID.save(deps.storage, &1)?;
 
-    Ok(Response::new()
+    let mut response = Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("owner", admin)
-        .add_message(cosmos_tokenfactory_msg))
+        .add_message(cosmos_tokenfactory_msg);
+
+    // Add the oracle instantiate message if is defined
+    if let Some(msg) = oracle_init_msg {
+        response = response.add_submessage(msg);
+    }
+
+    Ok(response)
 }
 
 ///////////////
@@ -351,9 +378,28 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
     assert_not_migrating(deps.as_ref())?;
 
-    let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
-    match ibc_waiting_result {
-        Ok(_ibc_waiting_for_reply) => handle_ibc_reply(deps, reply),
-        Err(_) => Err(ContractError::InvalidReplyID { id: reply.id }),
+    if reply.id == INSTANTIATE_ORACLE_CONTRACT_REPLY_ID {
+        // Parse the
+        let instantiate_reply = cw_utils::parse_reply_instantiate_data(reply)
+            .map_err(|_| ContractError::InstantiateOracleFailed {})?;
+
+        let contract_addr = deps
+            .api
+            .addr_validate(&instantiate_reply.contract_address)?;
+        CONFIG.update::<_, StdError>(deps.storage, |mut config| {
+            config.protocol_chain_config.oracle_address = Some(contract_addr);
+            Ok(config)
+        })?;
+
+        let response = Response::new()
+            .add_attribute("action", "instantiate_oracle_contract")
+            .add_attribute("address", instantiate_reply.contract_address);
+        Ok(response)
+    } else {
+        let ibc_waiting_result = IBC_WAITING_FOR_REPLY.load(deps.storage, reply.id);
+        match ibc_waiting_result {
+            Ok(_ibc_waiting_for_reply) => handle_ibc_reply(deps, reply),
+            Err(_) => Err(ContractError::InvalidReplyID { id: reply.id }),
+        }
     }
 }
