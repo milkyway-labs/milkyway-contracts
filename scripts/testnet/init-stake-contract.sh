@@ -74,26 +74,16 @@ echo ""
 # Contracts initialization
 
 echo "Init treasury contract"
-INIT="{\"trader\":\"$OSMOSIS_TRADER\",\"allowed_swap_routes\":[[{\"pool_id\":1,\"token_in_denom\":\"$NATIVE_TOKEN_DENOM\",\"token_out_denom\":\"uosmo\"}]]}" \
+INIT="{\"trader\":\"$OSMOSIS_TRADER\",\"allowed_swap_routes\":[],\"native_chain_config\":{\"account_address_prefix\":\"celestia\"},\"protocol_chain_config\":{\"account_address_prefix\":\"celestia\"}}" \
 TREASURY_CONTRACT=$(init_contract "$TREASURY_CODE_ID" "$INIT" "Treasury")
 
 echo "Init staking contract"
-INIT="{\"native_chain_config\":{\"account_address_prefix\":\"celestia\",\"validator_address_prefix\":\"celestiavaloper\",\"token_denom\":\"utia\",\"validators\":[\"$CELESTIA_VALIDATOR_1\"],\"unbonding_period\":$UNBONDING_PERIOD,\"staker_address\":\"$CELESTIA_STAKER\",\"reward_collector_address\":\"$CELESTIA_REWARDS_COLLECTOR\"},\"protocol_chain_config\":{\"account_address_prefix\":\"osmo\",\"ibc_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"ibc_channel_id\":\"channel-0\",\"minimum_liquid_stake_amount\":\"100\"},\"protocol_fee_config\":{\"dao_treasury_fee\":\"800\",\"treasury_address\":\"$TREASURY_CONTRACT\"},\"liquid_stake_token_denom\":\"milkTIA\",\"batch_period\":60,\"monitors\":[\"$OSMOSIS_ACCOUNT\"]}"
+INIT="{\"native_chain_config\":{\"account_address_prefix\":\"celestia\",\"validator_address_prefix\":\"celestiavaloper\",\"token_denom\":\"utia\",\"validators\":[\"$CELESTIA_VALIDATOR_1\"],\"unbonding_period\":$UNBONDING_PERIOD,\"staker_address\":\"$CELESTIA_STAKER\",\"reward_collector_address\":\"$CELESTIA_REWARDS_COLLECTOR\"},\"protocol_chain_config\":{\"account_address_prefix\":\"osmo\",\"ibc_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"ibc_channel_id\":\"channel-0\",\"minimum_liquid_stake_amount\":\"100\"},\"protocol_fee_config\":{\"dao_treasury_fee\":\"800\",\"treasury_address\":\"$TREASURY_CONTRACT\"},\"liquid_stake_token_denom\":\"milkTIA\",\"batch_period\":60,\"monitors\":[\"$OSMOSIS_ACCOUNT\"],\"oracle_code_id\":$ORACLE_CODE_ID}"
 STAKE_CONTRACT=$(init_contract "$STAKING_CONTRACT_CODE_ID" "$INIT" "Staking")
 #VALIDATORS=$(osmosisd query staking validators --output json | jq -r '.validators | map(.operator_address) | join(",")')
 
-# Init our oracle contract
-echo "Init oracle contract"
-INIT="{\"admin_address\":\"$STAKE_CONTRACT\"}"
-ORACLE_CONTRACT=$(init_contract "$ORACLE_CODE_ID" "$INIT" "Oracle")
-
 # Start the staking contract
 echo "Starting the staking contract..."
-UPDATE_CONFIG="{\"update_config\":{\"protocol_chain_config\":{\"account_address_prefix\":\"osmo\",\"ibc_token_denom\":\"$NATIVE_TOKEN_DENOM\",\"ibc_channel_id\":\"channel-0\",\"minimum_liquid_stake_amount\":\"100\",\"oracle_address\":\"$ORACLE_CONTRACT\"}}}"
-wait_tx osmosisd tx wasm execute "$STAKE_CONTRACT" "$UPDATE_CONFIG" \
-    --from test_master --keyring-backend test \
-    "$OSMOSIS_TX_PARAMS"
-
 wait_tx osmosisd tx wasm execute "$STAKE_CONTRACT" '{"resume_contract":{"total_native_token":"0","total_liquid_stake_token":"0","total_reward_amount":"0"}}' \
     --from test_master --keyring-backend test \
     "$OSMOSIS_TX_PARAMS"
