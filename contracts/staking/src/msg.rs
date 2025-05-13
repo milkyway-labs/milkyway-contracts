@@ -1,7 +1,7 @@
 use crate::{
     state::{
         ibc::IBCTransfer, IbcWaitingForReply, NativeChainConfig, ProtocolChainConfig,
-        ProtocolFeeConfig, UnstakeRequest,
+        ProtocolFeeConfig,
     },
     types::{
         BatchExpectedAmount, UnsafeNativeChainConfig, UnsafeProtocolChainConfig,
@@ -10,7 +10,6 @@ use crate::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
-use cw_controllers::AdminResponse;
 use milky_way::staking::BatchStatus;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -268,7 +267,7 @@ pub enum QueryMsg {
     PendingBatch {},
 
     /// Queries the unstake requests made by a specific user.
-    #[returns(Vec<UnstakeRequest>)]
+    #[returns(Vec<crate::state::UnstakeRequest>)]
     UnstakeRequests {
         /// Address of the user whose unstake requests are to be queried.
         user: Addr,
@@ -304,7 +303,7 @@ pub enum QueryMsg {
     },
 
     /// Queries the current admin.
-    #[returns(AdminResponse)]
+    #[returns(cw_controllers::AdminResponse)]
     Admin {},
 }
 
