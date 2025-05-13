@@ -117,7 +117,7 @@ pub fn instantiate(
         if config.protocol_chain_config.oracle_address.is_none() && msg.oracle_code_id.is_some() {
             Some(SubMsg::reply_on_success(
                 wasm_instantiate(
-                    1,
+                    msg.oracle_code_id.unwrap(),
                     &OracleInstantiateMsg {
                         admin_address: env.contract.address.to_string(),
                     },

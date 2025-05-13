@@ -10,9 +10,7 @@ pub enum Oracle {
     },
 }
 
-
 #[cw_serde]
 pub struct OracleInstantiateMsg {
     pub admin_address: String,
 }
-
