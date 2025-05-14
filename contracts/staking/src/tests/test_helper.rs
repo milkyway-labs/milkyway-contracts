@@ -50,6 +50,7 @@ pub fn mock_init_msg() -> InstantiateMsg {
             treasury_address: Some(OSMO1.to_string()),
         },
         admin: None,
+        oracle_code_id: None,
     }
 }
 
