@@ -122,7 +122,7 @@ pub struct UnstakeRequestIndexes<'a> {
     pub by_user: UniqueIndex<'a, (String, u64), UnstakeRequest>,
 }
 
-impl<'a> IndexList<UnstakeRequest> for UnstakeRequestIndexes<'a> {
+impl IndexList<UnstakeRequest> for UnstakeRequestIndexes<'_> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<UnstakeRequest>> + '_> {
         let v: Vec<&dyn Index<UnstakeRequest>> = vec![&self.by_user];
         Box::new(v.into_iter())

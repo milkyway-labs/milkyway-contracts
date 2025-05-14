@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use crate::contract::IBC_TIMEOUT;
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::{
-    compute_mint_amount, compute_unbond_amount, dedup_vec, derive_intermediate_sender, get_rates,
-    paginate_map, validate_ibc_denom,
+    compute_mint_amount, compute_unbond_amount, dedup_vec, get_rates, paginate_map,
+    validate_ibc_denom,
 };
 use crate::oracle::Oracle;
 use crate::state::{

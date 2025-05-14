@@ -1,7 +1,7 @@
 use crate::{
     state::{
         ibc::IBCTransfer, IbcWaitingForReply, NativeChainConfig, ProtocolChainConfig,
-        ProtocolFeeConfig, UnstakeRequest,
+        ProtocolFeeConfig,
     },
     types::{
         BatchExpectedAmount, UnsafeNativeChainConfig, UnsafeProtocolChainConfig,
@@ -10,7 +10,6 @@ use crate::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
-use cw_controllers::AdminResponse;
 use milky_way::staking::BatchStatus;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -35,7 +34,13 @@ pub struct InstantiateMsg {
 
     /// Set of addresses allowed to trigger a circuit break.
     pub monitors: Vec<String>,
+
+    /// Optional admin account.
     pub admin: Option<String>,
+
+    /// Optional oracle contract code ID that will be instantiated if
+    /// it is `Some` and the `protocol_chain_config.oracle_address` is `None`.
+    pub oracle_code_id: Option<u64>,
 }
 
 #[cw_serde]
@@ -262,7 +267,7 @@ pub enum QueryMsg {
     PendingBatch {},
 
     /// Queries the unstake requests made by a specific user.
-    #[returns(Vec<UnstakeRequest>)]
+    #[returns(Vec<crate::state::UnstakeRequest>)]
     UnstakeRequests {
         /// Address of the user whose unstake requests are to be queried.
         user: Addr,
@@ -298,7 +303,7 @@ pub enum QueryMsg {
     },
 
     /// Queries the current admin.
-    #[returns(AdminResponse)]
+    #[returns(cw_controllers::AdminResponse)]
     Admin {},
 }
 

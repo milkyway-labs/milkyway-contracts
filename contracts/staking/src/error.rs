@@ -174,4 +174,7 @@ pub enum ContractError {
         value: Uint128,
         max: Uint128,
     },
+
+    #[error("Oracle contract instantiation failed")]
+    InstantiateOracleFailed {},
 }
