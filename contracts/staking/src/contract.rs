@@ -113,22 +113,24 @@ pub fn instantiate(
     STATE.save(deps.storage, &state)?;
 
     // Prepare the oracle's instantiate message
-    let oracle_init_msg =
-        if config.protocol_chain_config.oracle_address.is_none() && msg.oracle_code_id.is_some() {
-            Some(SubMsg::reply_on_success(
-                wasm_instantiate(
-                    msg.oracle_code_id.unwrap(),
-                    &OracleInstantiateMsg {
-                        admin_address: env.contract.address.to_string(),
-                    },
-                    vec![],
-                    format!("{} Oracle", &msg.liquid_stake_token_denom),
-                )?,
-                INSTANTIATE_ORACLE_CONTRACT_REPLY_ID,
-            ))
-        } else {
-            None
-        };
+    let oracle_init_msg = if let (None, Some(code_id)) = (
+        config.protocol_chain_config.oracle_address.as_ref(),
+        msg.oracle_code_id,
+    ) {
+        Some(SubMsg::reply_on_success(
+            wasm_instantiate(
+                code_id,
+                &OracleInstantiateMsg {
+                    admin_address: env.contract.address.to_string(),
+                },
+                vec![],
+                format!("{} Oracle", &msg.liquid_stake_token_denom),
+            )?,
+            INSTANTIATE_ORACLE_CONTRACT_REPLY_ID,
+        ))
+    } else {
+        None
+    };
 
     // Create liquid stake token denom
     let cosmos_tokenfactory_msg = tokenfactory::create_denom(
