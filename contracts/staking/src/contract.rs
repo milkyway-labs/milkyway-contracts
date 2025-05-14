@@ -379,13 +379,16 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
     assert_not_migrating(deps.as_ref())?;
 
     if reply.id == INSTANTIATE_ORACLE_CONTRACT_REPLY_ID {
-        // Parse the
+        // Parse the contract instantiate replay
         let instantiate_reply = cw_utils::parse_reply_instantiate_data(reply)
             .map_err(|_| ContractError::InstantiateOracleFailed {})?;
 
+        // Get the instantiated contract address
         let contract_addr = deps
             .api
             .addr_validate(&instantiate_reply.contract_address)?;
+
+        // Store the instantiated oracle contract address
         CONFIG.update::<_, StdError>(deps.storage, |mut config| {
             config.protocol_chain_config.oracle_address = Some(contract_addr);
             Ok(config)
