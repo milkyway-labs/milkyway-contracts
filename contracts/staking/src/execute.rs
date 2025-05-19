@@ -914,7 +914,7 @@ pub fn receive_rewards(mut deps: DepsMut, env: Env, info: MessageInfo) -> Contra
 
 pub fn receive_unstaked_tokens(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     batch_id: u64,
 ) -> ContractResult<Response> {
@@ -938,20 +938,6 @@ pub fn receive_unstaked_tokens(
         return Err(ContractError::BatchNotClaimable {
             batch_id: batch.id,
             status: batch.status,
-        });
-    }
-
-    if batch.next_batch_action_time.is_none() {
-        return Err(ContractError::BatchNotClaimable {
-            batch_id: batch.id,
-            status: batch.status,
-        });
-    }
-    let next_batch_action_time = batch.next_batch_action_time.unwrap();
-    if next_batch_action_time > env.block.time.seconds() {
-        return Err(ContractError::BatchNotReady {
-            actual: env.block.time.seconds(),
-            expected: next_batch_action_time,
         });
     }
 
