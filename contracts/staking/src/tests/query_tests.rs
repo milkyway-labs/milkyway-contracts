@@ -330,7 +330,6 @@ fn get_pending_batch() {
 #[test]
 fn get_admin() {
     let deps = init();
-    let env = mock_env();
 
     let admin_response = query_admin(deps.as_ref()).unwrap();
     assert_eq!(ADMIN, admin_response.admin.unwrap().as_str())
