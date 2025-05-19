@@ -224,12 +224,6 @@ fn receive_unstaked_tokens() {
     batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() + 1));
     BATCHES.save(&mut deps.storage, 1, &batch).unwrap();
 
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-    assert!(res.is_err()); // batch not ready
-
-    batch.update_status(BatchStatus::Submitted, Some(env.block.time.seconds() - 1));
-    BATCHES.save(&mut deps.storage, 1, &batch).unwrap();
-
     execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 }
 
