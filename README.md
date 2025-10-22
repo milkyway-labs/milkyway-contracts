@@ -6,7 +6,7 @@
 
 MilkyWay is a liquid staking protocol for the [Celestia](https://celestia.org/) ecosystem.
 
-This repository contains MilkyWay's core contracts that is deployed and operated on [Osmosis](https://osmosis.zone/).
+This repository contains MilkyWay's core contracts that are deployed and operated on [Osmosis](https://osmosis.zone/).
 
 ## Contracts
 
