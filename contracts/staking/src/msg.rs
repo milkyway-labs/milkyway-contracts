@@ -323,6 +323,7 @@ pub enum MigrateMsg {
     },
     V1_1_0ToV1_2_0 {},
     V1_2_0ToV1_3_0 {},
+    V1_3_0ToV1_4_0 {},
 }
 
 #[cw_serde]

@@ -446,8 +446,6 @@ pub fn execute_withdraw(
 ) -> ContractResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
 
-    check_stopped(&config)?;
-
     let _batch = BATCHES.load(deps.storage, batch_id);
     if _batch.is_err() {
         return Err(ContractError::BatchEmpty {});
